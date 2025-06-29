@@ -99,12 +99,30 @@
   </div>
 
   <Transition name="property-card">
-    <div v-if="selectedProperty" class="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-[400px]">
-      <PropertyCard 
-        :property="selectedProperty" 
-        @close="selectedProperty = null"
-        @open-modal="isModalOpen = true"
-      />
+    <div v-if="selectedProperty"
+      :style="{ position: 'absolute', left: `${cardPosition.x}px`, top: `${cardPosition.y}px`, zIndex: 30, width: '310px' }"
+    >
+      <!-- Card con flecha -->
+      <div style="position: relative;">
+        <PropertyCard 
+          :property="selectedProperty" 
+          :is-favorite="isFavorite(selectedProperty)"
+          @toggle-favorite="toggleFavorite(selectedProperty)"
+          @close="selectedProperty = null"
+          @open-modal="isModalOpen = true"
+        />
+        <!-- Flecha tipo tooltip -->
+        <div v-if="cardPlacement === 'top'" style="position: absolute; left: 50%; top: 100%; transform: translateX(-50%); width: 0; height: 0; z-index: 40;">
+          <svg width="32" height="18" viewBox="0 0 32 18">
+            <polygon points="16,18 0,0 32,0" fill="#fff" stroke="#e5e7eb" stroke-width="1" />
+          </svg>
+        </div>
+        <div v-else style="position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%) rotate(180deg); width: 0; height: 0; z-index: 40;">
+          <svg width="32" height="18" viewBox="0 0 32 18">
+            <polygon points="16,18 0,0 32,0" fill="#fff" stroke="#e5e7eb" stroke-width="1" />
+          </svg>
+        </div>
+      </div>
     </div>
   </Transition>
 
@@ -178,6 +196,9 @@ const markerElements = ref({});
 const ZOOM_THRESHOLD = 14.0;
 const filteredProperties = ref([]);
 const showSortMenu = ref(false);
+const viewedProperties = ref(new Set());
+const cardPosition = ref({ x: 0, y: 0 });
+const cardPlacement = ref('top'); // 'top' o 'bottom'
 
 const sortOptions = [
   { value: 'relevance', label: 'Relevancia' },
@@ -221,6 +242,12 @@ const updateMarkersForZoom = () => {
         } else if (!isSelected && markerEl.classList.contains('selected')) {
             markerEl.classList.remove('selected');
         }
+        // Cambiar color si fue vista
+        if (viewedProperties.value.has(prop.id)) {
+          markerEl.classList.add('viewed');
+        } else {
+          markerEl.classList.remove('viewed');
+        }
         continue;
     }
 
@@ -238,6 +265,13 @@ const updateMarkersForZoom = () => {
     } else {
       markerEl.className = 'marker-dot';
       markerEl.innerHTML = '';
+    }
+
+    // Cambiar color si fue vista
+    if (viewedProperties.value.has(prop.id)) {
+      markerEl.classList.add('viewed');
+    } else {
+      markerEl.classList.remove('viewed');
     }
 
     if (isSelected) {
@@ -367,8 +401,9 @@ onMounted(async () => {
         const el = document.createElement('div');
         el.className = 'marker';
 
-        el.addEventListener('click', () => {
-          selectedProperty.value = property;
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showPropertyCard(property);
         });
 
         markerElements.value[property.id] = el;
@@ -379,10 +414,13 @@ onMounted(async () => {
       });
     });
 
-    // Evento para cerrar la card al hacer clic en el mapa
+    // Ocultar el card al arrastrar el mapa
+    map.on('dragstart', () => {
+      selectedProperty.value = null;
+    });
+
+    // Ocultar el card al hacer click en el mapa (fuera de una burbuja)
     map.on('click', (e) => {
-      // Si el clic fue directamente sobre el canvas del mapa (y no sobre un marcador HTML),
-      // entonces cerramos la tarjeta de propiedad.
       if (e.originalEvent.target === map.getCanvas()) {
         selectedProperty.value = null;
       }
@@ -528,8 +566,8 @@ const deleteShape = () => {
 
 const togglePropertyList = () => {
   showPropertyList.value = !showPropertyList.value;
-  // Si se está mostrando la lista, actualizamos las propiedades filtradas
   if (showPropertyList.value) {
+    selectedProperty.value = null;
     updateFilteredProperties();
   }
 };
@@ -600,6 +638,32 @@ watch(shapeDrawn, (newVal) => {
     updateFilteredProperties();
   }
 });
+
+function showPropertyCard(property) {
+  selectedProperty.value = property;
+  viewedProperties.value.add(property.id);
+  // Calcular posición del card
+  const pixel = map.project([property.lng, property.lat]);
+  // Obtener dimensiones del mapa y del card
+  const mapRect = mapContainer.value.getBoundingClientRect();
+  const cardWidth = 310;
+  const cardHeight = 282 + 18; // 18px de la flecha
+  // Por defecto, arriba de la burbuja
+  let x = pixel.x - cardWidth / 2;
+  let y = pixel.y - cardHeight;
+  let placement = 'top';
+  // Si se sale por arriba, mostrar abajo
+  if (y < 0) {
+    y = pixel.y + 24; // 24px para dejar espacio a la burbuja
+    placement = 'bottom';
+  }
+  // Si se sale por la izquierda
+  if (x < 0) x = 8;
+  // Si se sale por la derecha
+  if (x + cardWidth > mapRect.width) x = mapRect.width - cardWidth - 8;
+  cardPosition.value = { x, y };
+  cardPlacement.value = placement;
+}
 </script>
 
 <style>
@@ -771,5 +835,14 @@ watch(shapeDrawn, (newVal) => {
     transform: scale(2.5);
     opacity: 0;
   }
+}
+
+.marker-dot.viewed, .price-bubble.viewed .price-bubble-container {
+  background-color: #38e8ff !important; /* Turquesa claro */
+  border-color: #fff !important; /* Borde blanco */
+  border-width: 2px !important;
+}
+.price-bubble.viewed .price-bubble-container {
+  color: #222 !important;
 }
 </style>
