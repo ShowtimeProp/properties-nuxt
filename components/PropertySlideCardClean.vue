@@ -34,6 +34,12 @@
             </div>
           </div>
         </Swiper>
+        <!-- Botón de favorito SVG puro -->
+        <button @click.stop="$emit('toggle-favorite', property)" class="absolute top-3 right-3 z-20 favorite-btn flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 group/fav" :aria-pressed="isFavorite">
+          <svg :class="['h-10 w-10 transition-all duration-300 heart-outline', isFavorite ? 'fill-red-500' : 'fill-black35', 'group-hover/fav:animate-fav-pulse']" viewBox="0 0 24 24" stroke-width="2" :stroke="'#fff'">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </button>
       </client-only>
       <!-- Badge dinámico -->
       <div v-if="property.badge" class="absolute top-3 left-3 z-10 badge-zillow flex items-center gap-1">
@@ -73,7 +79,7 @@
 </template>
 
 <script setup>
-import { defineProps, ref, onMounted } from 'vue'
+import { defineProps, ref, onMounted, watch } from 'vue'
 import 'swiper/css/navigation';
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination, Navigation } from 'swiper/modules'
@@ -105,6 +111,10 @@ const props = defineProps({
       badge: '3D TOUR',
       tags: ['Nueva construcción', 'Balcón', 'Cocina integrada']
     })
+  },
+  isFavorite: {
+    type: Boolean,
+    default: false
   }
 })
 const property = props.property
@@ -112,6 +122,8 @@ const swiperRef = ref(null)
 const swiperInstance = ref(null)
 const showPrevButton = ref(false)
 const showNextButton = ref(false)
+const favSonarKey = ref(Date.now())
+watch(() => props.isFavorite, () => { favSonarKey.value = Date.now(); })
 
 function onSwiper(swiper) {
   swiperInstance.value = swiper
@@ -263,5 +275,54 @@ function formatCurrency(price) {
   display: inline-block;
   vertical-align: middle;
   margin-bottom: 2px;
+}
+.favorite-btn {
+  border: none;
+  background: transparent;
+  padding: 0.35rem;
+}
+.heart-outline {
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.10));
+}
+.group-hover\/fav\:animate-fav-pulse:hover {
+  animation: fav-pulse 0.7s;
+}
+@keyframes fav-pulse {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.18); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.fill-none {
+  fill: none;
+}
+.fill-red-500 {
+  fill: #ef4444;
+}
+.text-red-500 {
+  stroke: #ef4444;
+}
+.text-gray-400 {
+  stroke: #9ca3af;
+}
+.sonar-fav-svg,
+.sonar-fav-svg2,
+.sonar-fav-svg3 {
+  fill: none;
+  stroke: #ef4444;
+  stroke-width: 0;
+  opacity: 0.3;
+  pointer-events: none;
+  animation: sonar-fav-svg-anim 0.7s;
+}
+.sonar-fav-svg2 { animation-delay: 0.15s; }
+.sonar-fav-svg3 { animation-delay: 0.3s; }
+@keyframes sonar-fav-svg-anim {
+  0% { r: 0; opacity: 0.5; }
+  60% { r: 12; opacity: 0.2; }
+  100% { r: 20; opacity: 0; }
+}
+.fill-black35 {
+  fill: rgba(0,0,0,0.35);
 }
 </style>

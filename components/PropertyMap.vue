@@ -27,26 +27,7 @@
           </svg>
         </button>
       </div>
-      
-      <!-- Filtros de Ordenamiento -->
-      <div class="border-b border-gray-200 p-3">
-        <div class="flex flex-wrap gap-2 text-sm">
-          <button 
-            v-for="option in sortOptions" 
-            :key="option.value"
-            @click="sortBy = option.value"
-            class="px-3 py-1 rounded-full transition-colors"
-            :class="{
-              'bg-blue-100 text-blue-700': sortBy === option.value,
-              'text-gray-600 hover:bg-gray-100': sortBy !== option.value
-            }"
-          >
-            {{ option.label }}
-          </button>
-        </div>
-      </div>
-      
-      <!-- Lista de Propiedades en Grid -->
+      <!-- Lista de Propiedades en Grid (sin menú de ordenamiento) -->
       <div ref="scrollContainer" class="flex-1 overflow-y-auto p-4">
         <div v-if="sortedProperties.length > 0" class="grid grid-cols-2 gap-4">
           <PropertySlideCardClean
@@ -196,6 +177,7 @@ const isModalOpen = ref(false);
 const markerElements = ref({});
 const ZOOM_THRESHOLD = 14.0;
 const filteredProperties = ref([]);
+const showSortMenu = ref(false);
 
 const sortOptions = [
   { value: 'relevance', label: 'Relevancia' },
