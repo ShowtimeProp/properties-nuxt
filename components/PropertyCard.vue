@@ -1,32 +1,43 @@
 <template>
-  <div class="fixed left-4 top-1/2 -translate-y-1/2 w-[360px] bg-white rounded-lg shadow-xl z-20 flex flex-col font-sans transition-shadow duration-300 hover:shadow-2xl">
+  <div class="w-[400px] bg-white rounded-lg shadow-xl z-20 flex flex-col font-sans transition-shadow duration-300 hover:shadow-2xl overflow-hidden" style="max-height: 500px">
     <!-- Botón de cerrar eliminado por redundancia -->
 
-        <!-- Imagen principal con Slider -->
+    <!-- Imagen principal con Slider -->
     <div class="relative h-[200px] w-full rounded-t-lg overflow-hidden bg-gray-300 group">
       <ClientOnly>
         <Swiper
-          @click="onSwiperClick"
-          @reachEnd="onReachEnd"
+          ref="swiperRef"
           :modules="modules"
           :navigation="{
             nextEl: '.swiper-button-next',
             prevEl: '.swiper-button-prev',
+            disabledClass: 'swiper-button-disabled',
           }"
-          :loop="true"
+          :loop="false"
+          :slides-per-view="1"
+          :space-between="0"
+          @slide-change="updateNavigation"
           class="h-full w-full"
         >
-          <swiper-slide v-for="(image, index) in property.images" :key="index">
+          <swiper-slide v-for="(image, index) in property.images" :key="index" @click="onImageClick">
             <img :src="image" :alt="`${property.title} - Foto ${index + 1}`" class="object-cover w-full h-full" />
           </swiper-slide>
         </Swiper>
       </ClientOnly>
       
-            <!-- Controles de Navegación Personalizados -->
-      <div class="swiper-button-prev absolute left-2 top-1/2 -translate-y-1/2 z-10 cursor-pointer bg-black/40 hover:bg-black/60 rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <!-- Controles de Navegación Personalizados -->
+      <div 
+        v-show="showPrevButton"
+        class="swiper-button-prev absolute left-2 top-1/2 -translate-y-1/2 z-10 cursor-pointer bg-black/40 hover:bg-black/60 rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
+        @click.stop="slidePrev"
+      >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
       </div>
-      <div class="swiper-button-next absolute right-2 top-1/2 -translate-y-1/2 z-10 cursor-pointer bg-black/40 hover:bg-black/60 rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <div 
+        v-show="showNextButton"
+        class="swiper-button-next absolute right-2 top-1/2 -translate-y-1/2 z-10 cursor-pointer bg-black/40 hover:bg-black/60 rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
+        @click.stop="slideNext"
+      >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
       </div>
 
@@ -55,7 +66,7 @@
     </div>
 
     <!-- Info principal -->
-    <div class="flex-1 flex flex-col justify-between p-4">
+    <div class="flex flex-col p-4">
       <div>
         <div class="text-2xl font-bold text-gray-900">USD {{ property.price }}</div>
         <div class="text-gray-500 mt-1">$ {{ property.expenses }} Expensas</div>
@@ -88,6 +99,7 @@ import { Swiper, SwiperSlide } from 'swiper/vue';
 import { Navigation } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
+import { ref, onMounted } from 'vue';
 
 // Este componente recibe la información de la propiedad como un 'prop' y emite un evento 'close' cuando se hace clic en el botón de cerrar.
 const props = defineProps({
@@ -95,27 +107,58 @@ const props = defineProps({
     type: Object,
     required: true
   }
-})
+});
+
 const emit = defineEmits(['close', 'open-modal']);
 const modules = [Navigation];
+const swiperRef = ref(null);
+const swiperInstance = ref(null);
+const showPrevButton = ref(false);
+const showNextButton = ref(true);
 
-const onSwiperClick = (swiper, event) => {
-  // Evita abrir el modal si el clic fue en los botones de navegación
-  const target = event.target;
-  if (target.closest('.swiper-button-prev') || target.closest('.swiper-button-next')) {
-    return;
+const onImageClick = () => {
+  emit('open-modal');
+};
+
+const updateNavigation = (swiper) => {
+  if (!swiper) return;
+  
+  // Actualizar visibilidad de las flechas
+  showPrevButton.value = swiper.activeIndex > 0;
+  showNextButton.value = swiper.activeIndex < swiper.slides.length - 1;
+};
+
+const slideNext = () => {
+  if (swiperInstance.value) {
+    swiperInstance.value.slideNext();
+    updateNavigation(swiperInstance.value);
   }
-  emit('open-modal');
 };
 
-const onReachEnd = () => {
-  // Se emite cuando se llega al final del slider
-  emit('open-modal');
+const slidePrev = () => {
+  if (swiperInstance.value) {
+    swiperInstance.value.slidePrev();
+    updateNavigation(swiperInstance.value);
+  }
 };
+
+// Inicializar la instancia de Swiper cuando el componente se monta
+onMounted(() => {
+  if (swiperRef.value) {
+    swiperInstance.value = swiperRef.value.swiper;
+    updateNavigation(swiperInstance.value);
+    
+    // Actualizar navegación cuando cambian las diapositivas
+    swiperInstance.value.on('slideChange', () => {
+      updateNavigation(swiperInstance.value);
+    });
+  }
+});
 
 const isFavorite = ref(false);
 
-const toggleFavorite = () => {
+const toggleFavorite = (event) => {
+  event.stopPropagation();
   isFavorite.value = !isFavorite.value;
   // Aquí se podría emitir un evento o llamar a una API para guardar el estado
 };

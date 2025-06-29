@@ -1,13 +1,130 @@
 <template>
-  <div class="absolute top-0 left-0 w-full h-full" ref="mapContainer"></div>
+  <div class="relative w-full h-full">
+    <div ref="mapContainer" class="absolute inset-0"></div>
+    
+    <!-- Botón Ver Listado -->
+    <button 
+      @click="togglePropertyList"
+      class="absolute top-4 right-24 z-20 flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+      <span>Ver Listado</span>
+    </button>
+    
+    <!-- Panel de Listado de Propiedades -->
+    <div 
+      class="fixed top-0 right-0 h-full w-[750px] bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col"
+      :class="{ 'translate-x-0': showPropertyList, 'translate-x-full': !showPropertyList }"
+      style="box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1)"
+    >
+      <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-lg font-semibold">Propiedades encontradas</h3>
+        <button @click="togglePropertyList" class="text-gray-500 hover:text-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Filtros de Ordenamiento -->
+      <div class="border-b border-gray-200 p-3">
+        <div class="flex flex-wrap gap-2 text-sm">
+          <button 
+            v-for="option in sortOptions" 
+            :key="option.value"
+            @click="sortBy = option.value"
+            class="px-3 py-1 rounded-full transition-colors"
+            :class="{
+              'bg-blue-100 text-blue-700': sortBy === option.value,
+              'text-gray-600 hover:bg-gray-100': sortBy !== option.value
+            }"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+      
+      <!-- Lista de Propiedades en Grid -->
+      <div ref="scrollContainer" class="flex-1 overflow-y-auto p-4">
+        <div v-if="sortedProperties.length > 0" class="grid grid-cols-2 gap-4">
+          <PropertySlideCard
+            v-for="property in sortedProperties"
+            :key="property.id"
+            :property="property"
+            :isFavorite="isFavorite"
+            :toggleFavorite="toggleFavorite"
+            @click="selectPropertyFromList(property)"
+            class="mx-auto"
+          />
+        </div>
+        <div v-else class="h-full flex items-center justify-center p-8 text-gray-500">
+          <p>No hay propiedades en esta área</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controles de Dibujo -->
+    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-row items-center gap-3">
+    <!-- Menú Herramienta de Dibujo -->
+    <div v-if="isTridentOpen" class="flex flex-col items-center gap-2">
+      <div class="bg-white rounded-lg shadow-lg p-3">
+        <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Haz clic en el mapa para dibujar. Haz clic derecho para terminar.</span>
+        </div>
+        <button @click="startDrawing('polygon')" class="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors w-full justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+          <span>Dibujar área</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Botón de Dibujo Principal -->
+    <div class="flex items-center gap-2">
+        <button v-if="!shapeDrawn" @click="toggleTrident" class="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+          <span>Dibujar área</span>
+        </button>
+        
+        <button v-if="shapeDrawn" @click="deleteShape" class="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span>Eliminar área</span>
+        </button>
+      <button class="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors">
+        <span>Buscar en esta zona</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M4 12a8 8 0 0114.24-5.236M20 20v-5h-5M20 12a8 8 0 01-14.24 5.236" />
+        </svg>
+      </button>
+      <div v-if="isTridentOpen" class="text-xs text-gray-600 bg-white/90 px-3 py-1 rounded-lg shadow">
+        <p class="flex items-center gap-1">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Haz clic derecho para terminar el dibujo
+        </p>
+      </div>
+    </div>
+  </div>
+
   <Transition name="property-card">
-    <PropertyCard 
-      v-if="selectedProperty" 
-      :property="selectedProperty" 
-      @close="selectedProperty = null"
-      @open-modal="isModalOpen = true"
-      class="absolute left-4 top-1/2 -translate-y-1/2 z-30"
-    />
+    <div v-if="selectedProperty" class="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-[400px]">
+      <PropertyCard 
+        :property="selectedProperty" 
+        @close="selectedProperty = null"
+        @open-modal="isModalOpen = true"
+      />
+    </div>
   </Transition>
 
   <!-- Modal de Detalles -->
@@ -17,20 +134,78 @@
       :property="selectedProperty"
       @close="isModalOpen = false"
     />
-  </Transition>
+    </Transition>
+  </div>
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import PropertySlideCard from './PropertySlideCard.vue';
+import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import PropertyCard from './PropertyCard.vue';
 import PropertyModal from './PropertyModal.vue';
+
+// Asegurarse de que MapboxDraw funcione con MapLibre
+if (typeof window !== 'undefined') {
+  window.MapboxDraw = MapboxDraw;
+}
 
 const mapContainer = ref(null)
 let map = null // No reactivo, para evitar problemas con el proxy de Vue
 const selectedProperty = ref(null);
+const isTridentOpen = ref(false);
+const scrollContainer = ref(null);
+
+const loadMoreProperties = () => {
+  // Placeholder for infinite scroll logic
+  console.log('Loading more properties...');
+  // In a real application, you would fetch more data here
+  // and append it to the sortedProperties array.
+};
+
+onMounted(() => {
+  if (scrollContainer.value) {
+    scrollContainer.value.addEventListener('scroll', () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value;
+      if (scrollTop + clientHeight >= scrollHeight - 50) { // 50px from bottom
+        loadMoreProperties();
+      }
+    });
+  }
+});
+
+onUnmounted(() => {
+  if (scrollContainer.value) {
+    scrollContainer.value.removeEventListener('scroll', () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value;
+      if (scrollTop + clientHeight >= scrollHeight - 50) {
+        loadMoreProperties();
+      }
+    });
+  }
+});
+const shapeDrawn = ref(false);
+const showPropertyList = ref(false);
+const sortBy = ref('relevance');
+const favorites = ref(new Set());
+let draw = null;
 const isModalOpen = ref(false);
 const markerElements = ref({});
 const ZOOM_THRESHOLD = 14.0;
+const filteredProperties = ref([]);
+
+const sortOptions = [
+  { value: 'relevance', label: 'Relevancia' },
+  { value: 'price-asc', label: 'Menor precio' },
+  { value: 'price-desc', label: 'Mayor precio' },
+  { value: 'price-m2-asc', label: 'Menor precio/m²' },
+  { value: 'price-m2-desc', label: 'Mayor precio/m²' },
+  { value: 'size-asc', label: 'Menor tamaño' },
+  { value: 'size-desc', label: 'Mayor tamaño' }
+];
 
 const formatPriceForBubble = (priceString) => {
   const num = parseInt(priceString.replace(/\./g, ''), 10);
@@ -88,6 +263,7 @@ const updateMarkersForZoom = () => {
     }
   }
 };
+
 const properties = ref([
   { id: 1, lng: -57.54, lat: -38.01, title: 'Departamento céntrico', price: '150.000', expenses: '12.000', address: 'Corrientes 2345', size: 75, rooms: 3, bathrooms: 2, bedrooms: 2, hasVirtualTour: true, virtualTourUrl: 'https://s3.showtimeprop.com/vt360/remax/bianca_nicolini/santiago/index.htm', description: 'Moderno departamento de 3 ambientes en el corazón de la ciudad. Cuenta con amplios ventanales que ofrecen una excelente iluminación natural y vistas panorámicas. Cocina integrada, dos baños completos y balcón. Ideal para quienes buscan confort y una ubicación privilegiada.', images: ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=360&h=180&fit=crop'] },
   { id: 2, lng: -57.555, lat: -38.005, title: 'Casa con vista al mar', price: '320.000', expenses: '25.000', address: 'Bv. Marítimo 1100', size: 120, rooms: 4, bathrooms: 3, bedrooms: 3, hasVirtualTour: false, virtualTourUrl: null, description: 'Espectacular casa frente al mar con 3 dormitorios, amplio jardín y piscina. Diseño moderno y acabados de lujo. Una oportunidad única para vivir con el sonido de las olas.', images: ['https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1572120360610-d971b9d7767c?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=360&h=180&fit=crop'] },
@@ -101,12 +277,16 @@ onMounted(async () => {
   await import('maplibre-gl/dist/maplibre-gl.css');
 
   if (mapContainer.value) {
+    // Configuración del mapa con MapTiler
     map = new maplibregl.Map({
       container: mapContainer.value,
       style: `https://api.maptiler.com/maps/streets/style.json?key=RqptbBn3gxBTDHGJ4a3O`,
-      center: [-57.55, -38.00], // Coordenadas de Mar del Plata
+      center: [-57.5425, -38.0179],
       zoom: 13
     });
+
+    // Agregar controles de navegación
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     map.on('load', () => {
       properties.value.forEach(property => {
@@ -137,6 +317,99 @@ onMounted(async () => {
     updateMarkersForZoom();
     map.on('zoom', updateMarkersForZoom);
 
+    // Inicializar MapboxDraw con estilos compatibles
+    draw = new MapboxDraw({
+      displayControlsDefault: false, // Usaremos nuestros propios controles
+      controls: {
+        polygon: true,
+        trash: false // Usaremos un botón de eliminar personalizado
+      },
+      styles: [
+        // Estilo para el polígono activo (cuando se está dibujando)
+        {
+          id: 'gl-draw-polygon-fill-active',
+          type: 'fill',
+          filter: ['all',
+            ['==', 'active', 'true'],
+            ['==', '$type', 'Polygon']
+          ],
+          paint: {
+            'fill-color': '#3bb2d0',
+            'fill-outline-color': '#3bb2d0',
+            'fill-opacity': 0.1
+          }
+        },
+        // Estilo para el polígono inactivo
+        {
+          id: 'gl-draw-polygon-fill-inactive',
+          type: 'fill',
+          filter: ['all',
+            ['==', 'active', 'false'],
+            ['==', '$type', 'Polygon']
+          ],
+          paint: {
+            'fill-color': '#3bb2d0',
+            'fill-outline-color': '#3bb2d0',
+            'fill-opacity': 0.1
+          }
+        },
+        // Estilo para el borde del polígono activo
+        {
+          id: 'gl-draw-polygon-stroke-active',
+          type: 'line',
+          filter: ['all',
+            ['==', 'active', 'true'],
+            ['==', '$type', 'Polygon']
+          ],
+          layout: {},
+          paint: {
+            'line-color': '#3bb2d0',
+            'line-width': 2,
+            'line-dasharray': [2, 2]
+          }
+        },
+        // Estilo para el borde del polígono inactivo
+        {
+          id: 'gl-draw-polygon-stroke-inactive',
+          type: 'line',
+          filter: ['all',
+            ['==', 'active', 'false'],
+            ['==', '$type', 'Polygon']
+          ],
+          layout: {},
+          paint: {
+            'line-color': '#3bb2d0',
+            'line-width': 2
+          }
+        },
+        // Estilo para los puntos de control
+        {
+          id: 'gl-draw-polygon-and-line-vertex-active',
+          type: 'circle',
+          filter: ['all',
+            ['==', 'meta', 'vertex'],
+            ['==', '$type', 'Point']
+          ],
+          paint: {
+            'circle-radius': 4,
+            'circle-color': '#fbb03b'
+          }
+        }
+      ]
+    });
+    map.addControl(draw, 'top-right');
+
+    map.on('draw.create', () => {
+      shapeDrawn.value = true;
+      isTridentOpen.value = false;
+      // Aquí irá la lógica para filtrar propiedades
+    });
+
+    map.on('draw.delete', () => {
+      shapeDrawn.value = false;
+      // Lógica para resetear el filtro
+    });
+
     map.on('style.load', () => {
       console.log('El estilo del mapa se ha cargado completamente.');
     });
@@ -153,9 +426,129 @@ onMounted(async () => {
     });
   }
 });
+
+onUnmounted(() => {
+  if (map) {
+    map.remove();
+  }
+});
+
+const toggleTrident = () => {
+  isTridentOpen.value = !isTridentOpen.value;
+};
+
+const startDrawing = () => {
+  isTridentOpen.value = false;
+  if (draw) {
+    draw.changeMode('draw_polygon');
+  }
+};
+
+const deleteShape = () => {
+  if (draw) {
+    draw.deleteAll();
+    shapeDrawn.value = false;
+    filteredProperties.value = [];
+  }
+};
+
+const togglePropertyList = () => {
+  showPropertyList.value = !showPropertyList.value;
+  // Si se está mostrando la lista, actualizamos las propiedades filtradas
+  if (showPropertyList.value) {
+    updateFilteredProperties();
+  }
+};
+
+const selectPropertyFromList = (property) => {
+  selectedProperty.value = property;
+  // Opcional: Centrar el mapa en la propiedad seleccionada
+  if (map) {
+    map.flyTo({
+      center: [property.lng, property.lat],
+      zoom: 15
+    });
+  }
+};
+
+const sortedProperties = computed(() => {
+  const properties = [...filteredProperties.value];
+  
+  return properties.sort((a, b) => {
+    const priceA = parseInt(a.price.replace(/\./g, ''));
+    const priceB = parseInt(b.price.replace(/\./g, ''));
+    const priceM2A = priceA / a.size;
+    const priceM2B = priceB / b.size;
+    
+    switch (sortBy.value) {
+      case 'price-asc':
+        return priceA - priceB;
+      case 'price-desc':
+        return priceB - priceA;
+      case 'price-m2-asc':
+        return priceM2A - priceM2B;
+      case 'price-m2-desc':
+        return priceM2B - priceM2A;
+      case 'size-asc':
+        return a.size - b.size;
+      case 'size-desc':
+        return b.size - a.size;
+      default:
+        return 0; // Relevancia (sin ordenar o orden original)
+    }
+  });
+});
+
+const updateFilteredProperties = () => {
+  // Por ahora, mostramos todas las propiedades
+  // En una implementación real, aquí filtrarías las propiedades basadas en el área dibujada
+  filteredProperties.value = [...properties.value];
+};
+
+const toggleFavorite = (property) => {
+  const id = property.id.toString();
+  if (favorites.value.has(id)) {
+    favorites.value.delete(id);
+  } else {
+    favorites.value.add(id);
+  }
+  // Aquí podrías guardar los favoritos en localStorage
+  // localStorage.setItem('favorites', JSON.stringify(Array.from(favorites.value)));
+};
+
+const isFavorite = (property) => {
+  return favorites.value.has(property.id.toString());
+};
+
+// Actualizar propiedades filtradas cuando se dibuja un área
+watch(shapeDrawn, (newVal) => {
+  if (newVal && showPropertyList.value) {
+    updateFilteredProperties();
+  }
+});
 </script>
 
 <style>
+/* Estilos para el contenedor principal del mapa */
+.relative {
+  position: relative;
+  width: 100%;
+  height: 100vh; /* Ocupa toda la altura de la ventana */
+  min-height: 100%;
+  overflow: hidden;
+}
+
+/* Estilos para el contenedor del mapa */
+.absolute.inset-0 {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .marker {
   position: relative; /* Requerido para la animación del pseudo-elemento */
   background-color: #EF4444; /* Tailwind's red-500 */

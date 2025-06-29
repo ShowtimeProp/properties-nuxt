@@ -5,7 +5,6 @@
     </ClientOnly>
   </div>
 </template>
-
 <script setup>
 // La página principal ahora solo se encarga de renderizar el componente del mapa.
 </script>
