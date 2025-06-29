@@ -1,5 +1,5 @@
 <template>
-  <div class="card w-full bg-base-100 shadow-md rounded-lg overflow-hidden font-sans">
+  <div class="card w-full bg-base-100 shadow-md rounded-md overflow-hidden font-sans transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1 group">
     <figure class="relative h-[177px] w-full bg-gray-100 m-0 overflow-hidden">
       <client-only>
         <Swiper
@@ -7,7 +7,7 @@
           :modules="[Pagination, Navigation, Autoplay]"
           :pagination="{ clickable: true }"
           :navigation="true"
-          :autoplay="{ delay: 3000, disableOnInteraction: false }"
+          
           class="h-full w-full"
         >
           <SwiperSlide v-for="(img, idx) in property.images" :key="idx">
@@ -176,6 +176,25 @@
     transform: scale(1.5);
     opacity: 0;
   }
+}
+
+:deep(.swiper-button-next),
+:deep(.swiper-button-prev) {
+  color: white;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.group:hover :deep(.swiper-button-next),
+.group:hover :deep(.swiper-button-prev) {
+  opacity: 1;
+}
+
+:deep(.swiper-button-next::after),
+:deep(.swiper-button-prev::after) {
+  font-size: 1.5rem !important; /* 24px */
+  font-weight: bold;
+  filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.5));
 }
 </style>
   
