@@ -265,10 +265,102 @@ const updateMarkersForZoom = () => {
 };
 
 const properties = ref([
-  { id: 1, lng: -57.54, lat: -38.01, title: 'Departamento céntrico', price: '150.000', expenses: '12.000', address: 'Corrientes 2345', size: 75, rooms: 3, bathrooms: 2, bedrooms: 2, hasVirtualTour: true, virtualTourUrl: 'https://s3.showtimeprop.com/vt360/remax/bianca_nicolini/santiago/index.htm', description: 'Moderno departamento de 3 ambientes en el corazón de la ciudad. Cuenta con amplios ventanales que ofrecen una excelente iluminación natural y vistas panorámicas. Cocina integrada, dos baños completos y balcón. Ideal para quienes buscan confort y una ubicación privilegiada.', images: ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=360&h=180&fit=crop'] },
-  { id: 2, lng: -57.555, lat: -38.005, title: 'Casa con vista al mar', price: '320.000', expenses: '25.000', address: 'Bv. Marítimo 1100', size: 120, rooms: 4, bathrooms: 3, bedrooms: 3, hasVirtualTour: false, virtualTourUrl: null, description: 'Espectacular casa frente al mar con 3 dormitorios, amplio jardín y piscina. Diseño moderno y acabados de lujo. Una oportunidad única para vivir con el sonido de las olas.', images: ['https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1572120360610-d971b9d7767c?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=360&h=180&fit=crop'] },
-  { id: 3, lng: -57.53, lat: -37.99, title: 'Chalet en zona residencial', price: '210.000', expenses: '18.000', address: 'Formosa 850', size: 90, rooms: 3, bathrooms: 2, bedrooms: 2, hasVirtualTour: false, images: ['https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1605276374104-5de67d60924f?q=80&w=360&h=180&fit=crop'] },
-  { id: 4, lng: -57.56, lat: -38.02, title: 'Loft moderno', price: '185.000', expenses: '15.000', address: 'Alvarado 3120', size: 65, rooms: 2, bathrooms: 1, bedrooms: 1, hasVirtualTour: false, isNew: true, virtualTourUrl: null, description: 'Loft de diseño con concepto abierto, ideal para solteros o parejas. Totalmente reciclado con materiales de primera calidad.', images: ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1598228723793-52759bba239c?q=80&w=360&h=180&fit=crop', 'https://images.unsplash.com/photo-1540518614846-7eded433c457?q=80&w=360&h=180&fit=crop'] }
+  {
+    id: 1,
+    lng: -57.54,
+    lat: -38.01,
+    title: 'Departamento céntrico',
+    price: '150.000',
+    expenses: '12.000',
+    address: 'Corrientes 2345, Mar del Plata',
+    zone: 'Centro',
+    total_surface: 75,
+    ambience: 3,
+    bedrooms: 2,
+    bathrooms: 2,
+    garage_count: 1,
+    realty: 'REMAX BIANCA NICOLINI',
+    hasVirtualTour: true,
+    badge: '3D TOUR',
+    isNew: false,
+    images: [
+      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=360&h=180&fit=crop',
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=360&h=180&fit=crop',
+      'https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=360&h=180&fit=crop'
+    ]
+  },
+  {
+    id: 2,
+    lng: -57.555,
+    lat: -38.005,
+    title: 'Casa con vista al mar',
+    price: '320.000',
+    expenses: '25.000',
+    address: 'Bv. Marítimo 1100',
+    zone: 'Playa Grande',
+    total_surface: 120,
+    ambience: 4,
+    bedrooms: 3,
+    bathrooms: 3,
+    garage_count: 2,
+    realty: 'INMOBILIARIA COSTA',
+    hasVirtualTour: false,
+    badge: null,
+    isNew: false,
+    images: [
+      'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=360&h=180&fit=crop',
+      'https://images.unsplash.com/photo-1572120360610-d971b9d7767c?q=80&w=360&h=180&fit=crop',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=360&h=180&fit=crop'
+    ]
+  },
+  {
+    id: 3,
+    lng: -57.53,
+    lat: -37.99,
+    title: 'Chalet en zona residencial',
+    price: '210.000',
+    expenses: '18.000',
+    address: 'Formosa 850',
+    zone: 'Los Troncos',
+    total_surface: 90,
+    ambience: 3,
+    bedrooms: 2,
+    bathrooms: 2,
+    garage_count: 1,
+    realty: 'INMOBILIARIA LOS PINOS',
+    hasVirtualTour: false,
+    badge: null,
+    isNew: false,
+    images: [
+      'https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=360&h=180&fit=crop',
+      'https://images.unsplash.com/photo-1568605114967-8130f3a36994?q=80&w=360&h=180&fit=crop',
+      'https://images.unsplash.com/photo-1605276374104-5de67d60924f?q=80&w=360&h=180&fit=crop'
+    ]
+  },
+  {
+    id: 4,
+    lng: -57.56,
+    lat: -38.02,
+    title: 'Loft moderno',
+    price: '185.000',
+    expenses: '15.000',
+    address: 'Alvarado 3120',
+    zone: 'Macrocentro',
+    total_surface: 65,
+    ambience: 2,
+    bedrooms: 1,
+    bathrooms: 1,
+    garage_count: 0,
+    realty: 'INMOBILIARIA URBANA',
+    hasVirtualTour: false,
+    badge: 'NUEVO',
+    isNew: true,
+    images: [
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=360&h=180&fit=crop',
+      'https://images.unsplash.com/photo-1598228723793-52759bba239c?q=80&w=360&h=180&fit=crop',
+      'https://images.unsplash.com/photo-1540518614846-7eded433c457?q=80&w=360&h=180&fit=crop'
+    ]
+  }
 ]);
 
 onMounted(async () => {
@@ -477,8 +569,8 @@ const sortedProperties = computed(() => {
   return properties.sort((a, b) => {
     const priceA = parseInt(a.price.replace(/\./g, ''));
     const priceB = parseInt(b.price.replace(/\./g, ''));
-    const priceM2A = priceA / a.size;
-    const priceM2B = priceB / b.size;
+    const priceM2A = priceA / a.total_surface;
+    const priceM2B = priceB / b.total_surface;
     
     switch (sortBy.value) {
       case 'price-asc':
@@ -490,9 +582,9 @@ const sortedProperties = computed(() => {
       case 'price-m2-desc':
         return priceM2B - priceM2A;
       case 'size-asc':
-        return a.size - b.size;
+        return a.total_surface - b.total_surface;
       case 'size-desc':
-        return b.size - a.size;
+        return b.total_surface - a.total_surface;
       default:
         return 0; // Relevancia (sin ordenar o orden original)
     }
