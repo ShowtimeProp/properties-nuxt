@@ -49,12 +49,12 @@
       <!-- Lista de Propiedades en Grid -->
       <div ref="scrollContainer" class="flex-1 overflow-y-auto p-4">
         <div v-if="sortedProperties.length > 0" class="grid grid-cols-2 gap-4">
-          <PropertySlideCard
+          <PropertySlideCardClean
             v-for="property in sortedProperties"
             :key="property.id"
             :property="property"
-            :isFavorite="isFavorite"
-            :toggleFavorite="toggleFavorite"
+            :is-favorite="isFavorite(property)"
+            @toggle-favorite="toggleFavorite(property)"
             @click="selectPropertyFromList(property)"
             class="mx-auto"
           />
@@ -139,7 +139,7 @@
 </template>
 
 <script setup>
-import PropertySlideCard from './PropertySlideCard.vue';
+import PropertySlideCardClean from './PropertySlideCardClean.vue';
 import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';

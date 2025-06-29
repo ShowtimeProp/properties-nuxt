@@ -1,239 +1,243 @@
 <template>
-  <div class="card w-full bg-base-100 shadow-md rounded-md overflow-hidden font-sans transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-1 group">
-    <figure class="relative h-[177px] w-full bg-gray-100 m-0 overflow-hidden">
+  <div @click.stop class="zillow-card group bg-white rounded shadow border border-gray-100 overflow-hidden flex flex-col" style="height:282px; width:344px; font-family: 'Roboto', Arial, sans-serif;">
+    <!-- Imagen principal -->
+    <div class="relative w-full" style="aspect-ratio:16/9; min-height:0;">
       <client-only>
         <Swiper
           v-if="property.images?.length"
-          :modules="[Pagination, Navigation, Autoplay]"
-          :pagination="{ clickable: true }"
-          :navigation="true"
-          
+          :modules="[Pagination, Navigation]"
+          :pagination="{ clickable: true, dynamicBullets: true }"
+          :navigation="false"
+          :slides-per-view="1"
+          :space-between="0"
+          @swiper="onSwiper"
+          @slideChange="onSlideChange"
+          ref="swiperRef"
           class="h-full w-full"
         >
           <SwiperSlide v-for="(img, idx) in property.images" :key="idx">
-            <img :src="img"
-                 :alt="`Foto ${idx + 1}`"
-                 class="w-full h-full object-cover"
-                 loading="lazy" />
+            <img :src="img" :alt="`Foto de la propiedad ${idx + 1}`" class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105" />
           </SwiperSlide>
+          <!-- Flechas personalizadas -->
+          <button v-if="showPrevButton && property.images.length > 1" class="swiper-button-prev-custom" @click.stop="slidePrev" aria-label="Anterior">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button v-if="showNextButton && property.images.length > 1" class="swiper-button-next-custom" @click.stop="slideNext" aria-label="Siguiente">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
         </Swiper>
-        <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
-          Sin imágenes
+        <div v-else class="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100">
+          <div class="text-center">
+            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p class="text-sm">Sin imágenes</p>
+          </div>
         </div>
       </client-only>
-      <!-- 3D Tour badge -->
-      <div v-if="property.tags && property.tags[1]" class="badge absolute top-3 left-3 z-10 bg-black bg-opacity-60 text-white border-none py-3">{{ property.tags[1] }}</div>
-      <!-- Favorite button -->
-      <button 
-        @click.prevent="toggleFavorite" 
-        :class="['btn btn-circle btn-ghost absolute top-2 right-2 z-20 heart-button', { 'animate-sonar': playSonar }]"
-        @animationend="playSonar = false"
-      >
-        <svg v-if="!isFavorited" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white drop-shadow-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-        </svg>
-        <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-red-500 drop-shadow-white" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-        </svg>
-      </button>
-    </figure>
-    <div class="card-body p-4 bg-white rounded-b-lg">
-      <h2 class="text-2xl font-bold tracking-tight text-gray-900">
-        {{ formatCurrency(property.price) }}
-      </h2>
-      <div class="flex flex-wrap items-center text-sm text-gray-600 mt-1">
-        <span v-if="property.total_surface">{{ property.total_surface }} m² tot.</span>
-        
-        <template v-if="property.ambience">
-            <span class="mx-2 text-gray-300">|</span>
-            <span>{{ property.ambience }} amb.</span>
-        </template>
-        
-        <template v-if="property.bedrooms">
-            <span class="mx-2 text-gray-300">|</span>
-            <span class="flex items-center gap-1" title="Dormitorios">
-                {{ property.bedrooms }}
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 7v11m0 -4h18m0 4v-8a2 2 0 0 0 -2 -2h-8v6" /><path d="M7 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /></svg>
-            </span>
-        </template>
-
-        <template v-if="property.bathrooms">
-            <span class="mx-2 text-gray-300">|</span>
-            <span class="flex items-center gap-1" title="Baños">
-                {{ property.bathrooms }}
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 12h16a1 1 0 0 1 1 1v3a4 4 0 0 1 -4 4h-10a4 4 0 0 1 -4 -4v-3a1 1 0 0 1 1 -1z" /><path d="M6 12v-7a2 2 0 0 1 2 -2h3v2.25" /><path d="M4 21l1 -1.5" /><path d="M20 21l-1 -1.5" /></svg>
-            </span>
-        </template>
-
-        <template v-if="property.garage">
-            <span class="mx-2 text-gray-300">|</span>
-            <span class="flex items-center gap-1" title="Cocheras">
-                {{ property.garage }}
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5" /></svg>
-            </span>
-        </template>
+      <!-- Badge dinámico -->
+      <div v-if="property.badge" class="absolute top-3 left-3 z-10 badge-zillow">{{ property.badge }}</div>
+    </div>
+    <!-- Contenido -->
+    <div class="flex-1 flex flex-col justify-between px-4 py-2 gap-1">
+      <!-- Precio y expensas (primer renglón) -->
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="zillow-price">{{ formatCurrency(property.price) }}</span>
+          <span v-if="property.expenses" class="zillow-expenses">+ {{ formatCurrency(property.expenses) }} exp.</span>
+        </div>
       </div>
-      <p class="text-base text-gray-700 truncate mt-2">{{ property.address }}</p>
-      <p class="text-xs text-gray-500 uppercase mt-4">{{ property.realty }}</p>
+      <!-- Dirección y zona/localidad (segundo renglón) -->
+      <div class="flex items-center gap-2 text-xs text-gray-700 mb-1">
+        <span class="truncate">{{ property.address }}</span>
+        <span v-if="property.zone || property.localidad" class="mx-1 text-gray-300">|</span>
+        <span class="truncate">{{ property.zone || property.localidad }}</span>
+      </div>
+      <!-- Características principales (tercer renglón) -->
+      <div class="flex items-center gap-3 text-xs text-gray-700 mb-1 zillow-features">
+        <span v-if="property.total_surface">{{ property.total_surface }} m² tot.</span>
+        <span v-if="property.ambience"><span class="mx-1 text-gray-300">|</span>{{ property.ambience }} amb.</span>
+        <span v-if="property.bedrooms"><span class="mx-1 text-gray-300">|</span><svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7v11m0-4h18m0 4v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"/><path d="M7 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg> {{ property.bedrooms }}</span>
+        <span v-if="property.bathrooms"><span class="mx-1 text-gray-300">|</span><svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12h16a1 1 0 0 1 1 1v3a4 4 0 0 1-4 4h-10a4 4 0 0 1-4-4v-3a1 1 0 0 1 1-1z"/><path d="M6 12v-7a2 2 0 0 1 2-2h3v2.25"/><path d="M4 21l1-1.5"/><path d="M20 21l-1-1.5"/></svg> {{ property.bathrooms }}</span>
+        <span v-if="property.garage_count"><span class="mx-1 text-gray-300">|</span><svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg> {{ property.garage_count }}</span>
+      </div>
+      <!-- Inmobiliaria (cuarto renglón) -->
+      <div class="text-[10px] text-gray-400 mt-1 truncate">{{ property.realty }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
-  import { ref } from 'vue'
-  import { Swiper, SwiperSlide } from 'swiper/vue'
-  import { Pagination, Navigation, Autoplay } from 'swiper/modules'
-  import 'swiper/css'
-  import 'swiper/css/navigation'
-  import 'swiper/css/pagination'
-  
-  const props = defineProps({
-    property: {
-      type: Object,
-      default: () => ({
-        images: [
-          'https://ap.rdcpix.com/f121e1389552599950529b45355a164bl-m2420839945od-w480_h360.jpg',
-          'https://ap.rdcpix.com/f121e1389552599950529b45355a164bl-m121588978od-w480_h360.jpg'
-        ],
-        price: 6100000,
-        address: '(undisclosed Address), Davenport, FL 33896',
-        total_surface: 800,
-        ambience: 4,
-        bedrooms: 3,
-        bathrooms: 3,
-        garage: 1,
-        realty: 'LA ROSA REALTY CW PROPERTIES L',
-        hasVirtualTour: true,
-        tags: ['New construction', 'Basketball court']
-      })
-    }
-  })
-  
-  const property = props.property
-  const formatCurrency = (value) => {
-    if (typeof value !== 'number') {
-      return value
-    }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value)
-  }
+import { defineProps, ref, onMounted } from 'vue'
+import 'swiper/css/navigation';
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Pagination, Navigation } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/pagination'
 
-  const isFavorited = ref(false)
-  const playSonar = ref(false)
-  
-  function toggleFavorite() {
-    isFavorited.value = !isFavorited.value
-    if (isFavorited.value) {
-      playSonar.value = true
-    }
+const swiperId = `swiper-clean-${Math.random().toString(36).substring(7)}`;
+const props = defineProps({
+  property: {
+    type: Object,
+    default: () => ({
+      images: [
+        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=360&h=180&fit=crop',
+        'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=360&h=180&fit=crop',
+        'https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=360&h=180&fit=crop'
+      ],
+      price: 150000,
+      expenses: 12000,
+      title: 'Departamento céntrico moderno',
+      address: 'Corrientes 2345, Mar del Plata',
+      total_surface: 75,
+      ambience: 3,
+      bedrooms: 2,
+      bathrooms: 2,
+      garage_count: 1,
+      realty: 'REMAX BIANCA NICOLINI',
+      hasVirtualTour: true,
+      isNew: true,
+      badge: '3D TOUR',
+      tags: ['Nueva construcción', 'Balcón', 'Cocina integrada']
+    })
   }
-  </script>
+})
+const property = props.property
+const swiperRef = ref(null)
+const swiperInstance = ref(null)
+const showPrevButton = ref(false)
+const showNextButton = ref(false)
+
+function onSwiper(swiper) {
+  swiperInstance.value = swiper
+  updateNav(swiper)
+}
+function onSlideChange(swiper) {
+  updateNav(swiper)
+}
+function updateNav(swiper) {
+  if (!swiper) return
+  showPrevButton.value = swiper.activeIndex > 0
+  showNextButton.value = swiper.activeIndex < swiper.slides.length - 1
+}
+function slidePrev() {
+  if (swiperInstance.value) {
+    swiperInstance.value.slidePrev()
+  }
+}
+function slideNext() {
+  if (swiperInstance.value) {
+    swiperInstance.value.slideNext()
+  }
+}
+onMounted(() => {
+  if (swiperRef.value && swiperRef.value.swiper) {
+    swiperInstance.value = swiperRef.value.swiper
+    updateNav(swiperInstance.value)
+    swiperInstance.value.on('slideChange', () => updateNav(swiperInstance.value))
+  }
+})
+function formatCurrency(price) {
+  let num;
+  if (typeof price === 'string') {
+    num = parseInt(price.replace(/\./g, '').replace(',', '.'), 10);
+  } else if (typeof price === 'number') {
+    num = price;
+  } else {
+    return '';
+  }
+  if (isNaN(num)) return '';
+  const formattedPrice = new Intl.NumberFormat('es-AR', { style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
+  return `U$D ${formattedPrice}`;
+}
+</script>
 
 <style scoped>
-.drop-shadow-white {
-  filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.4)) drop-shadow(0px 0px 2px rgba(255, 255, 255, 1));
+.zillow-card {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  transition: box-shadow 0.2s, transform 0.2s;
+  width: 344px;
+  border-radius: 4px;
 }
-
-.heart-button {
-  transition: transform 0.2s ease-in-out;
-}
-
-.heart-button:hover {
-  animation: pulse-heart 1.2s infinite;
-}
-
-@keyframes pulse-heart {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1); }
-}
-
-.animate-sonar::after {
-  content: '';
-  display: block;
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.7);
-  animation: sonar-effect 0.6s ease-out 2;
-  z-index: -1;
-}
-
-@keyframes sonar-effect {
-  0% {
-    transform: scale(0.5);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
+@media (max-width: 640px) {
+  .zillow-card {
+    width: 100% !important;
+    min-width: 0;
   }
 }
-
-:deep(.swiper-button-next),
-:deep(.swiper-button-prev) {
+.zillow-card:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.13);
+  transform: translateY(-2px) scale(1.01);
+}
+.zillow-fav-btn, .zillow-heart, .sonar-effect, .pulse {
+  display: none !important;
+}
+.badge-zillow {
+  background: linear-gradient(90deg, #6366f1 0%, #06b6d4 100%);
   color: white;
-  opacity: 0;
-  transition: opacity 0.3s ease-in-out;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
-
-.group:hover :deep(.swiper-button-next),
-.group:hover :deep(.swiper-button-prev) {
+.zillow-price {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #222;
+  letter-spacing: -0.5px;
+}
+.zillow-expenses {
+  font-size: 0.85rem;
+  color: #888;
+  font-weight: 400;
+}
+.zillow-features .icon-feat {
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
+  color: #6366f1;
+  vertical-align: middle;
+}
+.zillow-address {
+  font-size: 0.93em;
+  font-weight: 500;
+  color: #444;
+  margin-top: 2px;
+}
+.zillow-realty {
+  font-size: 0.8em;
+  color: #888;
+  margin-top: 1px;
+}
+.swiper-button-prev-custom,
+.swiper-button-next-custom {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+.swiper-button-prev-custom {
+  left: 8px;
+}
+.swiper-button-next-custom {
+  right: 8px;
+}
+.swiper-button-prev-custom:hover,
+.swiper-button-next-custom:hover {
   opacity: 1;
 }
-
-:deep(.swiper-button-next::after),
-:deep(.swiper-button-prev::after) {
-  font-size: 1.5rem !important; /* 24px */
-  font-weight: bold;
-  filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.5));
+.icon-inline {
+  display: inline-block;
+  vertical-align: middle;
+  margin-bottom: 2px;
 }
 </style>
-  
-  <style scoped>
-  .card {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    max-width: 344px;
-    margin: auto;
-  }
-  .card-body {
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 104px;
-  }
-  figure {
-    margin: 0;
-    width: 100%;
-    height: 177px;
-    position: relative;
-    overflow: hidden;
-    background-color: #f3f4f6;
-  }
-  /* Swiper overrides */
-  :deep(.swiper) { width: 100%; height: 100%; }
-  :deep(.swiper-slide img) { object-fit: cover; }
-  :deep(.swiper-button-prev), :deep(.swiper-button-next) {
-    opacity: 0;
-    transition: opacity 0.3s;
-    color: #fff;
-    z-index: 10;
-  }
-  .group:hover :deep(.swiper-button-prev),
-  .group:hover :deep(.swiper-button-next) {
-    opacity: 1;
-  }
-  :deep(.swiper-pagination-bullet) { background: rgba(255,255,255,0.8); }
-  :deep(.swiper-pagination-bullet-active) { background: #fff; }
-  </style>

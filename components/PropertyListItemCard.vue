@@ -1,19 +1,23 @@
 <template>
   <div class="bg-white rounded-lg shadow hover:shadow-lg border flex flex-col overflow-hidden cursor-pointer">
-    <div class="relative h-32 w-full">
+    <figure class="relative w-full h-48">
       <ClientOnly>
         <Swiper
           :modules="modules"
-          :navigation="false"
+          :navigation="{
+            nextEl: `.list-item-next-${swiperId}`,
+            prevEl: `.list-item-prev-${swiperId}`,
+          }"
           :pagination="{ clickable: true }"
           :loop="false"
           :slides-per-view="1"
-          :space-between="0"
-          class="h-full w-full"
+          class="w-full h-full"
         >
-          <SwiperSlide v-for="(image, idx) in property.images" :key="idx">
-            <img :src="image" :alt="`${property.title} - Foto ${idx + 1}`" class="object-cover w-full h-full" />
+          <SwiperSlide v-for="(image, index) in property.images" :key="index">
+            <img :src="image" alt="Property Image" class="object-cover w-full h-full" />
           </SwiperSlide>
+          <div :class="`list-item-next-${swiperId} swiper-button-next`"></div>
+          <div :class="`list-item-prev-${swiperId} swiper-button-prev`"></div>
         </Swiper>
       </ClientOnly>
       <!-- Badge 3D Tour -->
@@ -32,11 +36,22 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
         </svg>
       </button>
-    </div>
+      <div class="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-md">
+        {{ property.images.length }} fotos
+      </div>
+    </figure>
     <div class="p-3 flex flex-col gap-1">
       <div class="text-base font-bold text-gray-900">U$D {{ property.price }}</div>
       <div class="text-xs text-gray-600">
-        {{ property.bedrooms || property.rooms }} Dormitorios | {{ property.bathrooms || 1 }} Baño{{ (property.bathrooms !== 1 && property.bathrooms) ? 's' : '' }} | {{ property.size }} m² - {{ property.status || 'Venta' }}
+        {{ property.bedrooms || property.rooms }} Dormitorios | {{ property.bathrooms || 1 }} Baño{{ (property.bathrooms !== 1 && property.bathrooms) ? 's' : '' }}
+        <template v-if="property.garage_count > 0">
+          <span class="mx-1">|</span>
+          <span class="flex items-center gap-1 text-sm text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5" /></svg>
+            <span>{{ property.garage_count }} coch.</span>
+          </span>
+        </template>
+        | {{ property.size }} m² - {{ property.status || 'Venta' }}
       </div>
       <div class="text-xs text-gray-700 truncate">{{ property.address || 'Dirección no disponible' }}</div>
       <div class="text-[10px] text-gray-400 mt-1">{{ property.agency || 'Inmobiliaria Ejemplo' }}</div>
@@ -46,9 +61,12 @@
 
 <script setup>
 import { Swiper, SwiperSlide } from 'swiper/vue';
-import { Pagination } from 'swiper/modules';
+import { Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
+import 'swiper/css/navigation';
 import 'swiper/css/pagination';
+
+const swiperId = `swiper-list-item-${Math.random().toString(36).substring(7)}`;
 
 const props = defineProps({
   property: {
@@ -64,15 +82,23 @@ const props = defineProps({
     required: true,
   },
 });
-const modules = [Pagination];
+
+const modules = [Navigation, Pagination];
 </script>
 
 <style scoped>
-.swiper-pagination-bullet {
-  background: #bbb;
-  opacity: 1;
+:deep(.swiper-button-next),
+:deep(.swiper-button-prev) {
+  color: white;
+  --swiper-navigation-size: 32px;
 }
-.swiper-pagination-bullet-active {
-  background: #2563eb;
+
+:deep(.swiper-pagination-bullet) {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  opacity: 1 !important;
+}
+
+:deep(.swiper-pagination-bullet-active) {
+  background-color: #ffffff !important;
 }
 </style>
