@@ -18,25 +18,30 @@
           <SwiperSlide v-for="(img, idx) in property.images" :key="idx">
             <img :src="img" :alt="`Foto de la propiedad ${idx + 1}`" class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105" />
           </SwiperSlide>
-          <!-- Flechas personalizadas -->
+          <!-- Flechas personalizadas dentro del Swiper -->
           <button v-if="showPrevButton && property.images.length > 1" class="swiper-button-prev-custom" @click.stop="slidePrev" aria-label="Anterior">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
           <button v-if="showNextButton && property.images.length > 1" class="swiper-button-next-custom" @click.stop="slideNext" aria-label="Siguiente">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
           </button>
-        </Swiper>
-        <div v-else class="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100">
-          <div class="text-center">
-            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p class="text-sm">Sin imágenes</p>
+          <div v-else class="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100">
+            <div class="text-center">
+              <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p class="text-sm">Sin imágenes</p>
+            </div>
           </div>
-        </div>
+        </Swiper>
       </client-only>
       <!-- Badge dinámico -->
-      <div v-if="property.badge" class="absolute top-3 left-3 z-10 badge-zillow">{{ property.badge }}</div>
+      <div v-if="property.badge" class="absolute top-3 left-3 z-10 badge-zillow flex items-center gap-1">
+        <template v-if="property.badge === '3D TOUR'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M21 7.5l-9-5.25-9 5.25M21 7.5v9l-9 5.25-9-5.25v-9"/><path d="M3.27 6.96l8.73 5.19 8.73-5.19"/></svg>
+        </template>
+        <span>{{ property.badge }}</span>
+      </div>
     </div>
     <!-- Contenido -->
     <div class="flex-1 flex flex-col justify-between px-4 py-2 gap-1">
@@ -198,8 +203,15 @@ function formatCurrency(price) {
   width: 16px;
   height: 16px;
   margin-right: 2px;
-  color: #6366f1;
-  vertical-align: middle;
+}
+/* Cambiar color de los bullets de Swiper a blanco */
+:deep(.swiper-pagination-bullet) {
+  background: #fff !important;
+  opacity: 0.7 !important;
+}
+:deep(.swiper-pagination-bullet-active) {
+  background: #fff !important;
+  opacity: 1 !important;
 }
 .zillow-address {
   font-size: 0.93em;
@@ -211,6 +223,18 @@ function formatCurrency(price) {
   font-size: 0.8em;
   color: #888;
   margin-top: 1px;
+}
+/* Flechas ocultas por defecto y visibles solo en hover */
+:deep(.swiper-button-prev-custom),
+:deep(.swiper-button-next-custom) {
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.group:hover :deep(.swiper-button-prev-custom),
+.group:hover :deep(.swiper-button-next-custom) {
+  opacity: 1;
+  pointer-events: auto;
 }
 .swiper-button-prev-custom,
 .swiper-button-next-custom {
