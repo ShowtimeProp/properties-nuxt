@@ -1,7 +1,7 @@
 <template>
-  <div :class="['zillow-card group bg-white rounded shadow border border-gray-100 overflow-hidden flex flex-col', { 'flipped': isFlipped }]" style="height:282px; width:307px; font-family: 'Roboto', Arial, sans-serif; position:relative;">
+  <div :class="['zillow-card group rounded shadow border border-gray-100 overflow-hidden flex flex-col', { 'flipped': isFlipped }]" style="height:282px; width:307px; font-family: 'Roboto', Arial, sans-serif; position:relative;">
     <!-- Cara frontal -->
-    <div class="card-face card-front flex flex-col h-full w-full">
+    <div class="card-face card-front flex flex-col h-full w-full" style="background:#fff;">
       <!-- Imagen principal -->
       <div class="relative w-full" style="aspect-ratio:16/9; min-height:0;">
         <ClientOnly>
@@ -99,35 +99,34 @@
       <!-- Flecha centrada -->
       <div class="card-arrow" />
     </div>
-    <!-- Cara trasera: opciones de compartir (placeholder) -->
-    <div class="card-face card-back card-back-animated flex items-center justify-center" style="height:100%; width:100%; background:#f9fafb;">
-      <!-- SVG borde doble: base azul + luz animada encima -->
-      <svg :key="flipKey" width="100%" height="100%" viewBox="0 0 307 282" style="position:absolute; top:0; left:0; z-index:10; pointer-events:none;">
-        <defs>
-          <linearGradient id="neon-gradient" x1="0" y1="0" x2="307" y2="282" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#38e8ff"/>
-            <stop offset="0.3" stop-color="#6366f1"/>
-            <stop offset="0.7" stop-color="#06b6d4"/>
-            <stop offset="1" stop-color="#38e8ff"/>
-          </linearGradient>
-        </defs>
-        <!-- Borde base gradiente -->
-        <rect
-          x="1" y="1" width="305" height="280" rx="20"
-          stroke="url(#neon-gradient)"
-          stroke-width="10"
-          fill="none"
+    <!-- Cara trasera: título, input, botón y compartir -->
+    <div class="card-face card-back flex flex-col items-center justify-center w-full bg-gray-900 p-6">
+      <div class="text-lg font-semibold text-gray-100 mb-6">¡Enterate si baja de precio!</div>
+      <div class="w-full max-w-xs flex flex-col items-center">
+        <input
+          v-model="whatsapp"
+          type="text"
+          placeholder="+549 11 3333-3333 <-Tu WhatsApp"
+          class="rounded px-3 py-2 w-full bg-gray-800 text-white placeholder-gray-400 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 mb-4"
+          style="box-sizing: border-box;"
         />
-        <!-- Luz animada encima -->
-        <rect
-          x="1" y="1" width="305" height="280" rx="20"
-          stroke="url(#neon-gradient)"
-          stroke-width="10"
-          fill="none"
-          class="svg-animated-border"
-        />
-      </svg>
-      <div class="text-lg font-semibold text-gray-700" style="z-index:20; position:relative;">Opciones para compartir</div>
+        <button
+          v-if="whatsapp"
+          @click="sendWhatsapp"
+          class="w-full py-2 rounded bg-gradient-to-r from-cyan-400 via-indigo-500 to-cyan-500 text-white font-semibold shadow-md transition-all duration-200 hover:shadow-lg hover:from-cyan-300 hover:to-indigo-400 focus:outline-none mb-4"
+        >Enviar Alerta de Precio</button>
+        <!-- Botón compartir SIEMPRE visible -->
+        <button
+          @click="shareProperty"
+          class="w-full py-3 rounded-lg text-base font-semibold text-white shadow-lg share-btn-anim flex items-center justify-center gap-2 transition-all duration-200"
+          style="background: linear-gradient(90deg, #38e8ff 0%, #6366f1 50%, #06b6d4 100%); box-shadow: 0 0 12px #38e8ff88, 0 0 24px #6366f188; letter-spacing:0.01em; text-transform: capitalize;"
+        >
+          Comparti Esta Propiedad
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.475l6.733-3.366A2.52 2.52 0 0 1 13 4.5Z" />
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -156,6 +155,7 @@ const showPrevButton = ref(false)
 const showNextButton = ref(false)
 const isFlipped = ref(false)
 const flipKey = ref(0)
+const whatsapp = ref("")
 
 function onSwiper(swiper) {
   swiperInstance.value = swiper
@@ -215,6 +215,21 @@ watch(isFlipped, (val) => {
     flipKey.value++
   }
 })
+
+function sendWhatsapp() {
+  whatsapp.value = ''
+}
+function shareProperty() {
+  if (navigator.share) {
+    navigator.share({
+      title: 'Propiedad en venta',
+      text: '¡Mirá esta propiedad!',
+      url: window.location.href
+    })
+  } else {
+    alert('Tu navegador no soporta compartir')
+  }
+}
 </script>
 
 <style scoped>
@@ -358,7 +373,7 @@ watch(isFlipped, (val) => {
   align-items: center;
   justify-content: center;
   padding: 24px 12px;
-  background: #f9fafb;
+  background: #111827;
   border: none !important;
   box-shadow: none !important;
 }
@@ -377,11 +392,65 @@ watch(isFlipped, (val) => {
   stroke-dasharray: 400 800;
   stroke-dashoffset: 0;
   animation: scanBorder 6s linear infinite;
-  filter: drop-shadow(0 0 8px #38e8ff) drop-shadow(0 0 16px #6366f1);
+  filter: drop-shadow(0 0 3px #38e8ff) drop-shadow(0 0 6px #6366f1);
+}
+.svg-animated-border-delay {
+  animation-delay: 3s;
 }
 @keyframes scanBorder {
   to {
     stroke-dashoffset: -1200;
   }
+}
+/* CSS animación línea */
+.line-anim {
+  filter: drop-shadow(0 0 6px #38e8ff) drop-shadow(0 0 12px #6366f1);
+  animation: moveLine 2.5s linear infinite alternate;
+}
+@keyframes moveLine {
+  0% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(240px); opacity: 1; }
+}
+.share-btn-anim:hover {
+  box-shadow: 0 0 24px 4px #38e8ffcc, 0 0 48px 8px #6366f1cc;
+  filter: brightness(1.1) saturate(1.2);
+  background: linear-gradient(270deg, #38e8ff, #6366f1, #06b6d4, #38e8ff);
+  background-size: 400% 400%;
+  animation: btnGlowMove 2s linear infinite;
+}
+@keyframes btnGlowMove {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+.animate-marquee {
+  animation: marquee 8s linear infinite;
+}
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+.animated-input-border {
+  border-radius: 0.375rem;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Borde animado con gradiente */
+  border-image: linear-gradient(90deg, #38e8ff, #6366f1, #06b6d4, #38e8ff) 1;
+  animation: borderLightMove 2.5s linear infinite;
+}
+@keyframes borderLightMove {
+  0% { border-image-source: linear-gradient(90deg, #38e8ff, #6366f1, #06b6d4, #38e8ff); }
+  100% { border-image-source: linear-gradient(270deg, #38e8ff, #6366f1, #06b6d4, #38e8ff); }
 }
 </style>
