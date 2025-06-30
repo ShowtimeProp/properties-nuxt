@@ -4,6 +4,7 @@
     
     <!-- Botón Ver Listado -->
     <button 
+      ref="toggleButton"
       @click="togglePropertyList"
       class="absolute top-4 right-24 z-20 flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
     >
@@ -15,6 +16,7 @@
     
     <!-- Panel de Listado de Propiedades -->
     <div 
+      ref="propertyListPanel"
       class="fixed top-0 right-0 h-full w-[750px] bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col"
       :class="{ 'translate-x-0': showPropertyList, 'translate-x-full': !showPropertyList }"
       style="box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1)"
@@ -157,6 +159,8 @@ let map = null // No reactivo, para evitar problemas con el proxy de Vue
 const selectedProperty = ref(null);
 const isTridentOpen = ref(false);
 const scrollContainer = ref(null);
+const propertyListPanel = ref(null);
+const toggleButton = ref(null);
 
 const loadMoreProperties = () => {
   // Placeholder for infinite scroll logic
@@ -174,6 +178,9 @@ onMounted(() => {
       }
     });
   }
+  
+  // Agregar listener global para cerrar el panel al hacer click fuera
+  document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {
@@ -185,6 +192,9 @@ onUnmounted(() => {
       }
     });
   }
+  
+  // Remover listener global
+  document.removeEventListener('click', handleClickOutside);
 });
 const shapeDrawn = ref(false);
 const showPropertyList = ref(false);
@@ -569,6 +579,20 @@ const togglePropertyList = () => {
   if (showPropertyList.value) {
     selectedProperty.value = null;
     updateFilteredProperties();
+  }
+};
+
+const handleClickOutside = (event) => {
+  // Solo cerrar si el panel está abierto
+  if (!showPropertyList.value) return;
+  
+  // Verificar si el click fue fuera del panel y fuera del botón toggle
+  const isClickInsidePanel = propertyListPanel.value && propertyListPanel.value.contains(event.target);
+  const isClickOnToggleButton = toggleButton.value && toggleButton.value.contains(event.target);
+  
+  // Si el click fue fuera del panel y no fue en el botón toggle, cerrar el panel
+  if (!isClickInsidePanel && !isClickOnToggleButton) {
+    showPropertyList.value = false;
   }
 };
 

@@ -1,35 +1,111 @@
 <template>
-  <div class="fixed inset-0 bg-black bg-opacity-75 z-40 flex justify-center items-center" @click.self="emit('close')">
-    <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col relative overflow-hidden">
-      <!-- Botón de cerrar -->
-      <button @click="emit('close')" class="absolute top-3 right-3 bg-gray-200 text-gray-800 rounded-full h-8 w-8 flex items-center justify-center z-50 hover:bg-gray-300 transition-colors">
-        &times;
-      </button>
-
-      <div class="flex-grow overflow-y-auto">
-        <!-- Contenedor del Tour Virtual -->
-        <div v-if="property.hasVirtualTour" class="aspect-video w-full bg-gray-200">
-          <iframe :src="property.virtualTourUrl" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
+  <div class="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center" @click.self="emit('close')">
+    <div class="bg-white shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col relative overflow-hidden">
+      <!-- Barra superior: branding, favoritos, compartir, tour -->
+      <div class="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-white/80 sticky top-0 z-50">
+        <div class="flex-1 flex justify-center">
+          <span class="text-2xl font-bold tracking-wide text-indigo-700 select-none">Showtime Prop</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <!-- Corazón de favoritos sincronizado y animado -->
+          <button @click="toggleFavorite" :aria-pressed="isFavorite" class="focus:outline-none">
+            <svg :class="['w-8 h-8 transition-all duration-300', isFavorite ? 'fill-red-500 animate-fav-pulse' : 'fill-gray-200', 'stroke-indigo-500']" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </button>
+          <!-- Compartir -->
+          <button @click="shareProperty" class="focus:outline-none">
+            <svg class="w-7 h-7 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.475l6.733-3.366A2.52 2.52 0 0 1 13 4.5Z" />
+            </svg>
+          </button>
+          <!-- Botón Solicitar Tour -->
+          <button class="ml-2 px-6 py-2 rounded bg-gradient-to-r from-cyan-400 via-indigo-500 to-cyan-500 text-white font-bold text-base shadow-md transition-all duration-200 hover:shadow-lg hover:from-cyan-300 hover:to-indigo-400 focus:outline-none">
+            Solicitar Tour
+          </button>
+        </div>
+      </div>
+      <div class="flex-grow overflow-y-auto flex flex-col">
+        <!-- Swiper de paneles principales -->
+        <div class="w-full bg-gray-100 flex flex-col items-center justify-center pt-4 pb-2 group">
+          <Swiper
+            :modules="[Navigation, Thumbs]"
+            :navigation="true"
+            :thumbs="{ swiper: thumbsSwiper }"
+            :slides-per-view="1"
+            class="w-full max-w-5xl h-[480px] rounded-xl shadow-2xl swiper-modal-main"
+            @swiper="setMainSwiper"
+          >
+            <SwiperSlide v-for="(slide, idx) in slides" :key="idx">
+              <template v-if="slide.type === 'image'">
+                <img :src="slide.src" class="object-cover w-full h-[480px] rounded-xl" />
+              </template>
+              <template v-else-if="slide.type === 'virtualTour'">
+                <iframe :src="slide.src" width="100%" height="480" frameborder="0" allowfullscreen class="rounded-xl"></iframe>
+              </template>
+              <template v-else-if="slide.type === 'floorPlan'">
+                <img :src="slide.src" class="object-contain w-full h-[480px] rounded-xl bg-white" />
+              </template>
+            </SwiperSlide>
+            <!-- Paginación personalizada -->
+            <template #pagination>
+              <div class="swiper-pagination swiper-modal-pagination"></div>
+            </template>
+          </Swiper>
+          <!-- Miniaturas -->
+          <div class="w-full max-w-5xl mt-3">
+            <Swiper
+              :modules="[Thumbs]"
+              :slides-per-view="Math.min(slides.length, 8)"
+              space-between="12"
+              watch-slides-progress
+              class="h-24"
+              @swiper="setThumbsSwiper"
+            >
+              <SwiperSlide v-for="(slide, idx) in slides" :key="'thumb-' + idx">
+                <img v-if="slide.type === 'image' || slide.type === 'floorPlan'" :src="slide.src" class="object-cover w-full h-24 rounded cursor-pointer border border-gray-300 hover:border-indigo-400 transition" />
+                <div v-else class="w-full h-24 flex items-center justify-center bg-gray-200 rounded text-xs text-gray-500 cursor-pointer">
+                  <span v-if="slide.type === 'virtualTour'">Tour Virtual</span>
+                  <!-- Otros tipos -->
+                </div>
+              </SwiperSlide>
+            </Swiper>
+          </div>
         </div>
 
-        <!-- Contenido del Modal -->
-        <div class="p-6">
-          <h2 class="text-2xl font-bold mb-4">{{ property.title }}</h2>
-          
-          <!-- Placeholder para el slider de fotos -->
-          <div class="h-64 bg-gray-300 rounded-md mb-4 flex items-center justify-center">
-            <p class="text-gray-500">Slider de Fotos Próximamente</p>
+        <!-- Datos principales -->
+        <div class="p-6 flex flex-col gap-4">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 class="text-3xl font-bold text-gray-900 mb-1">{{ property.title }}</h2>
+              <div class="text-lg text-gray-700 mb-2">{{ property.address }}</div>
+              <div class="flex flex-wrap gap-4 text-base font-semibold text-gray-800">
+                <span>USD {{ property.price }}</span>
+                <span v-if="property.bedrooms">{{ property.bedrooms }} hab.</span>
+                <span v-if="property.bathrooms">{{ property.bathrooms }} baños</span>
+                <span v-if="property.size">{{ property.size }} m²</span>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2 min-w-[220px]">
+              <button class="w-full py-2 rounded bg-blue-600 text-white font-bold text-lg shadow hover:bg-blue-700 transition">Solicitar tour</button>
+              <button class="w-full py-2 rounded bg-white border border-blue-600 text-blue-600 font-bold text-lg shadow hover:bg-blue-50 transition">Contactar agente</button>
+            </div>
+          </div>
+
+          <!-- Etiquetas de amenities -->
+          <div v-if="property.amenities && property.amenities.length" class="flex flex-wrap gap-2 mt-2">
+            <span v-for="(amenity, idx) in property.amenities" :key="idx" class="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold">{{ amenity }}</span>
           </div>
 
           <!-- Descripción -->
-          <div class="mb-6">
-            <h3 class="text-xl font-semibold border-b pb-2 mb-3">Descripción</h3>
+          <div v-if="property.description" class="mt-4">
+            <h3 class="text-xl font-semibold mb-2">Descripción</h3>
             <p class="text-gray-700 leading-relaxed">{{ property.description }}</p>
           </div>
 
           <!-- Detalles -->
-          <div>
-            <h3 class="text-xl font-semibold border-b pb-2 mb-3">Detalles de la Propiedad</h3>
+          <div class="mt-4">
+            <h3 class="text-xl font-semibold mb-2">Detalles de la Propiedad</h3>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-gray-800">
               <div class="flex flex-col"><span class="font-semibold">Precio</span><span>USD {{ property.price }}</span></div>
               <div class="flex flex-col"><span class="font-semibold">Expensas</span><span>$ {{ property.expenses }}</span></div>
@@ -47,12 +123,88 @@
 </template>
 
 <script setup>
+import { ref, computed, watch } from 'vue'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Navigation, Thumbs } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/navigation'
+import 'swiper/css/thumbs'
+
 const props = defineProps({
   property: {
     type: Object,
     required: true
-  }
+  },
+  isFavorite: Boolean
 });
+const emit = defineEmits(['close', 'toggle-favorite']);
 
-const emit = defineEmits(['close']);
+const thumbsSwiper = ref(null)
+const mainSwiper = ref(null)
+function setThumbsSwiper(swiper) { thumbsSwiper.value = swiper }
+function setMainSwiper(swiper) { mainSwiper.value = swiper }
+
+const slides = computed(() => {
+  const arr = []
+  if (props.property.images?.length) {
+    arr.push(...props.property.images.map(img => ({ type: 'image', src: img })))
+  }
+  if (props.property.hasVirtualTour && props.property.virtualTourUrl) {
+    arr.push({ type: 'virtualTour', src: props.property.virtualTourUrl })
+  }
+  if (props.property.floorPlan) {
+    arr.push({ type: 'floorPlan', src: props.property.floorPlan })
+  }
+  // Puedes agregar más tipos de paneles aquí
+  return arr
+})
+
+function shareProperty() {
+  if (navigator.share) {
+    navigator.share({
+      title: props.property.title,
+      text: `Mirá esta propiedad: ${props.property.title}`,
+      url: window.location.href
+    })
+  } else {
+    alert('Tu navegador no soporta compartir')
+  }
+}
+
+// Sincronización y animación del favorito
+const isFavorite = ref(props.isFavorite)
+watch(() => props.isFavorite, (val) => { isFavorite.value = val })
+function toggleFavorite() {
+  isFavorite.value = !isFavorite.value
+  emit('toggle-favorite', props.property)
+}
 </script>
+
+<style scoped>
+@keyframes fav-pulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 0 #f87171); }
+  50% { transform: scale(1.18); filter: drop-shadow(0 0 8px #f87171); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 0 #f87171); }
+}
+.animate-fav-pulse {
+  animation: fav-pulse 0.5s;
+}
+.swiper-modal-main :deep(.swiper-button-next),
+.swiper-modal-main :deep(.swiper-button-prev) {
+  color: #fff !important;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.swiper-modal-main:hover :deep(.swiper-button-next),
+.swiper-modal-main:hover :deep(.swiper-button-prev) {
+  opacity: 1;
+}
+.swiper-modal-main :deep(.swiper-pagination-bullet) {
+  background: #fff !important;
+  opacity: 0.7 !important;
+}
+.swiper-modal-main :deep(.swiper-pagination-bullet-active) {
+  background: #fff !important;
+  opacity: 1 !important;
+}
+</style>

@@ -18,7 +18,12 @@
             class="h-full w-full"
           >
             <SwiperSlide v-for="(img, idx) in property.images" :key="idx">
-              <img :src="img" :alt="`Foto de la propiedad ${idx + 1}`" class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105" />
+              <img
+                :src="img"
+                :alt="`Foto de la propiedad ${idx + 1}`"
+                class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105 cursor-pointer"
+                @click="$emit('open-modal', property)"
+              />
             </SwiperSlide>
             <!-- Flechas personalizadas dentro del Swiper -->
             <button v-if="showPrevButton && property.images.length > 1" class="swiper-button-prev-custom" @click.stop="slidePrev" aria-label="Anterior">
