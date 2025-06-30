@@ -100,8 +100,34 @@
       <div class="card-arrow" />
     </div>
     <!-- Cara trasera: opciones de compartir (placeholder) -->
-    <div class="card-face card-back flex items-center justify-center" style="height:100%; width:100%; background:#f9fafb;">
-      <div class="text-lg font-semibold text-gray-700">Opciones para compartir</div>
+    <div class="card-face card-back card-back-animated flex items-center justify-center" style="height:100%; width:100%; background:#f9fafb;">
+      <!-- SVG borde doble: base azul + luz animada encima -->
+      <svg :key="flipKey" width="100%" height="100%" viewBox="0 0 307 282" style="position:absolute; top:0; left:0; z-index:10; pointer-events:none;">
+        <defs>
+          <linearGradient id="neon-gradient" x1="0" y1="0" x2="307" y2="282" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#38e8ff"/>
+            <stop offset="0.3" stop-color="#6366f1"/>
+            <stop offset="0.7" stop-color="#06b6d4"/>
+            <stop offset="1" stop-color="#38e8ff"/>
+          </linearGradient>
+        </defs>
+        <!-- Borde base gradiente -->
+        <rect
+          x="1" y="1" width="305" height="280" rx="20"
+          stroke="url(#neon-gradient)"
+          stroke-width="10"
+          fill="none"
+        />
+        <!-- Luz animada encima -->
+        <rect
+          x="1" y="1" width="305" height="280" rx="20"
+          stroke="url(#neon-gradient)"
+          stroke-width="10"
+          fill="none"
+          class="svg-animated-border"
+        />
+      </svg>
+      <div class="text-lg font-semibold text-gray-700" style="z-index:20; position:relative;">Opciones para compartir</div>
     </div>
   </div>
 </template>
@@ -129,6 +155,7 @@ const swiperInstance = ref(null)
 const showPrevButton = ref(false)
 const showNextButton = ref(false)
 const isFlipped = ref(false)
+const flipKey = ref(0)
 
 function onSwiper(swiper) {
   swiperInstance.value = swiper
@@ -182,6 +209,12 @@ function formatCurrency(price) {
   const formattedPrice = new Intl.NumberFormat('es-AR', { style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
   return `U$D ${formattedPrice}`;
 }
+
+watch(isFlipped, (val) => {
+  if (val) {
+    flipKey.value++
+  }
+})
 </script>
 
 <style scoped>
@@ -326,11 +359,29 @@ function formatCurrency(price) {
   justify-content: center;
   padding: 24px 12px;
   background: #f9fafb;
+  border: none !important;
+  box-shadow: none !important;
 }
 .zillow-card.flipped .card-front {
   transform: rotateY(-180deg);
 }
 .zillow-card.flipped .card-back {
   transform: rotateY(0deg);
+}
+.card-back-animated {
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+}
+.svg-animated-border {
+  stroke-dasharray: 400 800;
+  stroke-dashoffset: 0;
+  animation: scanBorder 6s linear infinite;
+  filter: drop-shadow(0 0 8px #38e8ff) drop-shadow(0 0 16px #6366f1);
+}
+@keyframes scanBorder {
+  to {
+    stroke-dashoffset: -1200;
+  }
 }
 </style>
