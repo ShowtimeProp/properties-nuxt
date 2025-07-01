@@ -587,17 +587,16 @@ const togglePropertyList = () => {
 };
 
 const handleClickOutside = (event) => {
-  // Solo cerrar si el panel está abierto
   if (!showPropertyList.value) return;
-  
-  // Verificar si el click fue fuera del panel, fuera del botón toggle y fuera de la modal
   const isClickInsidePanel = propertyListPanel.value && propertyListPanel.value.contains(event.target);
   const isClickOnToggleButton = toggleButton.value && toggleButton.value.contains(event.target);
   const isClickInsideModal = propertyModalRef.value && propertyModalRef.value.contains(event.target);
-  
-  // Si el click fue fuera del panel, del botón toggle y de la modal, cerrar el panel
   if (!isClickInsidePanel && !isClickOnToggleButton && !isClickInsideModal) {
     showPropertyList.value = false;
+    // Quitar sonar activo de todos los marcadores
+    Object.values(markerElements.value).forEach(el => {
+      el.classList.remove('sonar-active');
+    });
   }
 };
 
@@ -608,6 +607,10 @@ const openModalFromSlide = (property) => {
 };
 
 const activateSonarFromSlide = (property) => {
+  // Quitar sonar activo de todos los marcadores
+  Object.values(markerElements.value).forEach(el => {
+    el.classList.remove('sonar-active');
+  });
   // Centrar el mapa en la propiedad
   if (map) {
     map.flyTo({
@@ -615,25 +618,20 @@ const activateSonarFromSlide = (property) => {
       zoom: 15
     });
   }
-  
-  // Activar el efecto sonar en el marcador
+  // Activar el efecto sonar en el marcador correspondiente
   const markerEl = markerElements.value[property.id];
   if (markerEl) {
-    // Agregar clase temporal para el efecto sonar
     markerEl.classList.add('sonar-active');
-    
-    // Remover la clase después de la animación
-    setTimeout(() => {
-      markerEl.classList.remove('sonar-active');
-    }, 1500);
   }
 };
 
 const selectPropertyFromList = (property) => {
-  // Si el modal está abierto desde el slide, no mostrar el card del mapa
   if (isModalOpen.value && openedFromSlide.value) return;
+  // Quitar sonar activo de todos los marcadores
+  Object.values(markerElements.value).forEach(el => {
+    el.classList.remove('sonar-active');
+  });
   selectedProperty.value = property;
-  // Opcional: Centrar el mapa en la propiedad seleccionada
   if (map) {
     map.flyTo({
       center: [property.lng, property.lat],
@@ -699,6 +697,10 @@ watch(shapeDrawn, (newVal) => {
 });
 
 function showPropertyCard(property) {
+  // Quitar sonar activo de todos los marcadores
+  Object.values(markerElements.value).forEach(el => {
+    el.classList.remove('sonar-active');
+  });
   selectedProperty.value = property;
   viewedProperties.value.add(property.id);
   // Calcular posición del card
@@ -919,27 +921,33 @@ function handleCloseModal() {
   position: absolute;
   top: 50%;
   left: 50%;
+  width: 60px;
+  height: 60px;
   transform: translate(-50%, -50%);
-  width: 20px;
-  height: 20px;
   border-radius: 50%;
   background-color: transparent;
   box-shadow: 0 0 1px 2px rgba(239, 68, 68, 0.7);
   animation: sonar 1.5s infinite;
+  pointer-events: none;
+  z-index: 2;
 }
 
-.price-bubble.sonar-active::after {
+.price-bubble.sonar-active::after,
+.price-bubble.selected::after,
+.price-bubble.active-marker::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
+  width: 40px;
+  height: 40px;
   transform: translate(-50%, -50%);
-  width: 100%;
-  height: 100%;
   border-radius: 50%;
   background-color: transparent;
   box-shadow: 0 0 1px 2px rgba(239, 68, 68, 0.7);
   animation: sonar 1.5s infinite;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .price-bubble.sonar-active .price-bubble-container {
