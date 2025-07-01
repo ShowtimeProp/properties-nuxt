@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center" @click.self="emit('close')">
+  <div class="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center" @click.self="handleCloseModal">
     <div class="bg-white shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col relative overflow-hidden">
       <!-- Barra superior: branding, favoritos, compartir, tour -->
       <div class="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-white/80 sticky top-0 z-50">
@@ -177,6 +177,11 @@ watch(() => props.isFavorite, (val) => { isFavorite.value = val })
 function toggleFavorite() {
   isFavorite.value = !isFavorite.value
   emit('toggle-favorite', props.property)
+}
+
+function handleCloseModal(event) {
+  if (event) event.stopPropagation();
+  emit('close');
 }
 </script>
 

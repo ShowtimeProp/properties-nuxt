@@ -1,5 +1,5 @@
 <template>
-  <div @click.stop class="zillow-card group bg-white rounded shadow border border-gray-100 overflow-hidden flex flex-col" style="height:282px; width:344px; font-family: 'Roboto', Arial, sans-serif;">
+  <div @click="handleCardClick" class="zillow-card group bg-white rounded shadow border border-gray-100 overflow-hidden flex flex-col" style="height:282px; width:344px; font-family: 'Roboto', Arial, sans-serif;">
     <!-- Imagen principal -->
     <div class="relative w-full" style="aspect-ratio:16/9; min-height:0;">
       <client-only>
@@ -16,7 +16,12 @@
           class="h-full w-full"
         >
           <SwiperSlide v-for="(img, idx) in property.images" :key="idx">
-            <img :src="img" :alt="`Foto de la propiedad ${idx + 1}`" class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105" />
+            <img 
+              :src="img" 
+              :alt="`Foto de la propiedad ${idx + 1}`" 
+              @click="handleSwiperClick"
+              class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105 cursor-pointer" 
+            />
           </SwiperSlide>
           <!-- Flechas personalizadas dentro del Swiper -->
           <button v-if="showPrevButton && property.images.length > 1" class="swiper-button-prev-custom" @click.stop="slidePrev" aria-label="Anterior">
@@ -117,6 +122,8 @@ const props = defineProps({
     default: false
   }
 })
+
+const emit = defineEmits(['toggle-favorite', 'open-modal', 'activate-sonar'])
 const property = props.property
 const swiperRef = ref(null)
 const swiperInstance = ref(null)
@@ -166,6 +173,24 @@ function formatCurrency(price) {
   if (isNaN(num)) return '';
   const formattedPrice = new Intl.NumberFormat('es-AR', { style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
   return `U$D ${formattedPrice}`;
+}
+
+function handleSwiperClick(event) {
+  event.stopPropagation();
+  event.preventDefault();
+  // Marcar el evento para que el padre lo ignore
+  event.__fromSwiper = true;
+  emit('open-modal', property);
+}
+
+function handleCardClick(event) {
+  // Si el click fue en el área del Swiper, no hacer nada (ya se maneja en handleSwiperClick)
+  if (event.__fromSwiper) return;
+  if (event.target.closest('.swiper') || event.target.closest('img')) {
+    return;
+  }
+  // Emitir un evento diferente para activar el efecto sonar en lugar del card
+  emit('activate-sonar', property);
 }
 </script>
 

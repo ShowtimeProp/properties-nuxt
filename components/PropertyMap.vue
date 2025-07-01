@@ -38,7 +38,8 @@
             :property="property"
             :is-favorite="isFavorite(property)"
             @toggle-favorite="toggleFavorite(property)"
-            @click="selectPropertyFromList(property)"
+            @activate-sonar="activateSonarFromSlide"
+            @open-modal="openModalFromSlide"
             class="mx-auto"
           />
         </div>
@@ -101,7 +102,7 @@
   </div>
 
   <Transition name="property-card">
-    <div v-if="selectedProperty"
+    <div v-if="selectedProperty && (!isModalOpen || !openedFromSlide)"
       :style="{ position: 'absolute', left: `${cardPosition.x}px`, top: `${cardPosition.y}px`, zIndex: 30, width: '310px' }"
     >
       <!-- Card con flecha -->
@@ -132,10 +133,11 @@
   <Transition name="fade">
     <PropertyModal 
       v-if="isModalOpen && selectedProperty"
+      ref="propertyModalRef"
       :property="selectedProperty"
-      @close="isModalOpen = false"
+      @close="handleCloseModal"
     />
-    </Transition>
+  </Transition>
   </div>
 </template>
 
@@ -209,6 +211,8 @@ const showSortMenu = ref(false);
 const viewedProperties = ref(new Set());
 const cardPosition = ref({ x: 0, y: 0 });
 const cardPlacement = ref('top'); // 'top' o 'bottom'
+const propertyModalRef = ref(null);
+const openedFromSlide = ref(false);
 
 const sortOptions = [
   { value: 'relevance', label: 'Relevancia' },
@@ -586,17 +590,48 @@ const handleClickOutside = (event) => {
   // Solo cerrar si el panel está abierto
   if (!showPropertyList.value) return;
   
-  // Verificar si el click fue fuera del panel y fuera del botón toggle
+  // Verificar si el click fue fuera del panel, fuera del botón toggle y fuera de la modal
   const isClickInsidePanel = propertyListPanel.value && propertyListPanel.value.contains(event.target);
   const isClickOnToggleButton = toggleButton.value && toggleButton.value.contains(event.target);
+  const isClickInsideModal = propertyModalRef.value && propertyModalRef.value.contains(event.target);
   
-  // Si el click fue fuera del panel y no fue en el botón toggle, cerrar el panel
-  if (!isClickInsidePanel && !isClickOnToggleButton) {
+  // Si el click fue fuera del panel, del botón toggle y de la modal, cerrar el panel
+  if (!isClickInsidePanel && !isClickOnToggleButton && !isClickInsideModal) {
     showPropertyList.value = false;
   }
 };
 
+const openModalFromSlide = (property) => {
+  selectedProperty.value = property;
+  isModalOpen.value = true;
+  openedFromSlide.value = true;
+};
+
+const activateSonarFromSlide = (property) => {
+  // Centrar el mapa en la propiedad
+  if (map) {
+    map.flyTo({
+      center: [property.lng, property.lat],
+      zoom: 15
+    });
+  }
+  
+  // Activar el efecto sonar en el marcador
+  const markerEl = markerElements.value[property.id];
+  if (markerEl) {
+    // Agregar clase temporal para el efecto sonar
+    markerEl.classList.add('sonar-active');
+    
+    // Remover la clase después de la animación
+    setTimeout(() => {
+      markerEl.classList.remove('sonar-active');
+    }, 1500);
+  }
+};
+
 const selectPropertyFromList = (property) => {
+  // Si el modal está abierto desde el slide, no mostrar el card del mapa
+  if (isModalOpen.value && openedFromSlide.value) return;
   selectedProperty.value = property;
   // Opcional: Centrar el mapa en la propiedad seleccionada
   if (map) {
@@ -687,6 +722,14 @@ function showPropertyCard(property) {
   if (x + cardWidth > mapRect.width) x = mapRect.width - cardWidth - 8;
   cardPosition.value = { x, y };
   cardPlacement.value = placement;
+}
+
+function handleCloseModal() {
+  isModalOpen.value = false;
+  if (openedFromSlide.value) {
+    selectedProperty.value = null;
+  }
+  openedFromSlide.value = false;
 }
 </script>
 
@@ -868,5 +911,41 @@ function showPropertyCard(property) {
 }
 .price-bubble.viewed .price-bubble-container {
   color: #222 !important;
+}
+
+/* Efecto sonar activo para marcadores */
+.marker-dot.sonar-active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: transparent;
+  box-shadow: 0 0 1px 2px rgba(239, 68, 68, 0.7);
+  animation: sonar 1.5s infinite;
+}
+
+.price-bubble.sonar-active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: transparent;
+  box-shadow: 0 0 1px 2px rgba(239, 68, 68, 0.7);
+  animation: sonar 1.5s infinite;
+}
+
+.price-bubble.sonar-active .price-bubble-container {
+  background-color: #333;
+}
+.price-bubble.sonar-active .price-bubble-container::after {
+  border-top-color: #333;
 }
 </style>
