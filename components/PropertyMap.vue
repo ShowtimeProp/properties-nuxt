@@ -1,6 +1,11 @@
 <template>
-  <div class="relative w-full h-full">
+  <div class="relative w-full h-full" @mousemove="handleMouseMove">
     <div ref="mapContainer" class="absolute inset-0"></div>
+    
+    <!-- Tooltip flotante para modo dibujo -->
+    <div v-if="isDrawing" :style="{ left: `${Math.min(mouse.x + 18, windowWidth - 220)}px`, top: `${Math.min(mouse.y + 18, windowHeight - 48)}px` }" class="fixed z-50 pointer-events-none px-3 py-1 rounded-lg shadow-lg text-xs font-semibold bg-indigo-600 text-white border border-indigo-300 animate-pulse" style="user-select:none;">
+      🖱️ DOBLE CLICK = Terminar Dibujo
+    </div>
     
     <!-- Botón Ver Listado -->
     <button 
@@ -51,52 +56,34 @@
 
     <!-- Controles de Dibujo -->
     <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-row items-center gap-3">
-    <!-- Menú Herramienta de Dibujo -->
-    <div v-if="isTridentOpen" class="flex flex-col items-center gap-2">
-      <div class="bg-white rounded-lg shadow-lg p-3">
-        <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>Haz clic en el mapa para dibujar. Haz clic derecho para terminar.</span>
-        </div>
-        <button @click="startDrawing('polygon')" class="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors w-full justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-          </svg>
-          <span>Dibujar área</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Botón de Dibujo Principal -->
-    <div class="flex items-center gap-2">
-        <button v-if="!shapeDrawn" @click="toggleTrident" class="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors">
+      <!-- Botón de Dibujo Principal -->
+      <div class="flex items-center gap-2">
+        <button v-if="!isTridentOpen && !shapeDrawn" @click="toggleTrident" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-full shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
           </svg>
           <span>Dibujar área</span>
         </button>
-        
-        <button v-if="shapeDrawn" @click="deleteShape" class="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors">
+        <button v-if="shapeDrawn" @click="deleteShape" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-full shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
           <span>Eliminar área</span>
         </button>
-      <button class="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors">
-        <span>Buscar en esta zona</span>
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M4 12a8 8 0 0114.24-5.236M20 20v-5h-5M20 12a8 8 0 01-14.24 5.236" />
-        </svg>
-      </button>
-      <div v-if="isTridentOpen" class="text-xs text-gray-600 bg-white/90 px-3 py-1 rounded-lg shadow">
-        <p class="flex items-center gap-1">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <button class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-full shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
+          <span>Buscar en esta zona</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M4 12a8 8 0 0114.24-5.236M20 20v-5h-5M20 12a8 8 0 01-14.24 5.236" />
           </svg>
-          Haz clic derecho para terminar el dibujo
-        </p>
+        </button>
+        <div v-if="isTridentOpen && !shapeDrawn" class="text-xs text-gray-600 bg-white/90 px-3 py-1 rounded-lg shadow">
+          <p class="flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Haz clic en el mapa para dibujar. Haz clic derecho para terminar.
+          </p>
+        </div>
       </div>
     </div>
   </div>
@@ -138,7 +125,7 @@
       @close="handleCloseModal"
     />
   </Transition>
-  </div>
+
 </template>
 
 <script setup>
@@ -213,6 +200,10 @@ const cardPosition = ref({ x: 0, y: 0 });
 const cardPlacement = ref('top'); // 'top' o 'bottom'
 const propertyModalRef = ref(null);
 const openedFromSlide = ref(false);
+const mouse = ref({ x: 0, y: 0 });
+const isDrawing = ref(false);
+const windowWidth = window.innerWidth;
+const windowHeight = window.innerHeight;
 
 const sortOptions = [
   { value: 'relevance', label: 'Relevancia' },
@@ -489,7 +480,7 @@ onMounted(async () => {
           ],
           layout: {},
           paint: {
-            'line-color': '#3bb2d0',
+            'line-color': '#6366f1',
             'line-width': 2,
             'line-dasharray': [2, 2]
           }
@@ -504,7 +495,7 @@ onMounted(async () => {
           ],
           layout: {},
           paint: {
-            'line-color': '#3bb2d0',
+            'line-color': '#6366f1',
             'line-width': 2
           }
         },
@@ -518,22 +509,26 @@ onMounted(async () => {
           ],
           paint: {
             'circle-radius': 4,
-            'circle-color': '#fbb03b'
+            'circle-color': '#6366f1',
+            'circle-stroke-color': '#fff',
+            'circle-stroke-width': 2
           }
         }
       ]
     });
     map.addControl(draw, 'top-right');
 
-    map.on('draw.create', () => {
-      shapeDrawn.value = true;
-      isTridentOpen.value = false;
-      // Aquí irá la lógica para filtrar propiedades
+    // Detectar si está en modo dibujo para mostrar el tooltip
+    map.on('draw.modechange', (e) => {
+      isDrawing.value = e.mode === 'draw_polygon';
     });
-
+    map.on('draw.create', () => {
+      isDrawing.value = false;
+      shapeDrawn.value = true;
+    });
     map.on('draw.delete', () => {
+      isDrawing.value = false;
       shapeDrawn.value = false;
-      // Lógica para resetear el filtro
     });
 
     map.on('style.load', () => {
@@ -560,7 +555,12 @@ onUnmounted(() => {
 });
 
 const toggleTrident = () => {
-  isTridentOpen.value = !isTridentOpen.value;
+  if (shapeDrawn.value) return; // No permitir otro dibujo si ya hay uno
+  isTridentOpen.value = true;
+  nextTick(() => {
+    startDrawing();
+    isDrawing.value = true;
+  });
 };
 
 const startDrawing = () => {
@@ -732,6 +732,12 @@ function handleCloseModal() {
     selectedProperty.value = null;
   }
   openedFromSlide.value = false;
+}
+
+function handleMouseMove(e) {
+  if (isDrawing.value) {
+    mouse.value = { x: e.clientX, y: e.clientY };
+  }
 }
 </script>
 
