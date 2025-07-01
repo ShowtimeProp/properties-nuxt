@@ -97,9 +97,11 @@
         <PropertyCard 
           :property="selectedProperty" 
           :is-favorite="isFavorite(selectedProperty)"
+          :is-logged-in="isLoggedIn"
           @toggle-favorite="toggleFavorite(selectedProperty)"
           @close="selectedProperty = null"
           @open-modal="isModalOpen = true"
+          @login-request="showLoginModal = true"
         />
         <!-- Flecha tipo tooltip -->
         <div v-if="cardPlacement === 'top'" style="position: absolute; left: 50%; top: 100%; transform: translateX(-50%); width: 0; height: 0; z-index: 40;">
@@ -126,6 +128,9 @@
     />
   </Transition>
 
+  <!-- Modal de login -->
+  <LoginModal :show="showLoginModal" @close="showLoginModal = false" />
+
 </template>
 
 <script setup>
@@ -137,7 +142,8 @@ import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import PropertyCard from './PropertyCard.vue';
 import PropertyModal from './PropertyModal.vue';
-
+import LoginModal from './LoginModal.vue';
+const supabase = useNuxtApp().$supabase
 // Asegurarse de que MapboxDraw funcione con MapLibre
 if (typeof window !== 'undefined') {
   window.MapboxDraw = MapboxDraw;
@@ -204,6 +210,8 @@ const mouse = ref({ x: 0, y: 0 });
 const isDrawing = ref(false);
 const windowWidth = window.innerWidth;
 const windowHeight = window.innerHeight;
+const isLoggedIn = ref(false)
+const showLoginModal = ref(false)
 
 const sortOptions = [
   { value: 'relevance', label: 'Relevancia' },
@@ -545,6 +553,15 @@ onMounted(async () => {
         markerElements.value[newVal.id].classList.add('active-marker');
       }
     });
+
+    // Detectar usuario logueado al cargar
+    const { data: { user } } = await supabase.auth.getUser()
+    isLoggedIn.value = !!user
+    // Escuchar cambios de sesión
+    supabase.auth.onAuthStateChange((_event, session) => {
+      isLoggedIn.value = !!session?.user
+      if (session?.user) showLoginModal.value = false
+    })
   }
 });
 

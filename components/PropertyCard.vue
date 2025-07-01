@@ -42,8 +42,8 @@
             </div>
           </Swiper>
           <!-- Botón de favorito SVG puro -->
-          <button @click.stop="$emit('toggle-favorite', property)" class="absolute top-3 right-3 z-20 favorite-btn flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 group/fav" :aria-pressed="isFavorite">
-            <svg :class="['h-10 w-10 transition-all duration-300 heart-outline', isFavorite ? 'fill-heart-translucent' : 'fill-black35', 'group-hover/fav:animate-fav-pulse']" viewBox="0 0 24 24" stroke-width="2" :stroke="'#fff'">
+          <button @click="handleFavoriteClick" class="absolute top-3 right-3 z-20 favorite-btn flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 group/fav" :aria-pressed="isFavorite">
+            <svg :class="['h-10 w-10 transition-all duration-300 heart-outline', isFavorite ? 'fill-rose-600' : 'fill-black35', 'group-hover/fav:animate-fav-pulse']" viewBox="0 0 24 24" stroke-width="2" :stroke="'#fff'">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
             </svg>
           </button>
@@ -137,7 +137,7 @@
 </template>
 
 <script setup>
-import { defineProps, ref, onMounted, watch, onBeforeUnmount } from 'vue'
+import { defineProps, ref, onMounted, watch, onBeforeUnmount, computed } from 'vue'
 import 'swiper/css/navigation';
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination, Navigation } from 'swiper/modules'
@@ -152,7 +152,8 @@ const props = defineProps({
   isFavorite: {
     type: Boolean,
     default: false
-  }
+  },
+  isLoggedIn: Boolean
 })
 const swiperRef = ref(null)
 const swiperInstance = ref(null)
@@ -161,6 +162,7 @@ const showNextButton = ref(false)
 const isFlipped = ref(false)
 const flipKey = ref(0)
 const whatsapp = ref("")
+const emit = defineEmits(['toggle-favorite', 'open-modal', 'login-request'])
 
 function onSwiper(swiper) {
   swiperInstance.value = swiper
@@ -234,6 +236,15 @@ function shareProperty() {
   } else {
     alert('Tu navegador no soporta compartir')
   }
+}
+
+function handleFavoriteClick(event) {
+  event.stopPropagation()
+  if (!props.isLoggedIn) {
+    emit('login-request')
+    return
+  }
+  emit('toggle-favorite', props.property)
 }
 </script>
 
