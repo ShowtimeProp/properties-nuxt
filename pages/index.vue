@@ -1,7 +1,9 @@
 <template>
-  <TopNavBar />
-  <div class="pt-[110px]">
-    <PropertyMap />
+  <div class="flex flex-col h-screen">
+    <TopNavBar />
+    <div class="flex-1 min-h-0">
+      <PropertyMap />
+    </div>
   </div>
 </template>
 

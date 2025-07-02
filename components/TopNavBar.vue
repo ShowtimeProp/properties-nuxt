@@ -1,5 +1,5 @@
 <template>
-  <nav class="fixed top-0 left-0 w-full z-50 bg-white shadow">
+  <nav class="fixed top-0 left-0 w-full z-50 bg-white">
     <div
       class="group"
       @mouseenter="showTopMenu = true"

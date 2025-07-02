@@ -1,6 +1,6 @@
 <template>
-  <div ref="mapWrapper" class="relative w-full overflow-hidden" :style="`height: calc(100vh - ${navHeight}px); margin: 0; padding: 0; box-sizing: border-box;`" @mousemove="handleMouseMove">
-    <div ref="mapContainer" class="absolute inset-0"></div>
+  <div ref="mapWrapper" class="w-full h-full">
+    <div ref="mapContainer" class="w-full h-full"></div>
     
     <!-- Tooltip flotante para modo dibujo -->
     <div v-if="isDrawing" :style="{ left: `${Math.min(mouse.x + 18, windowWidth - 220)}px`, top: `${Math.min(mouse.y + 18, windowHeight - 48)}px` }" class="fixed z-50 pointer-events-none px-3 py-1 rounded-lg shadow-lg text-xs font-semibold bg-indigo-600 text-white border border-indigo-300 animate-pulse" style="user-select:none;">
@@ -11,7 +11,7 @@
     <button 
       ref="toggleButton"
       @click="togglePropertyList"
-      class="absolute top-4 right-24 z-20 flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+      class="absolute top-24 right-24 z-20 flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
     >
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -778,6 +778,7 @@ html, body {
   padding: 0;
   overflow: hidden;
   box-sizing: border-box;
+  position: relative;
 }
 /* Estilos para el contenedor principal del mapa */
 .relative {
