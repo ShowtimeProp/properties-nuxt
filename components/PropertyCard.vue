@@ -111,7 +111,7 @@
         <input
           v-model="whatsapp"
           type="text"
-          placeholder="+549 11 3333-3333 <-Tu WhatsApp"
+          placeholder="+549 223 353-3333 <-Tu WhatsApp"
           class="rounded px-3 py-2 w-full bg-gray-800 text-white placeholder-gray-400 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 mb-4"
           style="box-sizing: border-box;"
         />

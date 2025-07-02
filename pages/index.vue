@@ -1,12 +1,13 @@
 <template>
-  <div class="relative w-screen h-screen">
-    <ClientOnly>
-      <PropertyMap />
-    </ClientOnly>
+  <TopNavBar />
+  <div class="pt-[110px]">
+    <PropertyMap />
   </div>
 </template>
+
 <script setup>
-// La página principal ahora solo se encarga de renderizar el componente del mapa.
+import TopNavBar from '~/components/TopNavBar.vue'
+import PropertyMap from '~/components/PropertyMap.vue'
 </script>
 
 <style>

@@ -40,7 +40,7 @@
           </div>
         </Swiper>
         <!-- Botón de favorito SVG puro -->
-        <button @click.stop="$emit('toggle-favorite', property)" class="absolute top-3 right-3 z-20 favorite-btn flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 group/fav" :aria-pressed="isFavorite">
+        <button @click.stop="handleFavoriteClick" class="absolute top-3 right-3 z-20 favorite-btn flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 group/fav" :aria-pressed="isFavorite">
           <svg :class="['h-10 w-10 transition-all duration-300 heart-outline', isFavorite ? 'fill-red-500' : 'fill-black35', 'group-hover/fav:animate-fav-pulse']" viewBox="0 0 24 24" stroke-width="2" :stroke="'#fff'">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
           </svg>
@@ -120,10 +120,14 @@ const props = defineProps({
   isFavorite: {
     type: Boolean,
     default: false
+  },
+  isLoggedIn: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['toggle-favorite', 'open-modal', 'activate-sonar'])
+const emit = defineEmits(['toggle-favorite', 'open-modal', 'activate-sonar', 'login-request'])
 const property = props.property
 const swiperRef = ref(null)
 const swiperInstance = ref(null)
@@ -191,6 +195,14 @@ function handleCardClick(event) {
   }
   // Emitir un evento diferente para activar el efecto sonar en lugar del card
   emit('activate-sonar', property);
+}
+
+function handleFavoriteClick() {
+  if (!props.isLoggedIn) {
+    emit('login-request')
+  } else {
+    emit('toggle-favorite', property)
+  }
 }
 </script>
 

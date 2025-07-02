@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-full h-full" @mousemove="handleMouseMove">
+  <div ref="mapWrapper" class="relative w-full overflow-hidden" :style="`height: calc(100vh - ${navHeight}px); margin: 0; padding: 0; box-sizing: border-box;`" @mousemove="handleMouseMove">
     <div ref="mapContainer" class="absolute inset-0"></div>
     
     <!-- Tooltip flotante para modo dibujo -->
@@ -22,9 +22,9 @@
     <!-- Panel de Listado de Propiedades -->
     <div 
       ref="propertyListPanel"
-      class="fixed top-0 right-0 h-full w-[750px] bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col"
+      class="fixed top-0 right-0 w-[750px] bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col pt-[110px]"
+      style="height: 100vh; box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1)"
       :class="{ 'translate-x-0': showPropertyList, 'translate-x-full': !showPropertyList }"
-      style="box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1)"
     >
       <div class="p-4 border-b border-gray-200 flex justify-between items-center">
         <h3 class="text-lg font-semibold">Propiedades encontradas</h3>
@@ -42,9 +42,11 @@
             :key="property.id"
             :property="property"
             :is-favorite="isFavorite(property)"
+            :is-logged-in="isLoggedIn"
             @toggle-favorite="toggleFavorite(property)"
             @activate-sonar="activateSonarFromSlide"
             @open-modal="openModalFromSlide"
+            @login-request="showLoginModal = true"
             class="mx-auto"
           />
         </div>
@@ -55,7 +57,7 @@
     </div>
 
     <!-- Controles de Dibujo -->
-    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex flex-row items-center gap-3">
+    <div class="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex flex-row items-center gap-3">
       <!-- Botón de Dibujo Principal -->
       <div class="flex items-center gap-2">
         <button v-if="!isTridentOpen && !shapeDrawn" @click="toggleTrident" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-full shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
@@ -156,6 +158,8 @@ const isTridentOpen = ref(false);
 const scrollContainer = ref(null);
 const propertyListPanel = ref(null);
 const toggleButton = ref(null);
+const mapWrapper = ref(null)
+const navHeight = ref(81)
 
 const loadMoreProperties = () => {
   // Placeholder for infinite scroll logic
@@ -176,6 +180,14 @@ onMounted(() => {
   
   // Agregar listener global para cerrar el panel al hacer click fuera
   document.addEventListener('click', handleClickOutside);
+  windowWidth = window.innerWidth;
+  windowHeight = window.innerHeight;
+  nextTick(() => {
+    const nav = document.querySelector('nav.fixed');
+    if (nav) {
+      navHeight.value = nav.offsetHeight;
+    }
+  });
 });
 
 onUnmounted(() => {
@@ -208,8 +220,8 @@ const propertyModalRef = ref(null);
 const openedFromSlide = ref(false);
 const mouse = ref({ x: 0, y: 0 });
 const isDrawing = ref(false);
-const windowWidth = window.innerWidth;
-const windowHeight = window.innerHeight;
+let windowWidth = 0;
+let windowHeight = 0;
 const isLoggedIn = ref(false)
 const showLoginModal = ref(false)
 
@@ -728,11 +740,13 @@ function showPropertyCard(property) {
   const cardHeight = 282 + 18; // 18px de la flecha
   // Por defecto, arriba de la burbuja
   let x = pixel.x - cardWidth / 2;
-  let y = pixel.y - cardHeight;
+  let y = pixel.y - cardHeight + 18; // 18px: la flecha debe apuntar al dot
   let placement = 'top';
+  // Offset mínimo para la barra de navegación expandida (120px)
+  const minY = 120;
   // Si se sale por arriba, mostrar abajo
-  if (y < 0) {
-    y = pixel.y + 24; // 24px para dejar espacio a la burbuja
+  if (y < minY) {
+    y = pixel.y + 18; // 18px: la flecha debe apuntar al dot
     placement = 'bottom';
   }
   // Si se sale por la izquierda
@@ -759,6 +773,12 @@ function handleMouseMove(e) {
 </script>
 
 <style>
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
 /* Estilos para el contenedor principal del mapa */
 .relative {
   position: relative;
@@ -978,5 +998,12 @@ function handleMouseMove(e) {
 }
 .price-bubble.sonar-active .price-bubble-container::after {
   border-top-color: #333;
+}
+
+/* Ocultar controles flotantes de MapLibre */
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-logo,
+.maplibregl-ctrl-attrib {
+  display: none !important;
 }
 </style>
