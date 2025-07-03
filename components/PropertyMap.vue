@@ -11,7 +11,7 @@
     <button 
       ref="toggleButton"
       @click="togglePropertyList"
-      class="absolute top-24 right-24 z-20 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-full shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors"
+      class="absolute top-24 right-24 z-20 flex items-center gap-2 px-4 py-2 animated-gradient-bg text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors"
     >
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -60,19 +60,19 @@
     <div class="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex flex-row items-center gap-3">
       <!-- Botón de Dibujo Principal -->
       <div class="flex items-center gap-2">
-        <button v-if="!isTridentOpen && !shapeDrawn" @click="toggleTrident" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-full shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
+        <button v-if="!isTridentOpen && !shapeDrawn" @click="toggleTrident" class="flex items-center gap-2 px-4 py-2 animated-gradient-bg text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
           </svg>
           <span>Dibujar área</span>
         </button>
-        <button v-if="shapeDrawn" @click="deleteShape" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-full shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
+        <button v-if="shapeDrawn" @click="deleteShape" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
           <span>Eliminar área</span>
         </button>
-        <button class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-full shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
+        <button class="flex items-center gap-2 px-4 py-2 animated-gradient-bg text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
           <span>Buscar en esta zona</span>
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M4 12a8 8 0 0114.24-5.236M20 20v-5h-5M20 12a8 8 0 01-14.24 5.236" />
@@ -419,7 +419,7 @@ onMounted(async () => {
     });
 
     // Agregar controles de navegación
-    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
     map.on('load', () => {
       properties.value.forEach(property => {
@@ -536,7 +536,7 @@ onMounted(async () => {
         }
       ]
     });
-    map.addControl(draw, 'top-right');
+    map.addControl(draw, 'bottom-right');
 
     // Detectar si está en modo dibujo para mostrar el tooltip
     map.on('draw.modechange', (e) => {
@@ -1012,5 +1012,23 @@ html, body {
 .maplibregl-ctrl-logo,
 .maplibregl-ctrl-attrib {
   display: none !important;
+}
+
+@keyframes animatedGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animated-gradient-bg {
+  background: linear-gradient(270deg, #6366f1, #22d3ee, #6366f1, #0ea5e9, #6366f1);
+  background-size: 400% 400%;
+  animation: animatedGradient 6s ease-in-out infinite;
 }
 </style>

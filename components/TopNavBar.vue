@@ -1,16 +1,24 @@
 <template>
   <nav class="fixed top-0 left-0 w-full z-50 bg-black shadow-lg" @mouseenter="showTopMenu = true" @mouseleave="maybeHideMenu">
     <!-- Primer renglón: Logo y menú, colapsable -->
+    <div class="flex justify-between items-center w-full px-6 pt-3">
+    </div>
     <transition name="slide-down">
       <div v-if="showTopMenu" class="flex flex-col items-center w-full bg-black mt-3">
         <span class="text-2xl font-bold text-white tracking-tight select-none mb-1">Showtime Prop</span>
-        <div class="flex gap-8 text-sm font-medium text-white mb-2">
+        <div class="flex gap-8 text-sm font-medium text-white mb-2 items-center">
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Comprar</a>
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Alquilar</a>
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Vender</a>
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Créditos Hipotecarios</a>
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Listar Tu Propiedad</a>
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Blog Inmobiliario</a>
+          <button class="ml-4 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors text-sm flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9A3.75 3.75 0 1112 5.25 3.75 3.75 0 0115.75 9zM4.5 19.5a7.5 7.5 0 1115 0v.75a.75.75 0 01-.75.75h-13.5a.75.75 0 01-.75-.75v-.75z" />
+            </svg>
+            Iniciar Sesión
+          </button>
         </div>
       </div>
     </transition>
@@ -29,17 +37,19 @@
       <button
         @click="toggleListening"
         :aria-label="listening ? 'Escuchando...' : 'Buscar por voz'"
-        class="ml-2 flex items-center justify-center h-10 w-10 rounded-full bg-gray-900 border border-gray-700 text-yellow-400 hover:bg-yellow-400 hover:text-black transition"
+        class="ml-2 flex items-center justify-center h-10 w-10 rounded-full bg-gray-900 border border-gray-700 text-cyan-400 hover:bg-cyan-400 hover:text-black transition"
       >
-        <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75v1.5m0 0h3m-3 0h-3m6-6.75a3 3 0 11-6 0v-3a3 3 0 116 0v3z" />
-        </svg>
-        <svg v-else xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-6 h-6 animate-bounce">
-          <path d="M12 1a4 4 0 00-4 4v6a4 4 0 008 0V5a4 4 0 00-4-4zm5 10a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a7 7 0 007-7h-2a5 5 0 01-10 0H5a7 7 0 007 7z"/>
-        </svg>
+        <span class="relative z-10 flex items-center justify-center w-full h-full">
+          <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75v1.5m0 0h3m-3 0h-3m6-6.75a3 3 0 11-6 0v-3a3 3 0 116 0v3z" />
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" class="w-6 h-6 animate-bounce">
+            <path d="M12 1a4 4 0 00-4 4v6a4 4 0 008 0V5a4 4 0 00-4-4zm5 10a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a7 7 0 007-7h-2a5 5 0 01-10 0H5a7 7 0 007 7z"/>
+          </svg>
+        </span>
       </button>
       <button
-        class="ml-3 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors"
+        class="ml-3 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors"
         @click="onSaveSearch"
       >
         Guardar Esta Búsqueda
@@ -52,6 +62,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 const searchText = ref('')
 const listening = ref(false)
+const micSonar = ref(false)
 let recognition = null
 const showTopMenu = ref(false)
 let hideTimeout = null
@@ -117,6 +128,12 @@ function onSaveSearch() {
 
 onMounted(() => {
   document.addEventListener('click', handleDocumentClick)
+  setInterval(() => {
+    micSonar.value = false
+    setTimeout(() => {
+      micSonar.value = true
+    }, 50)
+  }, 10000)
 })
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick)
@@ -142,5 +159,35 @@ html, body {
 .slide-down-enter-to, .slide-down-leave-from {
   max-height: 80px;
   opacity: 1;
+}
+@keyframes sonar {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.55), 0 0 0 0 rgba(255,255,255,0.12);
+  }
+  60% {
+    box-shadow: 0 0 0 32px rgba(34, 211, 238, 0), 0 0 0 48px rgba(255,255,255,0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0), 0 0 0 0 rgba(255,255,255,0);
+  }
+}
+.sonar-effect {
+  animation: sonar 1.4s;
+}
+@keyframes animatedGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+.animated-gradient-bg {
+  background: linear-gradient(270deg, #6366f1, #22d3ee, #6366f1, #0ea5e9, #6366f1);
+  background-size: 400% 400%;
+  animation: animatedGradient 6s ease-in-out infinite;
 }
 </style> 

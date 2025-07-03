@@ -44,16 +44,19 @@
     <form @submit.prevent="sendMessage" class="flex border-t items-center p-2 gap-2">
       <input
         v-model="input"
-        class="flex-1 px-3 py-2 outline-none rounded-lg border border-gray-300"
+        class="flex-1 px-3 py-2 outline-none rounded-lg border border-gray-300 text-sm placeholder:text-xs"
         placeholder="Habla o escribe tu mensaje..."
       />
-      <button type="button" @click="startListening" :class="['rounded-full p-3 transition flex items-center justify-center', listening ? 'bg-yellow-100 text-yellow-600 animate-pulse ring-4 ring-yellow-200' : 'bg-white text-gray-400 hover:bg-yellow-50 hover:text-yellow-600']" style="width: 48px; height: 48px; font-size: 2rem;" :aria-label="listening ? 'Escuchando...' : 'Hablar'">
-        <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75v1.5m0 0h3m-3 0h-3m6-6.75a3 3 0 11-6 0v-3a3 3 0 116 0v3z" />
-        </svg>
-        <svg v-else xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-8 h-8 animate-bounce">
-          <path d="M12 1a4 4 0 00-4 4v6a4 4 0 008 0V5a4 4 0 00-4-4zm5 10a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a7 7 0 007-7h-2a5 5 0 01-10 0H5a7 7 0 007 7z"/>
-        </svg>
+      <button type="button" @click="startListening" :class="['rounded-full p-3 transition flex items-center justify-center border border-indigo-300 shadow-lg text-white font-bold relative overflow-visible', listening ? 'animate-pulse ring-4 ring-cyan-200' : 'hover:from-indigo-400 hover:to-cyan-300', micSonar ? 'sonar-effect' : '']" style="width: 48px; height: 48px; font-size: 2rem;" :aria-label="listening ? 'Escuchando...' : 'Hablar'">
+        <span class="mic-gradient-bg absolute inset-0 rounded-full z-0"></span>
+        <span class="relative z-10 flex items-center justify-center w-full h-full">
+          <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" class="w-8 h-8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75v1.5m0 0h3m-3 0h-3m6-6.75a3 3 0 11-6 0v-3a3 3 0 116 0v3z" />
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" class="w-8 h-8 animate-bounce">
+            <path d="M12 1a4 4 0 00-4 4v6a4 4 0 008 0V5a4 4 0 00-4-4zm5 10a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a7 7 0 007-7h-2a5 5 0 01-10 0H5a7 7 0 007 7z"/>
+          </svg>
+        </span>
       </button>
       <button class="px-4 text-indigo-600 font-bold" :disabled="loading">Enviar</button>
     </form>
@@ -67,6 +70,7 @@ const open = ref(false)
 const input = ref('')
 const loading = ref(false)
 const listening = ref(false)
+const micSonar = ref(false)
 const messages = ref([
   { author: 'bot', text: '¡Hola! Soy Showy 🤖 Y puedo ayudarte a buscar un nuevo hogar, o tu proxima inversion!', time: getCurrentTime(), footer: 'enviado' }
 ])
@@ -78,6 +82,15 @@ watch(messages, async () => {
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
+})
+
+onMounted(() => {
+  setInterval(() => {
+    micSonar.value = false
+    setTimeout(() => {
+      micSonar.value = true
+    }, 50)
+  }, 10000)
 })
 
 let recognition = null
@@ -140,5 +153,35 @@ function getCurrentTime() {
 }
 .animate-float {
   animation: float 2.4s ease-in-out infinite;
+}
+@keyframes sonar {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.55), 0 0 0 0 rgba(255,255,255,0.12);
+  }
+  60% {
+    box-shadow: 0 0 0 32px rgba(34, 211, 238, 0), 0 0 0 48px rgba(255,255,255,0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0), 0 0 0 0 rgba(255,255,255,0);
+  }
+}
+.sonar-effect {
+  animation: sonar 1.4s;
+}
+.mic-gradient-bg {
+  background: linear-gradient(270deg, #6366f1, #22d3ee, #6366f1, #0ea5e9, #6366f1);
+  background-size: 400% 400%;
+  animation: gradientMove 6s ease-in-out infinite;
+}
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 </style> 
