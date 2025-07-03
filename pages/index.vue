@@ -5,11 +5,13 @@
       <PropertyMap />
     </div>
   </div>
+  <ChatBot />
 </template>
 
 <script setup>
 import TopNavBar from '~/components/TopNavBar.vue'
 import PropertyMap from '~/components/PropertyMap.vue'
+import ChatBot from '~/components/ChatBot.vue'
 </script>
 
 <style>

@@ -1,8 +1,13 @@
 <template>
-  <div>
-    <NuxtPage />
-  </div>
+  <TopNavBar />
+  <NuxtPage />
+  <ChatBot />
 </template>
+
+<script setup>
+import TopNavBar from '~/components/TopNavBar.vue'
+import ChatBot from '~/components/ChatBot.vue'
+</script>
 
 <style>
 html, body, #__nuxt, #__layout {

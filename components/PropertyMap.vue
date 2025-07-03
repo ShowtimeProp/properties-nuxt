@@ -766,10 +766,16 @@ function handleCloseModal() {
 }
 
 function handleMouseMove(e) {
-  if (isDrawing.value) {
-    mouse.value = { x: e.clientX, y: e.clientY };
-  }
+  mouse.value = { x: e.clientX, y: e.clientY };
 }
+
+watch(isDrawing, (val) => {
+  if (val) {
+    window.addEventListener('mousemove', handleMouseMove);
+  } else {
+    window.removeEventListener('mousemove', handleMouseMove);
+  }
+});
 </script>
 
 <style>

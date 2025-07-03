@@ -1,0 +1,136 @@
+<template>
+  <!-- Botón flotante Showy -->
+  <button
+    style="position: fixed; bottom: 24px; right: 24px; z-index: 9999;"
+    class="bg-white rounded-full p-2 border border-yellow-200 shadow-lg hover:bg-yellow-100 transition flex items-center justify-center"
+    @click="open = true"
+    aria-label="Abrir chat Showy"
+  >
+    <span>
+      <img src="/avatars/showy.png" alt="Showy te Ayuda a Buscar la casa de tus sueños" style="width: 74px; height: 74px; border-radius: 50%; object-fit: cover; box-shadow: 0 2px 12px rgba(253,216,53,0.18);" />
+    </span>
+  </button>
+
+  <!-- Panel de chat -->
+  <div v-if="open" style="position: fixed; bottom: 80px; right: 24px; z-index: 9999;" class="w-80 bg-white rounded-xl shadow-xl flex flex-col">
+    <div class="flex items-center justify-between p-4 border-b font-bold text-red-600">
+      <span>Showy - Asistente IA</span>
+      <button @click="open = false" class="ml-2 text-gray-400 hover:text-red-600 text-xl font-bold">&times;</button>
+    </div>
+    <div ref="messagesContainer" class="flex-1 p-4 overflow-y-auto space-y-2">
+      <div v-for="(msg, i) in messages" :key="i" :class="msg.author === 'user' ? 'chat chat-end' : 'chat chat-start'">
+        <!-- Avatar -->
+        <div class="chat-image avatar">
+          <div class="w-10 rounded-full bg-white flex items-center justify-center">
+            <img v-if="msg.author === 'user'" alt="avatar usuario" src="https://img.daisyui.com/images/profile/demo/kenobee@192.webp" />
+            <span v-else>
+              <img src="/avatars/showy.png" alt="Showy avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
+            </span>
+          </div>
+        </div>
+        <!-- Header -->
+        <div class="chat-header">
+          {{ msg.author === 'user' ? 'Tú' : 'Showy' }}
+          <time class="text-xs opacity-50 ml-2">{{ msg.time }}</time>
+        </div>
+        <!-- Burbuja -->
+        <div :class="'chat-bubble ' + (msg.author === 'user' ? 'chat-bubble-primary' : 'chat-bubble-secondary')">
+          {{ msg.text }}
+        </div>
+        <!-- Footer -->
+        <div class="chat-footer opacity-50">{{ msg.footer }}</div>
+      </div>
+    </div>
+    <form @submit.prevent="sendMessage" class="flex border-t items-center p-2 gap-2">
+      <input
+        v-model="input"
+        class="flex-1 px-3 py-2 outline-none rounded-lg border border-gray-300"
+        placeholder="Habla o escribe tu mensaje..."
+      />
+      <button type="button" @click="startListening" :class="['rounded-full p-3 transition flex items-center justify-center', listening ? 'bg-yellow-100 text-yellow-600 animate-pulse ring-4 ring-yellow-200' : 'bg-white text-gray-400 hover:bg-yellow-50 hover:text-yellow-600']" style="width: 48px; height: 48px; font-size: 2rem;" :aria-label="listening ? 'Escuchando...' : 'Hablar'">
+        <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75v1.5m0 0h3m-3 0h-3m6-6.75a3 3 0 11-6 0v-3a3 3 0 116 0v3z" />
+        </svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="w-8 h-8 animate-bounce">
+          <path d="M12 1a4 4 0 00-4 4v6a4 4 0 008 0V5a4 4 0 00-4-4zm5 10a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a7 7 0 007-7h-2a5 5 0 01-10 0H5a7 7 0 007 7z"/>
+        </svg>
+      </button>
+      <button class="px-4 text-indigo-600 font-bold" :disabled="loading">Enviar</button>
+    </form>
+  </div>
+</template>
+
+<script setup>
+import { ref, watch, nextTick, onMounted } from 'vue'
+
+const open = ref(false)
+const input = ref('')
+const loading = ref(false)
+const listening = ref(false)
+const messages = ref([
+  { author: 'bot', text: '¡Hola! Soy Showy 🤖 ¿Como puedo ayudarte a buscar hoy?', time: getCurrentTime(), footer: 'enviado' }
+])
+
+const messagesContainer = ref(null)
+
+watch(messages, async () => {
+  await nextTick()
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+})
+
+let recognition = null
+
+async function sendMessage() {
+  if (!input.value.trim()) return
+  messages.value.push({ author: 'user', text: input.value, time: getCurrentTime(), footer: 'enviado' })
+  loading.value = true
+  const userMsg = input.value
+  input.value = ''
+  // Simulación de respuesta IA
+  setTimeout(() => {
+    messages.value.push({ author: 'bot', text: 'Showy está pensando... (aquí responderá la IA)', time: getCurrentTime(), footer: 'enviado' })
+    loading.value = false
+  }, 1200)
+}
+
+function startListening() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('Tu navegador no soporta reconocimiento de voz.');
+    return;
+  }
+  if (!recognition) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    recognition = new SpeechRecognition()
+    recognition.lang = 'es-ES'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+    recognition.onresult = (event) => {
+      input.value = event.results[0][0].transcript
+      listening.value = false
+      sendMessage() // Enviar automáticamente al terminar de hablar
+    }
+    recognition.onerror = () => { listening.value = false }
+    recognition.onend = () => { listening.value = false }
+  }
+  listening.value = true
+  recognition.start()
+}
+
+function getCurrentTime() {
+  const now = new Date()
+  return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+</script>
+
+<style scoped>
+@import 'daisyui/dist/full.css';
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style> 
