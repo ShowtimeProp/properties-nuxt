@@ -12,12 +12,12 @@
   </button>
 
   <!-- Panel de chat -->
-  <div v-if="open" style="position: fixed; bottom: 80px; right: 24px; z-index: 9999;" class="w-80 bg-white rounded-xl shadow-xl flex flex-col">
+  <div v-if="open" ref="chatPanelRef" style="position: fixed; bottom: 80px; right: 24px; z-index: 9999; max-height: 80vh;" class="w-80 bg-white rounded-xl shadow-xl flex flex-col">
     <div class="flex items-center justify-between p-4 border-b font-bold text-red-600">
       <span>Showy - Tu Asistente IA</span>
       <button @click="open = false" class="ml-2 text-gray-400 hover:text-red-600 text-xl font-bold">&times;</button>
     </div>
-    <div ref="messagesContainer" class="flex-1 p-4 overflow-y-auto space-y-2">
+    <div ref="messagesContainer" class="flex-1 p-4 overflow-y-auto space-y-2 max-h-[55vh] no-scrollbar">
       <div v-for="(msg, i) in messages" :key="i" :class="msg.author === 'user' ? 'chat chat-end' : 'chat chat-start'">
         <!-- Avatar -->
         <div class="chat-image avatar">
@@ -64,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 
 const open = ref(false)
 const input = ref('')
@@ -76,6 +76,7 @@ const messages = ref([
 ])
 
 const messagesContainer = ref(null)
+const chatPanelRef = ref(null)
 
 watch(messages, async () => {
   await nextTick()
@@ -91,7 +92,18 @@ onMounted(() => {
       micSonar.value = true
     }, 50)
   }, 10000)
+
+  document.addEventListener('mousedown', handleClickOutsideChat)
 })
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', handleClickOutsideChat)
+})
+
+function handleClickOutsideChat(e) {
+  if (open.value && chatPanelRef.value && !chatPanelRef.value.contains(e.target)) {
+    open.value = false
+  }
+}
 
 let recognition = null
 

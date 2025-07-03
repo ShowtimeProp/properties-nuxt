@@ -5,8 +5,8 @@
     </div>
     <transition name="slide-down">
       <div v-if="showTopMenu" class="flex flex-col items-center w-full bg-black mt-3">
-        <span class="text-2xl font-bold text-white tracking-tight select-none mb-1">Showtime Prop</span>
-        <div class="flex gap-8 text-sm font-medium text-white mb-2 items-center">
+        <span class="text-2xl font-bold text-white tracking-tight select-none mb-1 logo-glow">Showtime Prop</span>
+        <div class="flex gap-8 text-sm font-medium text-white mb-2 items-center justify-end">
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Comprar</a>
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Alquilar</a>
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Vender</a>
@@ -19,41 +19,21 @@
             </svg>
             Iniciar Sesión
           </button>
+          <button
+            class="ml-2 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors text-sm flex items-center gap-2"
+            @click="onSaveSearch"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-6V7a2 2 0 00-2-2H7a2 2 0 00-2 2v3m12 0l-6 6-6-6" />
+            </svg>
+            Guardar Esta Búsqueda
+          </button>
         </div>
       </div>
     </transition>
     <!-- Segundo renglón: Buscador siempre visible -->
-    <div class="flex items-center w-full max-w-xl mx-auto py-2 bg-black">
-      <input
-        v-model="searchText"
-        type="text"
-        class="flex-1 rounded-lg border border-cyan-400 bg-gray-900 text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 shadow-sm transition placeholder-gray-400"
-        placeholder="Buscar propiedades con tu voz -->"
-        @focus="showHelp = true; showTopMenu = true"
-        @blur="showHelp = false"
-        @mouseenter="showTopMenu = true"
-        @mouseleave="maybeHideMenu"
-      />
-      <button
-        @click="toggleListening"
-        :aria-label="listening ? 'Escuchando...' : 'Buscar por voz'"
-        class="ml-2 flex items-center justify-center h-10 w-10 rounded-full bg-gray-900 border border-gray-700 text-cyan-400 hover:bg-cyan-400 hover:text-black transition"
-      >
-        <span class="relative z-10 flex items-center justify-center w-full h-full">
-          <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75v1.5m0 0h3m-3 0h-3m6-6.75a3 3 0 11-6 0v-3a3 3 0 116 0v3z" />
-          </svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" class="w-6 h-6 animate-bounce">
-            <path d="M12 1a4 4 0 00-4 4v6a4 4 0 008 0V5a4 4 0 00-4-4zm5 10a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a7 7 0 007-7h-2a5 5 0 01-10 0H5a7 7 0 007 7z"/>
-          </svg>
-        </span>
-      </button>
-      <button
-        class="ml-3 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors"
-        @click="onSaveSearch"
-      >
-        Guardar Esta Búsqueda
-      </button>
+    <div class="flex items-center justify-center max-w-xl mx-auto py-2 bg-black">
+      <span class="text-white text-sm font-bold mx-auto">Menú</span>
     </div>
   </nav>
 </template>
@@ -189,5 +169,22 @@ html, body {
   background: linear-gradient(270deg, #6366f1, #22d3ee, #6366f1, #0ea5e9, #6366f1);
   background-size: 400% 400%;
   animation: animatedGradient 6s ease-in-out infinite;
+}
+@keyframes logoGlow {
+  0% {
+    text-shadow: 0 0 16px #22d3ee, 0 0 32px #6366f1, 0 0 64px #0ea5e9, 0 0 24px #22d3ee;
+  }
+  33% {
+    text-shadow: 0 0 32px #6366f1, 0 0 64px #22d3ee, 0 0 96px #0ea5e9, 0 0 32px #6366f1;
+  }
+  66% {
+    text-shadow: 0 0 32px #0ea5e9, 0 0 64px #6366f1, 0 0 96px #22d3ee, 0 0 32px #0ea5e9;
+  }
+  100% {
+    text-shadow: 0 0 16px #22d3ee, 0 0 32px #6366f1, 0 0 64px #0ea5e9, 0 0 24px #22d3ee;
+  }
+}
+.logo-glow {
+  animation: logoGlow 3s ease-in-out infinite;
 }
 </style> 
