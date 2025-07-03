@@ -16,4 +16,12 @@ html, body, #__nuxt, #__layout {
   margin: 0;
   padding: 0;
 }
+/* Mover el botón del inspector de Nuxt Devtools al ángulo inferior izquierdo */
+#__nuxt-devtools-toggle {
+  top: unset !important;
+  left: 16px !important;
+  bottom: 16px !important;
+  right: unset !important;
+  z-index: 99999 !important;
+}
 </style>

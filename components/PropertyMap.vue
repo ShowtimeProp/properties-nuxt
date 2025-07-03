@@ -11,7 +11,7 @@
     <button 
       ref="toggleButton"
       @click="togglePropertyList"
-      class="absolute top-24 right-24 z-20 flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+      class="absolute top-24 right-24 z-20 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-full shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors"
     >
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />

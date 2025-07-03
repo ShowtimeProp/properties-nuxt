@@ -2,19 +2,19 @@
   <!-- Botón flotante Showy -->
   <button
     style="position: fixed; bottom: 24px; right: 24px; z-index: 9999;"
-    class="bg-white rounded-full p-2 border border-yellow-200 shadow-lg hover:bg-yellow-100 transition flex items-center justify-center"
+    class="bg-white rounded-full p-2 border border-yellow-200 shadow-lg hover:bg-yellow-100 transition flex items-center justify-center animate-float"
     @click="open = true"
     aria-label="Abrir chat Showy"
   >
     <span>
-      <img src="/avatars/showy.png" alt="Showy te Ayuda a Buscar la casa de tus sueños" style="width: 74px; height: 74px; border-radius: 50%; object-fit: cover; box-shadow: 0 2px 12px rgba(253,216,53,0.18);" />
+      <img src="/avatars/showy.png" alt="Showy te Ayuda a Buscar la casa de tus sueños" style="width: 74px; height: 74px; border-radius: 50%; object-fit: contain; object-position: center; box-shadow: 0 2px 12px rgba(253,216,53,0.18); background: #fff;" />
     </span>
   </button>
 
   <!-- Panel de chat -->
   <div v-if="open" style="position: fixed; bottom: 80px; right: 24px; z-index: 9999;" class="w-80 bg-white rounded-xl shadow-xl flex flex-col">
     <div class="flex items-center justify-between p-4 border-b font-bold text-red-600">
-      <span>Showy - Asistente IA</span>
+      <span>Showy - Tu Asistente IA</span>
       <button @click="open = false" class="ml-2 text-gray-400 hover:text-red-600 text-xl font-bold">&times;</button>
     </div>
     <div ref="messagesContainer" class="flex-1 p-4 overflow-y-auto space-y-2">
@@ -24,7 +24,7 @@
           <div class="w-10 rounded-full bg-white flex items-center justify-center">
             <img v-if="msg.author === 'user'" alt="avatar usuario" src="https://img.daisyui.com/images/profile/demo/kenobee@192.webp" />
             <span v-else>
-              <img src="/avatars/showy.png" alt="Showy avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" />
+              <img src="/avatars/showy.png" alt="Showy avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: contain; object-position: center; background: #fff;" />
             </span>
           </div>
         </div>
@@ -68,7 +68,7 @@ const input = ref('')
 const loading = ref(false)
 const listening = ref(false)
 const messages = ref([
-  { author: 'bot', text: '¡Hola! Soy Showy 🤖 ¿Como puedo ayudarte a buscar hoy?', time: getCurrentTime(), footer: 'enviado' }
+  { author: 'bot', text: '¡Hola! Soy Showy 🤖 Y puedo ayudarte a buscar un nuevo hogar, o tu proxima inversion!', time: getCurrentTime(), footer: 'enviado' }
 ])
 
 const messagesContainer = ref(null)
@@ -132,5 +132,13 @@ function getCurrentTime() {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+@keyframes float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+  100% { transform: translateY(0); }
+}
+.animate-float {
+  animation: float 2.4s ease-in-out infinite;
 }
 </style> 
