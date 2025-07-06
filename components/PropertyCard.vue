@@ -1,10 +1,10 @@
 <template>
-  <div :class="['zillow-card group rounded shadow border border-gray-100 overflow-hidden flex flex-col', { 'flipped': isFlipped }]" style="height:282px; width:307px; font-family: 'Roboto', Arial, sans-serif; position:relative;">
+  <div :class="['zillow-card group bg-white rounded shadow border border-gray-100 overflow-hidden flex flex-col', { 'flipped': isFlipped }]" style="height:282px; width:307px; font-family: 'Roboto', Arial, sans-serif; position:relative;">
     <!-- Cara frontal -->
-    <div class="card-face card-front flex flex-col h-full w-full" style="background:#fff;">
+    <div class="card-face card-front flex flex-col h-full w-full">
       <!-- Imagen principal -->
       <div class="relative w-full" style="aspect-ratio:16/9; min-height:0;">
-        <ClientOnly>
+        <client-only>
           <Swiper
             v-if="property.images?.length"
             :modules="[Pagination, Navigation]"
@@ -18,11 +18,11 @@
             class="h-full w-full"
           >
             <SwiperSlide v-for="(img, idx) in property.images" :key="idx">
-              <img
-                :src="img"
-                :alt="`Foto de la propiedad ${idx + 1}`"
-                class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105 cursor-pointer"
-                @click="$emit('open-modal', property)"
+              <img 
+                :src="img" 
+                :alt="`Foto de la propiedad ${idx + 1}`" 
+                @click.stop="handleImageClick"
+                class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105 cursor-pointer" 
               />
             </SwiperSlide>
             <!-- Flechas personalizadas dentro del Swiper -->
@@ -32,23 +32,23 @@
             <button v-if="showNextButton && property.images.length > 1" class="swiper-button-next-custom" @click.stop="slideNext" aria-label="Siguiente">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
             </button>
-            <div v-else class="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100">
-              <div class="text-center">
-                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p class="text-sm">Sin imágenes</p>
-              </div>
-            </div>
           </Swiper>
-          <!-- Botón de favorito SVG puro -->
-          <button @click="handleFavoriteClick" class="absolute top-3 right-3 z-20 favorite-btn flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 group/fav" :aria-pressed="isFavorite">
-            <svg :class="['h-10 w-10 transition-all duration-300 heart-outline', isFavorite ? 'fill-rose-600' : 'fill-black35', 'group-hover/fav:animate-fav-pulse']" viewBox="0 0 24 24" stroke-width="2" :stroke="'#fff'">
+          <div v-else class="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100">
+              <div class="text-center">
+              <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p class="text-sm">Sin imágenes</p>
+              </div>
+          </div>
+          <!-- Botón de favorito -->
+          <button @click.stop="handleFavoriteClick" class="absolute top-3 right-3 z-20 favorite-btn flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 group/fav" :aria-pressed="isFavorite">
+            <svg :class="['h-10 w-10 transition-all duration-300 heart-outline', isFavorite ? 'fill-red-500' : 'fill-black35', 'group-hover/fav:animate-fav-pulse']" viewBox="0 0 24 24" stroke-width="2" :stroke="'#fff'">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
             </svg>
           </button>
-        </ClientOnly>
-        <!-- Badge dinámico -->
+        </client-only>
+        <!-- Badge -->
         <div v-if="property.badge" class="absolute top-3 left-3 z-10 badge-zillow flex items-center gap-1">
           <template v-if="property.badge === '3D TOUR'">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M21 7.5l-9-5.25-9 5.25M21 7.5v9l-9 5.25-9-5.25v-9"/><path d="M3.27 6.96l8.73 5.19 8.73-5.19"/></svg>
@@ -57,87 +57,54 @@
         </div>
       </div>
       <!-- Contenido -->
-      <div class="flex-1 flex flex-col justify-between px-4 py-2 gap-1 overflow-visible">
-        <!-- Precio y expensas (primer renglón) -->
+      <div class="flex-1 flex flex-col justify-between px-4 py-2 gap-1" @click.stop="handleContentClick">
         <div>
           <div class="flex items-center gap-2 mb-1">
             <span class="zillow-price">{{ formatCurrency(property.price) }}</span>
             <span v-if="property.expenses" class="zillow-expenses">+ {{ formatCurrency(property.expenses) }} exp.</span>
           </div>
         </div>
-        <!-- Dirección y zona/localidad (segundo renglón) -->
         <div class="flex items-center gap-2 text-xs text-gray-700 mb-1">
           <span class="truncate">{{ property.address }}</span>
           <span v-if="property.zone || property.localidad" class="mx-1 text-gray-300">|</span>
           <span class="truncate">{{ property.zone || property.localidad }}</span>
         </div>
-        <!-- Características principales (tercer renglón) -->
         <div class="flex items-center gap-3 text-xs text-gray-700 mb-1 zillow-features">
-          <span>{{ property.total_surface }} m² tot.</span>
-          <span class="mx-1 text-gray-300">|</span>
-          <span>{{ property.ambience }} amb.</span>
-          <span class="mx-1 text-gray-300">|</span>
-          <div class="flex items-center gap-4">
-            <div class="flex flex-col items-center justify-center">
-              <svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7v11m0-4h18m0 4v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"/><path d="M7 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg>
-              <span>{{ property.bedrooms }}</span>
-            </div>
-            <div class="flex flex-col items-center justify-center">
-              <svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12h16a1 1 0 0 1 1 1v3a4 4 0 0 1-4 4h-10a4 4 0 0 1-4-4v-3a1 1 0 0 1 1-1z"/><path d="M6 12v-7a2 2 0 0 1 2-2h3v2.25"/><path d="M4 21l1-1.5"/><path d="M20 21l-1-1.5"/></svg>
-              <span>{{ property.bathrooms }}</span>
-            </div>
-            <div class="flex flex-col items-center justify-center">
-              <svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
-              <span>{{ property.garage_count }}</span>
-            </div>
-          </div>
+          <span v-if="property.total_surface">{{ property.total_surface }} m² tot.</span>
+          <span v-if="property.ambience"><span class="mx-1 text-gray-300">|</span>{{ property.ambience }} amb.</span>
+          <span v-if="property.bedrooms"><span class="mx-1 text-gray-300">|</span><svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7v11m0-4h18m0 4v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"/><path d="M7 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg> {{ property.bedrooms }}</span>
+          <span v-if="property.bathrooms"><span class="mx-1 text-gray-300">|</span><svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12h16a1 1 0 0 1 1 1v3a4 4 0 0 1-4 4h-10a4 4 0 0 1-4-4v-3a1 1 0 0 1 1-1z"/><path d="M6 12v-7a2 2 0 0 1 2-2h3v2.25"/><path d="M4 21l1-1.5"/><path d="M20 21l-1-1.5"/></svg> {{ property.bathrooms }}</span>
+          <span v-if="property.garage_count"><span class="mx-1 text-gray-300">|</span><svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg> {{ property.garage_count }}</span>
         </div>
-        <!-- Inmobiliaria (cuarto renglón) -->
         <div class="text-[10px] text-gray-400 mt-1 truncate">{{ property.realty }}</div>
-        <!-- Icono compartir -->
-        <div class="absolute bottom-3 right-3 z-20" @click.stop="isFlipped = true">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 opacity-80 transition-all duration-200 cursor-pointer share-icon">
-            <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.475l6.733-3.366A2.52 2.52 0 0 1 13 4.5Z" />
-          </svg>
-        </div>
       </div>
-      <!-- Flecha centrada -->
-      <div class="card-arrow" />
-    </div>
-    <!-- Cara trasera: título, input, botón y compartir -->
-    <div class="card-face card-back flex flex-col items-center justify-center w-full bg-gray-900 p-6">
-      <div class="text-lg font-semibold text-gray-100 mb-6">¡Enterate si baja de precio!</div>
-      <div class="w-full max-w-xs flex flex-col items-center">
-        <input
-          v-model="whatsapp"
-          type="text"
-          placeholder="+549 223 353-3333 <-Tu WhatsApp"
-          class="rounded px-3 py-2 w-full bg-gray-800 text-white placeholder-gray-400 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 mb-4"
-          style="box-sizing: border-box;"
-        />
-        <button
-          v-if="whatsapp"
-          @click="sendWhatsapp"
-          class="w-full py-2 rounded bg-gradient-to-r from-cyan-400 via-indigo-500 to-cyan-500 text-white font-semibold shadow-md transition-all duration-200 hover:shadow-lg hover:from-cyan-300 hover:to-indigo-400 focus:outline-none mb-4"
-        >Enviar Alerta de Precio</button>
-        <!-- Botón compartir SIEMPRE visible -->
-        <button
-          @click="shareProperty"
-          class="w-full py-3 rounded-lg text-base font-semibold text-white shadow-lg share-btn-anim flex items-center justify-center gap-2 transition-all duration-200"
-          style="background: linear-gradient(90deg, #38e8ff 0%, #6366f1 50%, #06b6d4 100%); box-shadow: 0 0 12px #38e8ff88, 0 0 24px #6366f188; letter-spacing:0.01em; text-transform: capitalize;"
-        >
-          Comparti Esta Propiedad
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.475l6.733-3.366A2.52 2.52 0 0 1 13 4.5Z" />
-          </svg>
+      <!-- Botones de acción -->
+      <div class="flex justify-end items-center p-2 border-t border-gray-100">
+        <button @click.stop="isFlipped = !isFlipped" class="text-gray-500 hover:text-indigo-600 transition-colors p-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" /></svg>
+        </button>
+        <button @click.stop="$emit('close')" class="text-gray-500 hover:text-red-600 transition-colors p-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
         </button>
       </div>
+    </div>
+    <!-- Cara trasera -->
+    <div class="card-face card-back flex flex-col h-full w-full p-4 justify-center items-center text-center bg-gray-50">
+      <h3 class="font-bold text-lg mb-2">Contactar</h3>
+      <p class="text-sm text-gray-600 mb-4">¿Te interesa esta propiedad?</p>
+      <button @click.stop="isFlipped = !isFlipped" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+      <button class="w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-green-600 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg>
+        Contactar por WhatsApp
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { defineProps, ref, onMounted, watch, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import 'swiper/css/navigation';
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination, Navigation } from 'swiper/modules'
@@ -147,22 +114,25 @@ import 'swiper/css/pagination'
 const props = defineProps({
   property: {
     type: Object,
-    required: true
+    default: () => ({})
   },
   isFavorite: {
     type: Boolean,
     default: false
   },
-  isLoggedIn: Boolean
+  isLoggedIn: {
+    type: Boolean,
+    default: false
+  }
 })
+
+const emit = defineEmits(['toggle-favorite', 'close', 'open-modal', 'login-request'])
+
+const isFlipped = ref(false)
 const swiperRef = ref(null)
 const swiperInstance = ref(null)
 const showPrevButton = ref(false)
 const showNextButton = ref(false)
-const isFlipped = ref(false)
-const flipKey = ref(0)
-const whatsapp = ref("")
-const emit = defineEmits(['toggle-favorite', 'open-modal', 'login-request'])
 
 function onSwiper(swiper) {
   swiperInstance.value = swiper
@@ -186,23 +156,15 @@ function slideNext() {
     swiperInstance.value.slideNext()
   }
 }
+
 onMounted(() => {
   if (swiperRef.value && swiperRef.value.swiper) {
     swiperInstance.value = swiperRef.value.swiper
     updateNav(swiperInstance.value)
     swiperInstance.value.on('slideChange', () => updateNav(swiperInstance.value))
   }
-  document.addEventListener('mousedown', handleClickOutside)
 })
-onBeforeUnmount(() => {
-  document.removeEventListener('mousedown', handleClickOutside)
-})
-function handleClickOutside(event) {
-  const card = event.target.closest('.zillow-card');
-  if (!card) {
-    isFlipped.value = false;
-  }
-}
+
 function formatCurrency(price) {
   let num;
   if (typeof price === 'string') {
@@ -217,58 +179,55 @@ function formatCurrency(price) {
   return `U$D ${formattedPrice}`;
 }
 
-watch(isFlipped, (val) => {
-  if (val) {
-    flipKey.value++
-  }
-})
-
-function sendWhatsapp() {
-  whatsapp.value = ''
-}
-function shareProperty() {
-  if (navigator.share) {
-    navigator.share({
-      title: 'Propiedad en venta',
-      text: '¡Mirá esta propiedad!',
-      url: window.location.href
-    })
-  } else {
-    alert('Tu navegador no soporta compartir')
-  }
-}
-
-function handleFavoriteClick(event) {
-  event.stopPropagation()
+function handleFavoriteClick() {
   if (!props.isLoggedIn) {
     emit('login-request')
-    return
+  } else {
+    emit('toggle-favorite')
   }
-  emit('toggle-favorite', props.property)
+}
+
+function handleImageClick(event) {
+  event.stopPropagation();
+  emit('open-modal');
+}
+
+function handleContentClick(event) {
+  // Solo abrir modal si no se hizo clic en un botón dentro del contenido
+  if (event.target.closest('button')) return;
+  emit('open-modal');
 }
 </script>
 
 <style scoped>
 .zillow-card {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  perspective: 1000px;
   transition: box-shadow 0.2s, transform 0.2s;
-  width: 307px;
   border-radius: 4px;
-  position: relative;
-  perspective: 1200px;
-}
-@media (max-width: 640px) {
-  .zillow-card {
-    width: 100% !important;
-    min-width: 0;
-  }
 }
 .zillow-card:hover {
   box-shadow: 0 8px 24px rgba(0,0,0,0.13);
   transform: translateY(-2px) scale(1.01);
 }
-.zillow-fav-btn, .zillow-heart, .sonar-effect, .pulse {
-  display: none !important;
+.card-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  transition: transform 0.6s;
+}
+.card-front {
+  transform: rotateY(0deg);
+}
+.card-back {
+  transform: rotateY(180deg);
+  background-color: #f9fafb; /* bg-gray-50 */
+}
+.zillow-card.flipped .card-front {
+  transform: rotateY(-180deg);
+}
+.zillow-card.flipped .card-back {
+  transform: rotateY(0deg);
 }
 .badge-zillow {
   background: linear-gradient(90deg, #6366f1 0%, #06b6d4 100%);
@@ -279,47 +238,23 @@ function handleFavoriteClick(event) {
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 .zillow-price {
-  font-size: 1.08rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: #222;
+  letter-spacing: -0.5px;
 }
 .zillow-expenses {
   font-size: 0.85rem;
   color: #888;
   font-weight: 400;
-  margin-left: 2px;
 }
-.text-xs {
-  font-size: 0.85rem;
-}
-.zillow-features {
-  font-size: 0.85rem;
-}
-.text-[10px] {
-  font-size: 0.68rem;
-}
-.card-arrow {
-  position: absolute;
-  left: 50%;
-  bottom: -18px;
-  transform: translateX(-50%);
-  width: 32px;
-  height: 18px;
-  z-index: 40;
-  pointer-events: none;
-  background: none;
-}
-.card-arrow::after {
-  content: '';
-  display: block;
-  width: 32px;
-  height: 18px;
-  background: none;
-  mask: url('data:image/svg+xml;utf8,<svg width="32" height="18" viewBox="0 0 32 18" xmlns="http://www.w3.org/2000/svg"><polygon points="16,18 0,0 32,0" fill="white" stroke="%23e5e7eb" stroke-width="1"/></svg>') no-repeat center/contain;
-  -webkit-mask: url('data:image/svg+xml;utf8,<svg width="32" height="18" viewBox="0 0 32 18" xmlns="http://www.w3.org/2000/svg"><polygon points="16,18 0,0 32,0" fill="white" stroke="%23e5e7eb" stroke-width="1"/></svg>') no-repeat center/contain;
-  background-color: #fff;
+.zillow-features .icon-inline {
+  display: inline-block;
+  vertical-align: middle;
+  margin-bottom: 2px;
 }
 :deep(.swiper-pagination-bullet) {
   background: #fff !important;
@@ -340,7 +275,7 @@ function handleFavoriteClick(event) {
   padding: 0;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.3s;
   pointer-events: none;
 }
 .group:hover .swiper-button-prev-custom,
@@ -354,119 +289,31 @@ function handleFavoriteClick(event) {
 .swiper-button-next-custom {
   right: 8px;
 }
-.fill-heart-translucent {
-  fill: rgba(239,68,68,0.55);
+.swiper-button-prev-custom:hover,
+.swiper-button-next-custom:hover {
+  opacity: 1;
+}
+.favorite-btn {
+  border: none;
+  background: transparent;
+  padding: 0.35rem;
+}
+.heart-outline {
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.10));
+}
+.group-hover\/fav\:animate-fav-pulse:hover {
+  animation: fav-pulse 0.7s;
+}
+@keyframes fav-pulse {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.18); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.fill-red-500 {
+  fill: #ef4444;
 }
 .fill-black35 {
-  fill: rgba(0,0,0,0.22);
-}
-.share-icon:hover {
-  transform: translateY(-4px) scale(1.18);
-  opacity: 1;
-  filter: drop-shadow(0 0 6px #38e8ff) drop-shadow(0 0 12px #6366f1);
-}
-.card-face {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0; left: 0;
-  backface-visibility: hidden;
-  transition: transform 0.6s cubic-bezier(.4,2,.6,1);
-  border-radius: 8px;
-  background: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  overflow: hidden;
-}
-.card-front {
-  z-index: 2;
-  transform: rotateY(0deg);
-}
-.card-back {
-  z-index: 3;
-  transform: rotateY(180deg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 12px;
-  background: #111827;
-  border: none !important;
-  box-shadow: none !important;
-}
-.zillow-card.flipped .card-front {
-  transform: rotateY(-180deg);
-}
-.zillow-card.flipped .card-back {
-  transform: rotateY(0deg);
-}
-.card-back-animated {
-  position: relative;
-  z-index: 1;
-  overflow: visible;
-}
-.svg-animated-border {
-  stroke-dasharray: 400 800;
-  stroke-dashoffset: 0;
-  animation: scanBorder 6s linear infinite;
-  filter: drop-shadow(0 0 3px #38e8ff) drop-shadow(0 0 6px #6366f1);
-}
-.svg-animated-border-delay {
-  animation-delay: 3s;
-}
-@keyframes scanBorder {
-  to {
-    stroke-dashoffset: -1200;
-  }
-}
-/* CSS animación línea */
-.line-anim {
-  filter: drop-shadow(0 0 6px #38e8ff) drop-shadow(0 0 12px #6366f1);
-  animation: moveLine 2.5s linear infinite alternate;
-}
-@keyframes moveLine {
-  0% { transform: translateX(0); opacity: 1; }
-  100% { transform: translateX(240px); opacity: 1; }
-}
-.share-btn-anim:hover {
-  box-shadow: 0 0 24px 4px #38e8ffcc, 0 0 48px 8px #6366f1cc;
-  filter: brightness(1.1) saturate(1.2);
-  background: linear-gradient(270deg, #38e8ff, #6366f1, #06b6d4, #38e8ff);
-  background-size: 400% 400%;
-  animation: btnGlowMove 2s linear infinite;
-}
-@keyframes btnGlowMove {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
-}
-@keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
-}
-.animate-marquee {
-  animation: marquee 8s linear infinite;
-}
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
-.animated-input-border {
-  border-radius: 0.375rem;
-  border: 2px solid transparent;
-  box-sizing: border-box;
-  pointer-events: none;
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  /* Borde animado con gradiente */
-  border-image: linear-gradient(90deg, #38e8ff, #6366f1, #06b6d4, #38e8ff) 1;
-  animation: borderLightMove 2.5s linear infinite;
-}
-@keyframes borderLightMove {
-  0% { border-image-source: linear-gradient(90deg, #38e8ff, #6366f1, #06b6d4, #38e8ff); }
-  100% { border-image-source: linear-gradient(270deg, #38e8ff, #6366f1, #06b6d4, #38e8ff); }
+  fill: rgba(0,0,0,0.35);
 }
 </style>

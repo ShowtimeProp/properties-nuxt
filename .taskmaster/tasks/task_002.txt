@@ -1,0 +1,18 @@
+# Task ID: 2
+# Title: Develop Core PostgreSQL Database Schema
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Design and implement the main PostgreSQL database schema for property listings and core data.
+# Details:
+1. Design tables for properties, amenities, locations, etc.
+2. Implement database migrations using Alembic
+3. Set up indexes for optimized querying
+4. Create stored procedures for common operations
+5. Implement data validation and constraints
+6. Set up replication for high availability
+
+# Test Strategy:
+1. Unit tests for database models
+2. Integration tests for complex queries
+3. Performance tests for indexed queries

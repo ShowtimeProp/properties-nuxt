@@ -1,0 +1,18 @@
+# Task ID: 6
+# Title: Implement Qdrant Vector Database Integration
+# Status: pending
+# Dependencies: 2, 3
+# Priority: medium
+# Description: Integrate Qdrant for semantic search on property listings and client-property matching.
+# Details:
+1. Set up Qdrant instance (version 1.1.x)
+2. Design vector schema for property listings
+3. Implement data ingestion pipeline from PostgreSQL to Qdrant
+4. Create FastAPI endpoints for vector search
+5. Implement semantic search algorithms
+6. Optimize search performance and relevance
+
+# Test Strategy:
+1. Unit tests for vector operations
+2. Integration tests for search functionality
+3. Performance tests for search latency and accuracy

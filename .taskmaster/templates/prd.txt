@@ -1,0 +1,82 @@
+<context>
+# Overview
+This document outlines the Product Requirements for "Showy Prop-SaaS", a multi-tenant SaaS platform for real estate realtors. The system aims to solve the core problem of fragmented workflows in the real estate industry by providing an all-in-one solution. It's designed for independent realtors and agencies, offering them a branded front-end portal for clients and a powerful back-end dashboard to manage leads, transactions, and marketing. The key value is a massive productivity boost through AI-driven automation and process management, allowing realtors to focus on closing deals rather than on repetitive administrative tasks.
+
+# Core Features
+1.  **Multi-Tenant Realtor Platform:** Each realtor/agency gets a dedicated, brandable instance with a custom subdomain/domain. This includes a public-facing property search portal and a private back-end dashboard.
+2.  **Advanced CRM & Lead Management:** The realtor dashboard will serve as a central hub to manage clients, track their front-end activity (viewed properties, favorites, showings), and visualize their journey through the sales/rental funnel.
+3.  **Transaction Process Management:** For each transaction type (Buy, Sell, Rent), the system defines a clear pipeline with distinct stages (e.g., Lead, Showing, Contract, Closing). Each stage will have a predefined checklist of tasks, providing a clear action plan for the realtor.
+4.  **Dual AI Assistant System:**
+    *   **"Showy" (Client-Facing Assistant):** An AI chatbot on the front-end portal that guides users in their property search, answers questions, and schedules showings. It captures user needs to build a comprehensive client profile.
+    *   **"Manager AI" (Realtor Assistant):** A back-end AI that monitors the realtor's tasks, tracks client progress through the transaction stages, and provides proactive nudges and suggestions to keep deals moving forward. It also assists in creating marketing materials like Comparative Market Analyses (CMAs).
+5.  **One-Click Property Syndication:** Realtors can list new properties and, with a single click, publish them to major real estate portals (both free and paid) via an API integration.
+6.  **Centralized Messaging Inbox:** A unified inbox that consolidates communications from WhatsApp, Email, Instagram, and the web portal, organized by client or property.
+7.  **Marketing & Lead Generation Tools:**
+    *   Social Media Content Automation: An n8n agent to schedule and post content based on active listings.
+    *   Referral System: QR-code-based system to track leads from referrers and manage commissions.
+    *   Dynamic QR Codes for Signage: Realtors can generate dynamic QR codes for physical signs, allowing the URL to be updated for new properties without reprinting the sign.
+8.  **Automated Email Sequences:** Upon registration, clients receive a series of automated emails (welcome, tips, market stats) tailored to their transaction type (Buy, Sell, Rent).
+
+# User Experience
+-   **User Personas:**
+    *   **The Realtor:** Tech-savvy but time-poor. Needs efficiency, automation, and a clear overview of their business. They want to spend more time with clients and less on admin.
+    *   **The Client (Buyer/Seller/Renter):** Expects a modern, seamless digital experience. Wants guidance, easy access to information, and feels supported throughout the process.
+-   **Key User Flows:**
+    *   **Client Registration:** A client registers on a realtor's portal, triggering the welcome email sequence and creating a new lead in the realtor's CRM.
+    *   **Property Search:** The client interacts with "Showy" to find properties, and their search criteria and conversations are saved to their profile.
+    *   **Transaction Management:** A realtor advances a client from the "Showing" stage to the "Contract" stage, which automatically archives old tasks and generates a new checklist for the new stage.
+</context>
+<PRD>
+# Technical Architecture
+-   **Frontend:** Nuxt.js for both the client-facing portals and the realtor's dashboard.
+-   **Backend Services:**
+    *   **FastAPI:** Main API layer for core business logic.
+    *   **Supabase:** Primary user management, authentication, multi-tenancy control, and storing realtor/client-specific data (CRM, transaction state, etc.). It will reference property data from the main PostgreSQL DB.
+    - **PostgreSQL:** Main transactional database for property listings and core data.
+    *   **Qdrant:** Vector database for semantic search on property listings (for "Showy") and potentially for matching clients to properties.
+-   **Automation & AI:**
+    *   **n8n, Flowise, Evo AI:** Workflow automation engines for tasks like social media posting, email sequences, and complex agentic workflows.
+    - **Evolution API:** For WhatsApp integration into the centralized inbox.
+    - **RabbitMQ:** Message broker for communication between services.
+    - **Celery:** For handling asynchronous tasks like property syndication and email sending.
+-   **Infrastructure:** Docker Swarm stack managed via Portainer on a VPS.
+
+# Development Roadmap
+**Phase 1: Minimum Viable Product (MVP) - The Core Realtor Tool**
+1.  **Realtor Authentication & Tenant Scaffolding (Supabase):** Setup user registration/login for realtors. Create the basic schema to separate data per realtor (multi-tenancy).
+2.  **Basic Realtor Dashboard:** A simple dashboard where a realtor can manually add/edit/view their clients and properties.
+3.  **Property & Client CRM:** Implement the core database models in Supabase for Properties (simplified, referencing main DB), Clients, and the relationship between them (e.g., favorites).
+4.  **Client-Facing Portal (Nuxt):** Create a single, non-branded version of the front-end portal. It will display properties from the database and have a simple search/filter function.
+5.  **Basic Registration Flow:** Implement the email/password and Google OAuth registration for clients on the front-end portal, linked to a specific realtor.
+6.  **"Showy" v0.1 (Frontend Chatbot):** A basic version of the chatbot that can answer predefined questions. No complex property search yet.
+7.  **Manual Transaction Tracking:** Implement the UI for the transaction stages pipeline, but require the realtor to manually move clients between stages and check off tasks.
+
+**Phase 2: Intelligence and Automation**
+1.  **"Manager AI" v0.1:** Implement the logic that generates checklists when a client enters a new transaction stage.
+2.  **"Showy" v1.0 (Vector Search):** Integrate the chatbot with FastAPI and Qdrant to enable natural language property searches on the map.
+3.  **Conversation Summarization:** "Showy" conversations are summarized and saved to the client's profile in the CRM.
+4.  **Centralized Inbox v0.1:** Integrate with Evolution API to pull WhatsApp messages into the dashboard.
+5.  **Automated Email Sequences:** Integrate n8n to trigger welcome/nurturing email sequences on new client registration.
+
+**Phase 3: Ecosystem Expansion**
+1.  **Full Multi-Tenancy:** Implement custom domain/subdomain mapping and branding options for realtors.
+2.  **One-Click Syndication:** Build the Celery tasks and FastAPI endpoints to post listings to external portals.
+3.  **Advanced Marketing Tools:** Develop the referral system and dynamic QR code generation.
+4.  **"Manager AI" v1.0 (CMA & Proactive Assistance):** Integrate the AI with market data to generate listing presentations and provide proactive task reminders.
+5.  **Full Centralized Inbox:** Add Email and Social Media DMs to the unified inbox.
+
+# Logical Dependency Chain
+1.  **Foundation:** Supabase setup (Auth, DB schema) is the absolute first step. It governs everything.
+2.  **Core Data:** Next, build the basic CRUD (Create, Read, Update, Delete) operations for properties and clients in the realtor's dashboard. A realtor must be able to manage their inventory and clients before anything else.
+3.  **Client Interaction:** With data in place, build the client-facing portal so they can view properties and register. This creates the lead flow.
+4.  **Connect the Dots:** Implement the transaction pipeline UI, allowing realtors to manually track the progress of the leads generated from the portal.
+5.  **Layer in AI:** Once the manual flow works, introduce "Showy" for search and "Manager AI" for task automation. The AI assists and enhances a pre-existing, functional workflow.
+
+# Risks and Mitigations
+-   **Risk:** Project scope is massive.
+    -   **Mitigation:** Strict adherence to the phased roadmap. Do not start Phase 2 features until the MVP is solid and validated.
+-   **Risk:** Complexity of AI integration.
+    -   **Mitigation:** Start with the simplest versions first (e.g., "Showy" with FAQ answers before vector search). Use managed services like n8n to reduce development overhead for automation.
+-   **Risk:** Data synchronization between PostgreSQL and Supabase.
+    -   **Mitigation:** Define a clear data ownership model. PostgreSQL is the source of truth for property data; Supabase holds user/CRM/transaction data and only references property IDs.
+</PRD> 

@@ -1,0 +1,19 @@
+# Task ID: 11
+# Title: Implement n8n Workflow for Social Media Automation
+# Status: pending
+# Dependencies: 3, 5
+# Priority: low
+# Description: Set up n8n to automate social media content posting based on active listings.
+# Details:
+1. Set up n8n instance (latest stable version)
+2. Design workflow for fetching active listings from API
+3. Implement content generation logic (e.g., using GPT-3)
+4. Create nodes for posting to various social media platforms
+5. Set up scheduling for periodic posting
+6. Implement error handling and notifications
+7. Integrate with realtor dashboard for manual trigger and overview
+
+# Test Strategy:
+1. Unit tests for individual n8n nodes
+2. Integration tests for end-to-end workflow
+3. Manual review of generated content

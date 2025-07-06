@@ -1,0 +1,48 @@
+# Task ID: 16
+# Title: Implement Profile Completion Page After First Login
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Create a dedicated profile page at `/profile` that displays user information and allows editing. After login, redirect users with incomplete profiles to this page with a toast notification prompting them to complete their information.
+# Details:
+1. Design a responsive dedicated profile page at `/profile` route
+2. Implement form with fields for full name and WhatsApp number
+3. Add client-side validation for both fields:
+   - Full name: Ensure it's not empty and follows proper name format
+   - WhatsApp: Validate phone number format with country code
+4. Create Supabase function to update the 'profiles' table with the collected information
+5. Implement logic to detect incomplete profiles:
+   - Check if user profile is incomplete in the 'profiles' table (e.g., missing full_name)
+   - Redirect to `/profile` if incomplete, or to main dashboard if complete
+6. Add toast notification system to prompt users to complete their profile when redirected to `/profile`
+7. Display current profile information if it exists and allow editing
+8. Implement error handling for database operations
+9. Create success feedback after profile completion
+10. Ensure the solution works with both authentication methods (email/password and Google OAuth)
+11. Update user context/state after profile completion
+12. Add a "Save Changes" button to submit profile updates
+13. Implement proper navigation options to return to dashboard after completion
+
+# Test Strategy:
+1. Unit tests:
+   - Test form validation logic for both fields
+   - Test Supabase update functions with mock data
+   - Test profile completion detection logic
+
+2. Integration tests:
+   - Test end-to-end flow from login to profile completion
+   - Verify database updates correctly after form submission
+   - Test redirection logic (to profile page or dashboard based on completion status)
+   - Test with both authentication methods (email/password and Google OAuth)
+
+3. User acceptance testing:
+   - Verify toast notification appears correctly when redirected to profile page
+   - Test form submission with valid and invalid data
+   - Verify user experience on different devices and screen sizes
+   - Test navigation between profile page and dashboard
+
+4. Edge case testing:
+   - Test behavior when user refreshes page during profile completion
+   - Test when network connection is lost during submission
+   - Verify handling of special characters in name fields
+   - Test behavior when a user manually navigates to `/profile`

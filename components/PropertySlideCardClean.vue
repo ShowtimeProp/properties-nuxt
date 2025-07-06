@@ -30,20 +30,20 @@
           <button v-if="showNextButton && property.images.length > 1" class="swiper-button-next-custom" @click.stop="slideNext" aria-label="Siguiente">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
           </button>
-          <div v-else class="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100">
-            <div class="text-center">
-              <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p class="text-sm">Sin imágenes</p>
-            </div>
-          </div>
         </Swiper>
+        <div v-else class="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100">
+            <div class="text-center">
+            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p class="text-sm">Sin imágenes</p>
+            </div>
+        </div>
         <!-- Botón de favorito SVG puro -->
         <button @click.stop="handleFavoriteClick" class="absolute top-3 right-3 z-20 favorite-btn flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 group/fav" :aria-pressed="isFavorite">
-          <svg :class="['h-10 w-10 transition-all duration-300 heart-outline', isFavorite ? 'fill-red-500' : 'fill-black35', 'group-hover/fav:animate-fav-pulse']" viewBox="0 0 24 24" stroke-width="2" :stroke="'#fff'">
+            <svg :class="['h-10 w-10 transition-all duration-300 heart-outline', isFavorite ? 'fill-red-500' : 'fill-black35', 'group-hover/fav:animate-fav-pulse']" viewBox="0 0 24 24" stroke-width="2" :stroke="'#fff'">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-          </svg>
+            </svg>
         </button>
       </client-only>
       <!-- Badge dinámico -->
@@ -84,14 +84,15 @@
 </template>
 
 <script setup>
-import { defineProps, ref, onMounted, watch } from 'vue'
+import { defineProps, ref, onMounted, watch, computed } from 'vue'
 import 'swiper/css/navigation';
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination, Navigation } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/pagination'
+import { useFavoritesStore } from '~/stores/favorites';
+import { useToast } from 'vue-toastification';
 
-const swiperId = `swiper-clean-${Math.random().toString(36).substring(7)}`;
 const props = defineProps({
   property: {
     type: Object,
@@ -117,10 +118,6 @@ const props = defineProps({
       tags: ['Nueva construcción', 'Balcón', 'Cocina integrada']
     })
   },
-  isFavorite: {
-    type: Boolean,
-    default: false
-  },
   isLoggedIn: {
     type: Boolean,
     default: false
@@ -128,13 +125,22 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['toggle-favorite', 'open-modal', 'activate-sonar', 'login-request'])
+
 const property = props.property
 const swiperRef = ref(null)
 const swiperInstance = ref(null)
 const showPrevButton = ref(false)
 const showNextButton = ref(false)
 const favSonarKey = ref(Date.now())
-watch(() => props.isFavorite, () => { favSonarKey.value = Date.now(); })
+const favoritesStore = useFavoritesStore()
+const toast = useToast()
+
+const isFavorite = computed(() => {
+  if (!property || !property.id) return false;
+  return favoritesStore.isFavorite(property.id);
+})
+
+watch(() => isFavorite.value, () => { favSonarKey.value = Date.now(); })
 
 function onSwiper(swiper) {
   swiperInstance.value = swiper
@@ -158,6 +164,7 @@ function slideNext() {
     swiperInstance.value.slideNext()
   }
 }
+
 onMounted(() => {
   if (swiperRef.value && swiperRef.value.swiper) {
     swiperInstance.value = swiperRef.value.swiper
@@ -165,6 +172,7 @@ onMounted(() => {
     swiperInstance.value.on('slideChange', () => updateNav(swiperInstance.value))
   }
 })
+
 function formatCurrency(price) {
   let num;
   if (typeof price === 'string') {
@@ -182,18 +190,15 @@ function formatCurrency(price) {
 function handleSwiperClick(event) {
   event.stopPropagation();
   event.preventDefault();
-  // Marcar el evento para que el padre lo ignore
   event.__fromSwiper = true;
   emit('open-modal', property);
 }
 
 function handleCardClick(event) {
-  // Si el click fue en el área del Swiper, no hacer nada (ya se maneja en handleSwiperClick)
   if (event.__fromSwiper) return;
   if (event.target.closest('.swiper') || event.target.closest('img')) {
     return;
   }
-  // Emitir un evento diferente para activar el efecto sonar en lugar del card
   emit('activate-sonar', property);
 }
 
@@ -201,7 +206,8 @@ function handleFavoriteClick() {
   if (!props.isLoggedIn) {
     emit('login-request')
   } else {
-    emit('toggle-favorite', property)
+    emit('toggle-favorite', props.property) // Emit event to parent
+    // The toast notifications should be handled by the parent that also handles the store logic
   }
 }
 </script>
@@ -253,7 +259,6 @@ function handleFavoriteClick() {
   height: 16px;
   margin-right: 2px;
 }
-/* Cambiar color de los bullets de Swiper a blanco */
 :deep(.swiper-pagination-bullet) {
   background: #fff !important;
   opacity: 0.7 !important;
@@ -273,7 +278,6 @@ function handleFavoriteClick() {
   color: #888;
   margin-top: 1px;
 }
-/* Flechas ocultas por defecto y visibles solo en hover */
 :deep(.swiper-button-prev-custom),
 :deep(.swiper-button-next-custom) {
   opacity: 0;
@@ -330,11 +334,11 @@ function handleFavoriteClick() {
   50% { transform: scale(1.08); }
   100% { transform: scale(1); }
 }
-.fill-none {
-  fill: none;
-}
 .fill-red-500 {
   fill: #ef4444;
+}
+.fill-black35 {
+  fill: rgba(0,0,0,0.35);
 }
 .text-red-500 {
   stroke: #ef4444;
@@ -358,8 +362,5 @@ function handleFavoriteClick() {
   0% { r: 0; opacity: 0.5; }
   60% { r: 12; opacity: 0.2; }
   100% { r: 20; opacity: 0; }
-}
-.fill-black35 {
-  fill: rgba(0,0,0,0.35);
 }
 </style>

@@ -1,0 +1,18 @@
+# Task ID: 8
+# Title: Implement Transaction Pipeline UI
+# Status: pending
+# Dependencies: 5
+# Priority: medium
+# Description: Develop the UI for the transaction stages pipeline in the realtor dashboard.
+# Details:
+1. Design UI components for pipeline stages (Lead, Showing, Contract, Closing)
+2. Implement drag-and-drop functionality for moving clients between stages
+3. Create task checklists for each stage
+4. Implement progress tracking and visualization
+5. Add notifications for stage transitions
+6. Integrate with FastAPI backend for data persistence
+
+# Test Strategy:
+1. Unit tests for pipeline components
+2. Integration tests for stage transitions
+3. Usability testing with real estate professionals

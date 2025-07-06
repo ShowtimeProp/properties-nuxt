@@ -1,0 +1,306 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Supabase Authentication and Multi-Tenancy",
+        "description": "Implement user registration and login for realtors using Supabase, and create the basic schema for multi-tenancy.",
+        "details": "1. Initialize Supabase project\n2. Set up authentication methods (email/password and Google OAuth)\n3. Create tables for realtors, clients, and tenants\n4. Implement Row Level Security (RLS) policies for multi-tenancy\n5. Create API endpoints for user registration and login\n6. Test authentication flow and multi-tenant data isolation",
+        "testStrategy": "1. Unit tests for authentication functions\n2. Integration tests for multi-tenant data access\n3. End-to-end tests for user registration and login flows",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize Supabase Project and Configure Authentication Methods",
+            "description": "Set up a new Supabase project and configure authentication methods including email/password and Google OAuth.",
+            "dependencies": [],
+            "details": "Create a new Supabase project in the dashboard. Configure authentication settings to enable email/password authentication with appropriate password policies. Set up Google OAuth by registering the application in Google Cloud Console, obtaining client ID and secret, and configuring the redirect URLs in both Google and Supabase. Test both authentication methods manually to ensure they work.",
+            "status": "done",
+            "testStrategy": "Manually test user registration and login with both email/password and Google OAuth. Verify that authentication tokens are properly generated and stored."
+          },
+          {
+            "id": 2,
+            "title": "Create Database Schema for Multi-Tenancy",
+            "description": "Design and implement the database schema for realtors, clients, and tenants with appropriate relationships.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create the following tables: 'realtors' (with fields for profile information, linked to auth.users), 'tenants' (representing different real estate companies), 'realtor_tenant_mapping' (junction table to support realtors working with multiple companies), 'clients' (with fields for client information and a tenant_id foreign key). Add appropriate indexes, constraints, and foreign key relationships. Document the schema design with an ERD.",
+            "status": "done",
+            "testStrategy": "Write SQL queries to test relationships between tables. Verify that foreign key constraints work properly. Test inserting and querying data across the schema."
+          },
+          {
+            "id": 3,
+            "title": "Implement Row Level Security Policies",
+            "description": "Set up Row Level Security (RLS) policies to ensure proper data isolation between tenants.",
+            "dependencies": [
+              2
+            ],
+            "details": "Enable RLS on all tables. Create policies that: 1) Allow realtors to only see data from tenants they are associated with, 2) Prevent cross-tenant data access, 3) Allow appropriate read/write permissions based on user roles. Create a 'tenant_access' helper function to simplify policy definitions. Test policies thoroughly to ensure proper isolation.",
+            "status": "done",
+            "testStrategy": "Create test users in different tenants and verify they can only access their own tenant's data. Attempt cross-tenant access and verify it's blocked. Test all CRUD operations against the policies."
+          },
+          {
+            "id": 4,
+            "title": "Create API Endpoints for User Management",
+            "description": "Implement server-side API endpoints for user registration, login, profile management, and tenant association.",
+            "dependencies": [
+              3
+            ],
+            "details": "Create API endpoints for: 1) User registration with email verification, 2) Login with both methods, 3) Password reset, 4) User profile management, 5) Associating realtors with tenants. Use Supabase client libraries for authentication operations. Implement proper error handling and validation. Ensure all endpoints respect the multi-tenant architecture.",
+            "status": "done",
+            "testStrategy": "Write integration tests for each endpoint. Test happy paths and error cases. Verify that tenant isolation is maintained through all API operations."
+          },
+          {
+            "id": 5,
+            "title": "Implement Client-Side Authentication Flow",
+            "description": "Create the frontend components and state management for the complete authentication flow.",
+            "dependencies": [
+              4
+            ],
+            "details": "Implement React components for: 1) Registration form with validation, 2) Login form supporting both authentication methods, 3) Password reset flow, 4) Profile management page. Set up authentication state management using React context or a state management library. Create protected routes that require authentication. Implement proper error handling and user feedback. Add loading states for async operations.",
+            "status": "done",
+            "testStrategy": "Write unit tests for authentication components. Create end-to-end tests for the complete authentication flow. Test form validation, error states, and successful authentication paths."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Develop Core PostgreSQL Database Schema",
+        "description": "Design and implement the main PostgreSQL database schema for property listings and core data.",
+        "details": "1. Design tables for properties, amenities, locations, etc.\n2. Implement database migrations using Alembic\n3. Set up indexes for optimized querying\n4. Create stored procedures for common operations\n5. Implement data validation and constraints\n6. Set up replication for high availability",
+        "testStrategy": "1. Unit tests for database models\n2. Integration tests for complex queries\n3. Performance tests for indexed queries",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement FastAPI Backend Services",
+        "description": "Develop the main API layer using FastAPI for core business logic.",
+        "details": "1. Set up FastAPI project structure\n2. Implement CRUD operations for properties and clients\n3. Create endpoints for authentication and user management\n4. Implement business logic for property search and filtering\n5. Set up Pydantic models for request/response validation\n6. Implement error handling and logging\n7. Use FastAPI's dependency injection for database connections",
+        "testStrategy": "1. Unit tests for individual API endpoints\n2. Integration tests for API flows\n3. Load testing using tools like Locust",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Develop Nuxt.js Frontend for Client Portal",
+        "description": "Create the client-facing portal using Nuxt.js with property search and user registration.",
+        "details": "1. Set up Nuxt.js project with TypeScript\n2. Implement responsive layouts using Tailwind CSS\n3. Create components for property listing and search\n4. Implement client registration and login forms\n5. Integrate with FastAPI backend using Axios\n6. Implement state management using Pinia\n7. Set up client-side routing",
+        "testStrategy": "1. Unit tests for Vue components using Vue Test Utils\n2. E2E tests using Cypress\n3. Accessibility testing using axe-core",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Develop Nuxt.js Frontend for Realtor Dashboard",
+        "description": "Create the realtor dashboard using Nuxt.js for managing clients, properties, and transactions.",
+        "details": "1. Extend Nuxt.js project structure\n2. Implement dashboard layout and navigation\n3. Create components for client management, property management, and transaction pipeline\n4. Implement data visualization using Chart.js\n5. Integrate with FastAPI backend\n6. Implement real-time updates using WebSockets",
+        "testStrategy": "1. Unit tests for Vue components\n2. Integration tests for dashboard workflows\n3. User acceptance testing with real estate professionals",
+        "priority": "high",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Qdrant Vector Database Integration",
+        "description": "Integrate Qdrant for semantic search on property listings and client-property matching.",
+        "details": "1. Set up Qdrant instance (version 1.1.x)\n2. Design vector schema for property listings\n3. Implement data ingestion pipeline from PostgreSQL to Qdrant\n4. Create FastAPI endpoints for vector search\n5. Implement semantic search algorithms\n6. Optimize search performance and relevance",
+        "testStrategy": "1. Unit tests for vector operations\n2. Integration tests for search functionality\n3. Performance tests for search latency and accuracy",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Develop Basic 'Showy' AI Chatbot",
+        "description": "Implement a basic version of the 'Showy' chatbot for answering predefined questions on the client portal.",
+        "details": "1. Set up a conversational AI framework (e.g., Rasa 3.x)\n2. Design and implement intents and entities for real estate queries\n3. Create training data for common real estate questions\n4. Implement dialogue management for multi-turn conversations\n5. Integrate chatbot with the Nuxt.js frontend\n6. Implement fallback mechanisms for unknown queries",
+        "testStrategy": "1. Unit tests for individual intents and entities\n2. Integration tests for conversation flows\n3. User testing with sample dialogues",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement Transaction Pipeline UI",
+        "description": "Develop the UI for the transaction stages pipeline in the realtor dashboard.",
+        "details": "1. Design UI components for pipeline stages (Lead, Showing, Contract, Closing)\n2. Implement drag-and-drop functionality for moving clients between stages\n3. Create task checklists for each stage\n4. Implement progress tracking and visualization\n5. Add notifications for stage transitions\n6. Integrate with FastAPI backend for data persistence",
+        "testStrategy": "1. Unit tests for pipeline components\n2. Integration tests for stage transitions\n3. Usability testing with real estate professionals",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement RabbitMQ Message Broker",
+        "description": "Set up RabbitMQ for communication between services and implement message producers and consumers.",
+        "details": "1. Set up RabbitMQ server (version 3.9.x or later)\n2. Define message queues for various services (e.g., email, notifications)\n3. Implement message producers in FastAPI services\n4. Create Celery tasks as message consumers\n5. Implement retry mechanisms and dead letter queues\n6. Set up monitoring and logging for message broker",
+        "testStrategy": "1. Unit tests for message producers and consumers\n2. Integration tests for end-to-end message flow\n3. Load testing of message broker under high volume",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Develop Celery Task Queue for Asynchronous Operations",
+        "description": "Implement Celery for handling asynchronous tasks like property syndication and email sending.",
+        "details": "1. Set up Celery (version 5.2.x) with RabbitMQ as broker\n2. Implement tasks for email sending\n3. Create tasks for property syndication to external portals\n4. Implement periodic tasks for data synchronization\n5. Set up task monitoring and error handling\n6. Integrate Celery tasks with FastAPI endpoints",
+        "testStrategy": "1. Unit tests for individual Celery tasks\n2. Integration tests for task workflows\n3. Performance testing of task queues under load",
+        "priority": "medium",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Implement n8n Workflow for Social Media Automation",
+        "description": "Set up n8n to automate social media content posting based on active listings.",
+        "details": "1. Set up n8n instance (latest stable version)\n2. Design workflow for fetching active listings from API\n3. Implement content generation logic (e.g., using GPT-3)\n4. Create nodes for posting to various social media platforms\n5. Set up scheduling for periodic posting\n6. Implement error handling and notifications\n7. Integrate with realtor dashboard for manual trigger and overview",
+        "testStrategy": "1. Unit tests for individual n8n nodes\n2. Integration tests for end-to-end workflow\n3. Manual review of generated content",
+        "priority": "low",
+        "dependencies": [
+          3,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Develop 'Manager AI' for Task Automation",
+        "description": "Implement the initial version of 'Manager AI' to generate checklists for transaction stages.",
+        "details": "1. Design AI model for task generation (e.g., using GPT-3 or a custom model)\n2. Implement API for task generation based on transaction stage\n3. Create database schema for storing and managing tasks\n4. Develop logic for task prioritization and scheduling\n5. Implement notification system for task reminders\n6. Integrate with realtor dashboard for task display and management",
+        "testStrategy": "1. Unit tests for task generation logic\n2. Integration tests for task management workflow\n3. User acceptance testing with real estate professionals",
+        "priority": "medium",
+        "dependencies": [
+          8,
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Implement WhatsApp Integration using Evolution API",
+        "description": "Integrate WhatsApp messaging into the centralized inbox using Evolution API.",
+        "details": "1. Set up Evolution API instance\n2. Implement webhook endpoints for receiving WhatsApp messages\n3. Develop logic for message routing and storage\n4. Create UI components for displaying WhatsApp conversations in the inbox\n5. Implement message sending functionality from the dashboard\n6. Set up real-time updates for new messages",
+        "testStrategy": "1. Unit tests for message handling functions\n2. Integration tests for end-to-end message flow\n3. Manual testing with real WhatsApp accounts",
+        "priority": "low",
+        "dependencies": [
+          5,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Implement Docker Swarm Infrastructure",
+        "description": "Set up Docker Swarm for containerized deployment and management of services.",
+        "details": "1. Set up Docker Swarm cluster on VPS\n2. Create Dockerfiles for all services\n3. Design and implement Docker Compose files for service orchestration\n4. Set up Traefik for reverse proxy and SSL termination\n5. Implement logging and monitoring solutions (e.g., Prometheus, Grafana)\n6. Set up CI/CD pipeline for automated deployments\n7. Implement backup and disaster recovery procedures",
+        "testStrategy": "1. Unit tests for individual containers\n2. Integration tests for multi-container setups\n3. Load testing of the entire infrastructure\n4. Disaster recovery drills",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Implement Portainer for Docker Swarm Management",
+        "description": "Set up Portainer for easy management and monitoring of the Docker Swarm cluster.",
+        "details": "1. Install Portainer (latest stable version) on the Docker Swarm cluster\n2. Configure Portainer for secure access\n3. Set up user roles and permissions\n4. Create service templates for easy deployment\n5. Implement custom health checks for services\n6. Set up alerting for critical events\n7. Integrate with existing monitoring solutions",
+        "testStrategy": "1. Functional testing of Portainer features\n2. Security testing of Portainer access\n3. User acceptance testing with DevOps team",
+        "priority": "medium",
+        "dependencies": [
+          14
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Implement Profile Completion Page After First Login",
+        "description": "Create role-based profile pages at `/realtor/profile` and `/client/profile` that display user information and allow editing. After login, redirect users with incomplete profiles to their respective role-based profile page with a toast notification prompting them to complete their information.",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "details": "1. Design responsive role-based profile pages at `/realtor/profile` and `/client/profile` routes\n2. Implement form with fields for full name and WhatsApp number for both role types\n3. Add client-side validation for both fields:\n   - Full name: Ensure it's not empty and follows proper name format\n   - WhatsApp: Validate phone number format with country code\n4. Create Supabase function to update the 'profiles' table with the collected information, including the new 'role' column\n5. Implement Nuxt middleware for authentication and role-based routing:\n   - Check if user is authenticated\n   - Determine user role from the 'role' column in the 'profiles' table\n   - Check if user profile is incomplete (e.g., missing full_name)\n   - Redirect to appropriate role-based profile page if incomplete (`/realtor/profile` or `/client/profile`)\n   - Redirect to appropriate dashboard if complete (`/realtor/dashboard` or `/client/dashboard`)\n   - Protect role-specific routes (prevent realtors from accessing client routes and vice versa)\n6. Add toast notification system to prompt users to complete their profile when redirected to their role-based profile page\n7. Display current profile information if it exists and allow editing\n8. Implement error handling for database operations\n9. Create success feedback after profile completion\n10. Ensure the solution works with both authentication methods (email/password and Google OAuth)\n11. Update user context/state after profile completion, including role information\n12. Add a \"Save Changes\" button to submit profile updates\n13. Implement proper navigation options to return to appropriate role-based dashboard after completion",
+        "testStrategy": "1. Unit tests:\n   - Test form validation logic for both fields\n   - Test Supabase update functions with mock data\n   - Test profile completion detection logic\n   - Test role-based middleware logic\n\n2. Integration tests:\n   - Test end-to-end flow from login to role-based profile completion\n   - Verify database updates correctly after form submission\n   - Test redirection logic to appropriate role-based pages\n   - Test with both authentication methods (email/password and Google OAuth)\n   - Test role-based route protection\n\n3. User acceptance testing:\n   - Verify toast notification appears correctly when redirected to profile page\n   - Test form submission with valid and invalid data\n   - Verify user experience on different devices and screen sizes\n   - Test navigation between profile pages and role-appropriate dashboards\n   - Test role-specific features and access restrictions\n\n4. Edge case testing:\n   - Test behavior when user refreshes page during profile completion\n   - Test when network connection is lost during submission\n   - Verify handling of special characters in name fields\n   - Test behavior when a user manually navigates to role-based profile pages\n   - Test scenarios where a user might try to access routes for a different role",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Implement Property Image Upload with Cloudinary",
+        "description": "Integrate Cloudinary for property image storage and implement a secure upload flow where the backend provides signed URLs for direct frontend uploads.",
+        "details": "1. Set up Cloudinary account and configure API credentials\n2. Create a Cloudinary service module in the FastAPI backend:\n   - Implement functions to generate signed upload URLs with appropriate security parameters\n   - Set upload restrictions (file types, size limits, folder structure)\n   - Configure transformation presets for different image sizes/formats\n3. Create API endpoints in FastAPI:\n   - POST /api/properties/images/upload-url to generate signed upload URLs\n   - PUT /api/properties/{id}/images to update property with uploaded image URLs\n4. Implement frontend components in Nuxt.js:\n   - Create reusable image upload component with drag-and-drop functionality\n   - Implement direct-to-Cloudinary upload using signed URLs\n   - Add progress indicators and error handling\n   - Create image preview/gallery component for uploaded images\n5. Update database schema:\n   - Modify properties table to store image URLs (consider JSON array or separate images table)\n   - Add image metadata fields (alt text, primary image flag, etc.)\n6. Implement security measures:\n   - Validate user permissions before generating upload URLs\n   - Implement rate limiting for upload requests\n   - Set up webhook validation for Cloudinary callbacks\n7. Add image optimization and management features:\n   - Implement automatic image resizing for different use cases\n   - Add functionality for reordering, deleting, and replacing images",
+        "testStrategy": "1. Unit tests:\n   - Test Cloudinary service functions for generating signed URLs\n   - Test API endpoints with mocked Cloudinary service\n   - Test frontend components with mocked API responses\n\n2. Integration tests:\n   - Test end-to-end image upload flow with test Cloudinary account\n   - Verify correct storage of image URLs in database\n   - Test image retrieval and display in property listings\n\n3. Security tests:\n   - Verify that unsigned upload attempts are rejected\n   - Test upload permissions for different user roles\n   - Verify file type and size restrictions are enforced\n\n4. Performance tests:\n   - Measure upload speeds for various image sizes\n   - Test concurrent uploads to ensure system stability\n   - Verify CDN delivery performance for uploaded images\n\n5. User acceptance testing:\n   - Test upload experience on different devices and browsers\n   - Verify image quality and optimization across devices",
+        "status": "pending",
+        "dependencies": [
+          2,
+          3,
+          5
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Implement ID Upload and OCR Verification",
+        "description": "Add a component to the profile page that allows users to upload ID documents, with backend OCR processing to extract and pre-fill user information.",
+        "details": "1. Frontend Implementation:\n   - Create a file upload component on the `/profile` page using React\n   - Implement drag-and-drop functionality with preview\n   - Add progress indicator for upload status\n   - Design UI for displaying extracted information with option to confirm/edit\n   - Implement form field auto-population with extracted data\n\n2. Backend Implementation:\n   - Create a new FastAPI endpoint `/api/profile/upload-id` that accepts multipart/form-data\n   - Implement secure file validation (file type, size limits, malware scanning)\n   - Integrate pytesseract OCR library (v0.3.8+) for text extraction\n   - Develop text parsing algorithms to identify and extract:\n     - Full name\n     - ID number\n     - Date of birth\n     - Address information\n   - Implement error handling for poor quality images or unreadable text\n\n3. Storage Implementation:\n   - Configure Supabase Storage bucket with appropriate security policies\n   - Implement server-side encryption for ID document storage\n   - Create database schema to store references to uploaded documents\n   - Set up automatic file expiration/deletion policies for compliance\n\n4. Security Considerations:\n   - Implement strict CORS policies for the upload endpoint\n   - Add rate limiting to prevent abuse\n   - Ensure all ID data is transmitted over HTTPS\n   - Apply proper Row Level Security (RLS) in Supabase\n   - Log all access to ID documents for audit purposes\n\n5. User Experience:\n   - Add clear instructions for acceptable ID types and image quality\n   - Implement helpful error messages for failed uploads or OCR issues\n   - Create confirmation step before saving extracted information",
+        "testStrategy": "1. Unit Testing:\n   - Test file upload component with various file types and sizes\n   - Test OCR extraction functions with sample ID images\n   - Verify proper error handling for invalid uploads\n   - Test data parsing algorithms with different ID formats\n\n2. Integration Testing:\n   - Verify end-to-end flow from upload to data extraction to form population\n   - Test storage and retrieval of ID documents from Supabase\n   - Verify proper database updates when ID information is confirmed\n   - Test security policies and access controls\n\n3. Security Testing:\n   - Perform penetration testing on file upload functionality\n   - Verify that uploaded files are properly sanitized\n   - Test for common upload vulnerabilities (XSS, CSRF)\n   - Verify encryption of stored ID documents\n   - Test access controls to ensure only authorized users can view their own documents\n\n4. Performance Testing:\n   - Measure OCR processing time for various image qualities\n   - Test system under load with multiple concurrent uploads\n   - Verify responsive UI during upload and processing\n\n5. User Acceptance Testing:\n   - Test with real ID documents from different countries\n   - Verify accuracy of OCR extraction with diverse samples\n   - Gather feedback on usability of the upload interface",
+        "status": "pending",
+        "dependencies": [
+          3,
+          16,
+          1
+        ],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-05T17:28:50.476Z",
+      "updated": "2025-07-06T03:43:40.759Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+# Task ID: 17
+# Title: Implement Property Image Upload with Cloudinary
+# Status: pending
+# Dependencies: 2, 3, 5
+# Priority: high
+# Description: Integrate Cloudinary for property image storage and implement a secure upload flow where the backend provides signed URLs for direct frontend uploads.
+# Details:
+1. Set up Cloudinary account and configure API credentials
+2. Create a Cloudinary service module in the FastAPI backend:
+   - Implement functions to generate signed upload URLs with appropriate security parameters
+   - Set upload restrictions (file types, size limits, folder structure)
+   - Configure transformation presets for different image sizes/formats
+3. Create API endpoints in FastAPI:
+   - POST /api/properties/images/upload-url to generate signed upload URLs
+   - PUT /api/properties/{id}/images to update property with uploaded image URLs
+4. Implement frontend components in Nuxt.js:
+   - Create reusable image upload component with drag-and-drop functionality
+   - Implement direct-to-Cloudinary upload using signed URLs
+   - Add progress indicators and error handling
+   - Create image preview/gallery component for uploaded images
+5. Update database schema:
+   - Modify properties table to store image URLs (consider JSON array or separate images table)
+   - Add image metadata fields (alt text, primary image flag, etc.)
+6. Implement security measures:
+   - Validate user permissions before generating upload URLs
+   - Implement rate limiting for upload requests
+   - Set up webhook validation for Cloudinary callbacks
+7. Add image optimization and management features:
+   - Implement automatic image resizing for different use cases
+   - Add functionality for reordering, deleting, and replacing images
+
+# Test Strategy:
+1. Unit tests:
+   - Test Cloudinary service functions for generating signed URLs
+   - Test API endpoints with mocked Cloudinary service
+   - Test frontend components with mocked API responses
+
+2. Integration tests:
+   - Test end-to-end image upload flow with test Cloudinary account
+   - Verify correct storage of image URLs in database
+   - Test image retrieval and display in property listings
+
+3. Security tests:
+   - Verify that unsigned upload attempts are rejected
+   - Test upload permissions for different user roles
+   - Verify file type and size restrictions are enforced
+
+4. Performance tests:
+   - Measure upload speeds for various image sizes
+   - Test concurrent uploads to ensure system stability
+   - Verify CDN delivery performance for uploaded images
+
+5. User acceptance testing:
+   - Test upload experience on different devices and browsers
+   - Verify image quality and optimization across devices

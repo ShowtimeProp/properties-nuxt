@@ -6,8 +6,20 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
-    '@nuxtjs/google-fonts'
+    '@nuxtjs/google-fonts',
+    '@nuxtjs/supabase'
   ],
+
+  supabase: {
+    url: process.env.SUPABASE_URL,
+    key: process.env.SUPABASE_KEY,
+    // Options
+    redirectOptions: {
+      login: '/',
+      callback: '/confirm',
+      exclude: [],
+    }
+  },
 
   googleFonts: {
     families: {

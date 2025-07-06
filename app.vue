@@ -1,12 +1,22 @@
 <template>
-  <TopNavBar />
-  <NuxtPage />
-  <ChatBot />
+  <div>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+    <LoginModal :show="showLoginModal" @close="showLoginModal = false" />
+    <TopNavBar @open-login="showLoginModal = true"/>
+  </div>
 </template>
 
-<script setup>
-import TopNavBar from '~/components/TopNavBar.vue'
-import ChatBot from '~/components/ChatBot.vue'
+<script setup lang="ts">
+import { ref } from 'vue';
+import LoginModal from '~/components/LoginModal.vue';
+import TopNavBar from '~/components/TopNavBar.vue';
+
+const showLoginModal = ref(false);
+
+// Ya no necesitamos el listener onAuthStateChange aquí.
+// La reactividad se manejará directamente en los componentes que lo necesiten (como TopNavBar).
 </script>
 
 <style>

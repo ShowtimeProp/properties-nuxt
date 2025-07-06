@@ -1,0 +1,18 @@
+# Task ID: 7
+# Title: Develop Basic 'Showy' AI Chatbot
+# Status: pending
+# Dependencies: 4, 6
+# Priority: medium
+# Description: Implement a basic version of the 'Showy' chatbot for answering predefined questions on the client portal.
+# Details:
+1. Set up a conversational AI framework (e.g., Rasa 3.x)
+2. Design and implement intents and entities for real estate queries
+3. Create training data for common real estate questions
+4. Implement dialogue management for multi-turn conversations
+5. Integrate chatbot with the Nuxt.js frontend
+6. Implement fallback mechanisms for unknown queries
+
+# Test Strategy:
+1. Unit tests for individual intents and entities
+2. Integration tests for conversation flows
+3. User testing with sample dialogues

@@ -1,0 +1,18 @@
+# Task ID: 5
+# Title: Develop Nuxt.js Frontend for Realtor Dashboard
+# Status: pending
+# Dependencies: 3, 4
+# Priority: high
+# Description: Create the realtor dashboard using Nuxt.js for managing clients, properties, and transactions.
+# Details:
+1. Extend Nuxt.js project structure
+2. Implement dashboard layout and navigation
+3. Create components for client management, property management, and transaction pipeline
+4. Implement data visualization using Chart.js
+5. Integrate with FastAPI backend
+6. Implement real-time updates using WebSockets
+
+# Test Strategy:
+1. Unit tests for Vue components
+2. Integration tests for dashboard workflows
+3. User acceptance testing with real estate professionals

@@ -137,7 +137,7 @@
 
 <script setup>
 import PropertySlideCardClean from './PropertySlideCardClean.vue';
-import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
+import { onMounted, onUnmounted, ref, watch, nextTick, computed } from 'vue';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
@@ -145,7 +145,11 @@ import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import PropertyCard from './PropertyCard.vue';
 import PropertyModal from './PropertyModal.vue';
 import LoginModal from './LoginModal.vue';
+import { useFavoritesStore } from '~/stores/favorites';
+import { useToast } from 'vue-toastification';
+
 const supabase = useNuxtApp().$supabase
+const user = useSupabaseUser()
 // Asegurarse de que MapboxDraw funcione con MapLibre
 if (typeof window !== 'undefined') {
   window.MapboxDraw = MapboxDraw;
@@ -222,8 +226,11 @@ const mouse = ref({ x: 0, y: 0 });
 const isDrawing = ref(false);
 let windowWidth = 0;
 let windowHeight = 0;
-const isLoggedIn = ref(false)
+const isLoggedIn = computed(() => !!user.value)
 const showLoginModal = ref(false)
+
+const favoritesStore = useFavoritesStore();
+const toast = useToast();
 
 const sortOptions = [
   { value: 'relevance', label: 'Relevancia' },
@@ -704,18 +711,31 @@ const updateFilteredProperties = () => {
 };
 
 const toggleFavorite = (property) => {
-  const id = property.id.toString();
-  if (favorites.value.has(id)) {
-    favorites.value.delete(id);
-  } else {
-    favorites.value.add(id);
+  if (!isLoggedIn.value) {
+    showLoginModal.value = true;
+    return;
   }
-  // Aquí podrías guardar los favoritos en localStorage
-  // localStorage.setItem('favorites', JSON.stringify(Array.from(favorites.value)));
+  if (!property || !property.id) {
+    toast.error('No se puede agregar a favoritos: propiedad inválida.');
+    return;
+  }
+
+  const wasFavorite = favoritesStore.isFavorite(property.id);
+  
+  favoritesStore.toggleFavorite(property);
+  
+  const message = !wasFavorite
+    ? `${property.title || 'Propiedad'} agregada a favoritos!`
+    : `${property.title || 'Propiedad'} eliminada de favoritos.`;
+  
+  toast.success(message, {
+    icon: !wasFavorite ? 'fas fa-heart text-red-500' : 'fas fa-trash-alt'
+  });
 };
 
 const isFavorite = (property) => {
-  return favorites.value.has(property.id.toString());
+  if (!property || !property.id) return false;
+  return favoritesStore.isFavorite(property.id);
 };
 
 // Actualizar propiedades filtradas cuando se dibuja un área

@@ -13,12 +13,21 @@
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Créditos Hipotecarios</a>
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Listar Tu Propiedad</a>
           <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Blog Inmobiliario</a>
-          <button class="ml-4 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors text-sm flex items-center gap-2">
+          
+          <!-- Lógica Condicional para Botón de Sesión -->
+          <div v-if="user" class="flex items-center gap-4">
+            <span class="text-white">Bienvenido, {{ user.email?.split('@')[0] }}</span>
+            <button @click="handleLogout" class="ml-4 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-bold shadow-lg transition-colors text-sm">
+              Salir
+            </button>
+          </div>
+          <button v-else @click="$emit('open-login')" class="ml-4 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg transition-colors text-sm flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9A3.75 3.75 0 1112 5.25 3.75 3.75 0 0115.75 9zM4.5 19.5a7.5 7.5 0 1115 0v.75a.75.75 0 01-.75.75h-13.5a.75.75 0 01-.75-.75v-.75z" />
             </svg>
             Iniciar Sesión
           </button>
+
           <button
             class="ml-2 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors text-sm flex items-center gap-2"
             @click="onSaveSearch"
@@ -40,6 +49,12 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+
+// Estas funciones están disponibles globalmente gracias a la auto-importación de Nuxt
+const user = useSupabaseUser()
+const supabase = useSupabaseClient()
+const router = useRouter()
+
 const searchText = ref('')
 const listening = ref(false)
 const micSonar = ref(false)
@@ -47,6 +62,16 @@ let recognition = null
 const showTopMenu = ref(false)
 let hideTimeout = null
 const showHelp = ref(false)
+
+const handleLogout = async () => {
+  const { error } = await supabase.auth.signOut()
+  if (error) {
+    console.error('Error al cerrar sesión:', error)
+    return;
+  }
+  // Redirige al inicio después de cerrar sesión
+  await router.push('/')
+};
 
 function onSearch() {
   // Aquí puedes manejar la búsqueda
@@ -115,6 +140,7 @@ onMounted(() => {
     }, 50)
   }, 10000)
 })
+
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick)
   if (hideTimeout) clearTimeout(hideTimeout)
@@ -187,4 +213,4 @@ html, body {
 .logo-glow {
   animation: logoGlow 3s ease-in-out infinite;
 }
-</style> 
+</style>
