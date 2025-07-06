@@ -106,11 +106,11 @@
 
       </div>
 
+      </div>
     </div>
-  </div>
-</template>
-
-<script setup>
+  </template>
+  
+  <script setup>
 import { ref } from 'vue';
 
 const supabase = useSupabaseClient();
@@ -192,7 +192,7 @@ async function handleRegister() {
         // Si el registro es exitoso, Supabase maneja el estado del usuario.
         // El middleware se encargará de la redirección.
         // No necesitamos hacer nada más aquí, solo cerrar el modal.
-      } else {
+    } else {
         // Si es otro tipo de error de inicio de sesión, muéstralo.
         throw signInError;
       }
@@ -228,14 +228,14 @@ async function loginWithGoogle() {
     authError.value = 'Error con Google: ' + error.message;
     loading.value = false; // Desactivar el spinner si hay un error antes de redirigir.
   }
-}
-</script>
-
-<style scoped>
+  }
+  </script>
+  
+  <style scoped>
 /* Opcional: añade una transición suave a la altura del modal si cambia */
 .transition-all {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
-}
-</style>
+  }
+  </style>
