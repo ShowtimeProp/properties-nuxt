@@ -1,0 +1,65 @@
+# Task ID: 20
+# Title: Implement n8n Price Watchdog Workflow
+# Status: pending
+# Dependencies: 19
+# Priority: medium
+# Description: Create an n8n workflow that monitors property prices daily, compares them with alert thresholds from Supabase, and sends WhatsApp notifications when prices drop below the threshold.
+# Details:
+1. Set up n8n workflow with a cron trigger scheduled to run daily at a specific time
+2. Create a node to connect to Supabase and fetch active price alerts with the following query:
+   ```sql
+   SELECT a.id, a.user_id, a.property_id, a.trigger_price, a.phone_number, p.current_price, p.title
+   FROM price_alerts a
+   JOIN properties p ON a.property_id = p.id
+   WHERE a.status = 'active'
+   ```
+3. Implement a loop node to iterate through each alert record
+4. For each alert, create a node to query the external PostgreSQL database in Docker Swarm to get the current property price:
+   ```sql
+   SELECT current_price FROM properties WHERE id = '{{$node["Loop"].item.property_id}}'
+   ```
+5. Add a conditional node to check if the current price is less than or equal to the trigger price
+6. If condition is true:
+   - Create a WhatsApp node to send notification with the following template:
+     ```
+     Price Alert: {{$node["Loop"].item.title}} is now {{$node["PostgreSQL"].json.current_price}}, which is below your alert threshold of {{$node["Loop"].item.trigger_price}}!
+     ```
+   - Add a Supabase node to update the alert status:
+     ```sql
+     UPDATE price_alerts 
+     SET status = 'triggered', triggered_at = NOW() 
+     WHERE id = '{{$node["Loop"].item.id}}'
+     ```
+7. Configure error handling for each node with appropriate retry mechanisms
+8. Set up logging to capture workflow execution details for monitoring
+9. Create environment variables for sensitive connection information
+10. Document the workflow with clear node labels and descriptions
+
+# Test Strategy:
+1. Manual Testing:
+   - Run the workflow manually with test data to verify each step functions correctly
+   - Verify Supabase connection retrieves alert records properly
+   - Confirm PostgreSQL connection fetches current prices accurately
+   - Test the price comparison logic with various scenarios (equal to, less than, greater than)
+   - Verify WhatsApp notifications are sent with correct formatting
+   - Confirm alert status updates correctly in Supabase
+
+2. Integration Testing:
+   - Create test alerts in Supabase with various price thresholds
+   - Modify test property prices in PostgreSQL to trigger alerts
+   - Verify end-to-end workflow execution with real data
+   - Check that WhatsApp notifications are received on the specified numbers
+
+3. Error Handling Testing:
+   - Simulate database connection failures to verify retry mechanisms
+   - Test with malformed data to ensure proper error handling
+   - Verify logging captures relevant error information
+
+4. Performance Testing:
+   - Test with a large number of alerts to ensure the workflow scales
+   - Measure execution time and resource usage
+   - Optimize any bottlenecks identified
+
+5. Monitoring Setup:
+   - Configure alerts for workflow failures
+   - Set up dashboard to track successful notifications and alert status changes

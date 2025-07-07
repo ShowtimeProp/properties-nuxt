@@ -1,0 +1,83 @@
+# Task ID: 19
+# Title: Set Up Supabase for Price Alerts
+# Status: pending
+# Dependencies: 1
+# Priority: medium
+# Description: Create a Supabase table structure for price alerts with appropriate columns and enable Row Level Security (RLS) to ensure data privacy and access control.
+# Details:
+1. Access the Supabase dashboard and navigate to the database section
+2. Create a new `price_alerts` table with the following columns:
+   - `id`: UUID, primary key, default to `gen_random_uuid()`
+   - `user_id`: UUID, references auth.users(id), not null
+   - `property_id`: UUID, references properties(id), not null
+   - `trigger_price`: DECIMAL, not null (the price threshold that triggers the alert)
+   - `phone_number`: VARCHAR, not null (the number to send notifications to)
+   - `created_at`: TIMESTAMP WITH TIME ZONE, default to NOW()
+   - `notified_at`: TIMESTAMP WITH TIME ZONE, nullable (to track when alerts were sent)
+
+3. Set up appropriate indexes:
+   - Create an index on `user_id` for faster queries
+   - Create a composite index on `property_id` and `trigger_price` for efficient alert processing
+
+4. Enable Row Level Security (RLS) for the `price_alerts` table:
+   ```sql
+   ALTER TABLE price_alerts ENABLE ROW LEVEL SECURITY;
+   ```
+
+5. Create RLS policies:
+   - Create a policy allowing users to select only their own alerts:
+     ```sql
+     CREATE POLICY "Users can view their own alerts" 
+     ON price_alerts FOR SELECT 
+     USING (auth.uid() = user_id);
+     ```
+   - Create a policy allowing users to insert their own alerts:
+     ```sql
+     CREATE POLICY "Users can create their own alerts" 
+     ON price_alerts FOR INSERT 
+     WITH CHECK (auth.uid() = user_id);
+     ```
+   - Create a policy allowing users to update only their own alerts:
+     ```sql
+     CREATE POLICY "Users can update their own alerts" 
+     ON price_alerts FOR UPDATE 
+     USING (auth.uid() = user_id);
+     ```
+   - Create a policy allowing users to delete only their own alerts:
+     ```sql
+     CREATE POLICY "Users can delete their own alerts" 
+     ON price_alerts FOR DELETE 
+     USING (auth.uid() = user_id);
+     ```
+
+6. Create a service role API key with limited permissions for backend services to query and update alerts
+
+7. Document the table structure and RLS policies for the development team
+
+# Test Strategy:
+1. Database Structure Testing:
+   - Verify the `price_alerts` table is created with all specified columns and correct data types
+   - Confirm primary key, foreign key constraints, and indexes are properly set up
+   - Test that default values work correctly (uuid generation, timestamps)
+
+2. RLS Policy Testing:
+   - Test user access by creating test users and alerts:
+     - Verify users can only see their own alerts
+     - Verify users cannot see alerts created by other users
+     - Verify users can only update/delete their own alerts
+   - Test with Supabase client in browser console to confirm policies work client-side
+   - Test with service role API to ensure backend services can access all alerts
+
+3. Integration Testing:
+   - Create test alerts through the API and verify they appear in the database
+   - Update test alerts and verify changes are reflected
+   - Delete test alerts and verify they are removed
+   - Test with invalid data to ensure constraints are enforced
+
+4. Performance Testing:
+   - Test query performance with a large number of alerts
+   - Verify indexes are being used efficiently using EXPLAIN ANALYZE
+
+5. Documentation Review:
+   - Ensure all table structures, constraints, and policies are properly documented
+   - Verify API documentation includes examples for interacting with price alerts

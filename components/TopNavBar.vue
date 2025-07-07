@@ -21,7 +21,7 @@
               Salir
             </button>
           </div>
-          <button v-else @click="$emit('open-login')" class="ml-4 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg transition-colors text-sm flex items-center gap-2">
+          <button v-else @click="handleLoginClick" class="ml-4 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg transition-colors text-sm flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9A3.75 3.75 0 1112 5.25 3.75 3.75 0 0115.75 9zM4.5 19.5a7.5 7.5 0 1115 0v.75a.75.75 0 01-.75.75h-13.5a.75.75 0 01-.75-.75v-.75z" />
             </svg>
@@ -45,15 +45,22 @@
       <span class="text-white text-sm font-bold mx-auto">Menú</span>
     </div>
   </nav>
+  <LoginModal v-model="showLoginModal" />
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useSupabaseUser } from '#imports'
+import LoginModal from '~/components/LoginModal.vue'
+import { useLoginModalStore } from '~/stores/loginModal'
+import { storeToRefs } from 'pinia'
 
 // Estas funciones están disponibles globalmente gracias a la auto-importación de Nuxt
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const router = useRouter()
+const loginModalStore = useLoginModalStore()
+const { isOpen: showLoginModal } = storeToRefs(loginModalStore)
 
 const searchText = ref('')
 const listening = ref(false)
@@ -129,6 +136,10 @@ function handleDocumentClick(e) {
 function onSaveSearch() {
   // Aquí puedes implementar la lógica para guardar la búsqueda
   alert('¡Búsqueda guardada!')
+}
+
+const handleLoginClick = () => {
+  loginModalStore.open()
 }
 
 onMounted(() => {

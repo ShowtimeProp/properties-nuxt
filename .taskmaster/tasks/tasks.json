@@ -295,11 +295,37 @@
         ],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Set Up Supabase for Price Alerts",
+        "description": "Create a Supabase table structure for price alerts with appropriate columns and enable Row Level Security (RLS) to ensure data privacy and access control.",
+        "details": "1. Access the Supabase dashboard and navigate to the database section\n2. Create a new `price_alerts` table with the following columns:\n   - `id`: UUID, primary key, default to `gen_random_uuid()`\n   - `user_id`: UUID, references auth.users(id), not null\n   - `property_id`: UUID, references properties(id), not null\n   - `trigger_price`: DECIMAL, not null (the price threshold that triggers the alert)\n   - `phone_number`: VARCHAR, not null (the number to send notifications to)\n   - `created_at`: TIMESTAMP WITH TIME ZONE, default to NOW()\n   - `notified_at`: TIMESTAMP WITH TIME ZONE, nullable (to track when alerts were sent)\n\n3. Set up appropriate indexes:\n   - Create an index on `user_id` for faster queries\n   - Create a composite index on `property_id` and `trigger_price` for efficient alert processing\n\n4. Enable Row Level Security (RLS) for the `price_alerts` table:\n   ```sql\n   ALTER TABLE price_alerts ENABLE ROW LEVEL SECURITY;\n   ```\n\n5. Create RLS policies:\n   - Create a policy allowing users to select only their own alerts:\n     ```sql\n     CREATE POLICY \"Users can view their own alerts\" \n     ON price_alerts FOR SELECT \n     USING (auth.uid() = user_id);\n     ```\n   - Create a policy allowing users to insert their own alerts:\n     ```sql\n     CREATE POLICY \"Users can create their own alerts\" \n     ON price_alerts FOR INSERT \n     WITH CHECK (auth.uid() = user_id);\n     ```\n   - Create a policy allowing users to update only their own alerts:\n     ```sql\n     CREATE POLICY \"Users can update their own alerts\" \n     ON price_alerts FOR UPDATE \n     USING (auth.uid() = user_id);\n     ```\n   - Create a policy allowing users to delete only their own alerts:\n     ```sql\n     CREATE POLICY \"Users can delete their own alerts\" \n     ON price_alerts FOR DELETE \n     USING (auth.uid() = user_id);\n     ```\n\n6. Create a service role API key with limited permissions for backend services to query and update alerts\n\n7. Document the table structure and RLS policies for the development team",
+        "testStrategy": "1. Database Structure Testing:\n   - Verify the `price_alerts` table is created with all specified columns and correct data types\n   - Confirm primary key, foreign key constraints, and indexes are properly set up\n   - Test that default values work correctly (uuid generation, timestamps)\n\n2. RLS Policy Testing:\n   - Test user access by creating test users and alerts:\n     - Verify users can only see their own alerts\n     - Verify users cannot see alerts created by other users\n     - Verify users can only update/delete their own alerts\n   - Test with Supabase client in browser console to confirm policies work client-side\n   - Test with service role API to ensure backend services can access all alerts\n\n3. Integration Testing:\n   - Create test alerts through the API and verify they appear in the database\n   - Update test alerts and verify changes are reflected\n   - Delete test alerts and verify they are removed\n   - Test with invalid data to ensure constraints are enforced\n\n4. Performance Testing:\n   - Test query performance with a large number of alerts\n   - Verify indexes are being used efficiently using EXPLAIN ANALYZE\n\n5. Documentation Review:\n   - Ensure all table structures, constraints, and policies are properly documented\n   - Verify API documentation includes examples for interacting with price alerts",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Implement n8n Price Watchdog Workflow",
+        "description": "Create an n8n workflow that monitors property prices daily, compares them with alert thresholds from Supabase, and sends WhatsApp notifications when prices drop below the threshold.",
+        "details": "1. Set up n8n workflow with a cron trigger scheduled to run daily at a specific time\n2. Create a node to connect to Supabase and fetch active price alerts with the following query:\n   ```sql\n   SELECT a.id, a.user_id, a.property_id, a.trigger_price, a.phone_number, p.current_price, p.title\n   FROM price_alerts a\n   JOIN properties p ON a.property_id = p.id\n   WHERE a.status = 'active'\n   ```\n3. Implement a loop node to iterate through each alert record\n4. For each alert, create a node to query the external PostgreSQL database in Docker Swarm to get the current property price:\n   ```sql\n   SELECT current_price FROM properties WHERE id = '{{$node[\"Loop\"].item.property_id}}'\n   ```\n5. Add a conditional node to check if the current price is less than or equal to the trigger price\n6. If condition is true:\n   - Create a WhatsApp node to send notification with the following template:\n     ```\n     Price Alert: {{$node[\"Loop\"].item.title}} is now {{$node[\"PostgreSQL\"].json.current_price}}, which is below your alert threshold of {{$node[\"Loop\"].item.trigger_price}}!\n     ```\n   - Add a Supabase node to update the alert status:\n     ```sql\n     UPDATE price_alerts \n     SET status = 'triggered', triggered_at = NOW() \n     WHERE id = '{{$node[\"Loop\"].item.id}}'\n     ```\n7. Configure error handling for each node with appropriate retry mechanisms\n8. Set up logging to capture workflow execution details for monitoring\n9. Create environment variables for sensitive connection information\n10. Document the workflow with clear node labels and descriptions",
+        "testStrategy": "1. Manual Testing:\n   - Run the workflow manually with test data to verify each step functions correctly\n   - Verify Supabase connection retrieves alert records properly\n   - Confirm PostgreSQL connection fetches current prices accurately\n   - Test the price comparison logic with various scenarios (equal to, less than, greater than)\n   - Verify WhatsApp notifications are sent with correct formatting\n   - Confirm alert status updates correctly in Supabase\n\n2. Integration Testing:\n   - Create test alerts in Supabase with various price thresholds\n   - Modify test property prices in PostgreSQL to trigger alerts\n   - Verify end-to-end workflow execution with real data\n   - Check that WhatsApp notifications are received on the specified numbers\n\n3. Error Handling Testing:\n   - Simulate database connection failures to verify retry mechanisms\n   - Test with malformed data to ensure proper error handling\n   - Verify logging captures relevant error information\n\n4. Performance Testing:\n   - Test with a large number of alerts to ensure the workflow scales\n   - Measure execution time and resource usage\n   - Optimize any bottlenecks identified\n\n5. Monitoring Setup:\n   - Configure alerts for workflow failures\n   - Set up dashboard to track successful notifications and alert status changes",
+        "status": "pending",
+        "dependencies": [
+          19
+        ],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-07-05T17:28:50.476Z",
-      "updated": "2025-07-06T03:43:40.759Z",
+      "updated": "2025-07-07T03:03:40.271Z",
       "description": "Tasks for master context"
     }
   }

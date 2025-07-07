@@ -118,12 +118,12 @@
           />
           <button
             v-if="whatsapp"
-            @click="sendWhatsapp"
+            @click="setPriceDropAlert"
             class="w-full py-2 rounded bg-gradient-to-r from-cyan-400 via-indigo-500 to-cyan-500 text-white font-semibold shadow-md transition-all duration-200 hover:shadow-lg hover:from-cyan-300 hover:to-indigo-400 focus:outline-none mb-4"
           >Enviar Alerta de Precio</button>
           <!-- Botón de compartir -->
           <button
-            @click.stop="shareProperty"
+            @click.stop="setPriceDropAlert"
             class="w-full py-2 rounded bg-green-500 text-white font-semibold shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:bg-green-600 focus:outline-none flex items-center justify-center gap-2"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -149,8 +149,19 @@ import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination, Navigation } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/pagination'
+import { Share2, X, Heart } from 'lucide-vue-next';
+import { useFavoritesStore } from '~/stores/favorites';
+import { useLoginModalStore } from '~/stores/loginModal';
+import { storeToRefs } from 'pinia';
+import { useSupabaseUser } from '#imports';
+import { useToast } from 'vue-toastification';
 
 const user = useSupabaseUser();
+const store = useFavoritesStore();
+const { isFavorite } = storeToRefs(store);
+const { toggleFavorite } = store;
+const toast = useToast();
+const loginModal = useLoginModalStore();
 
 const props = defineProps({
   property: {
@@ -230,44 +241,27 @@ watch(isFlipped, (val) => {
   }
 })
 
-function sendWhatsapp() {
-  whatsapp.value = ''
-}
-async function shareProperty() {
-  const propertyUrl = `${window.location.href.split('?')[0]}?propertyId=${props.property.id}`;
-  const shareData = {
-    title: `Propiedad en ${props.property.address}`,
-    text: `¡Mira esta increíble propiedad en ${props.property.localidad}! Con ${props.property.total_surface}m² y ${props.property.ambience} ambientes.`,
-    url: propertyUrl,
-  };
-
-  try {
-    if (navigator.share) {
-      await navigator.share(shareData);
-      console.log('Propiedad compartida con éxito!');
-    } else {
-      // Fallback para navegadores que no soportan Web Share API
-      await navigator.clipboard.writeText(propertyUrl);
-      alert('Enlace de la propiedad copiado al portapapeles. ¡Ahora puedes pegarlo donde quieras!');
-      // Idealmente, usarías un toast para una mejor UX. Ejemplo:
-      // toast.success('Enlace copiado al portapapeles!');
-    }
-  } catch (err) {
-    // Manejar el caso en que el usuario cierra el diálogo de compartir
-    if (err.name !== 'AbortError') {
-      console.error('Error al compartir:', err);
-      alert(`Hubo un error al intentar compartir: ${err.message}`);
-    }
+function setPriceDropAlert() {
+  if (!user.value) {
+    loginModal.open();
+    toast.info("Debes iniciar sesión para crear una alerta.");
+    return;
   }
+  
+  const link = `https://properties-nuxt.vercel.app/property/${props.property.id}`;
+  const text = `¡Hola! Me interesa la propiedad en ${props.property.address}. Quisiera recibir una alerta si baja de precio. Mi número es ${whatsapp.value}. Enlace: ${link}`;
+
+  // ... existing code ...
 }
 
 function handleFavoriteClick(event) {
   event.stopPropagation()
   if (!user.value) {
-    emit('login-request')
-    return
+    loginModal.open();
+    toast.info("Debes iniciar sesión para guardar favoritos");
+    return;
   }
-  emit('toggle-favorite', props.property)
+  toggleFavorite(props.property)
 }
 </script>
 
