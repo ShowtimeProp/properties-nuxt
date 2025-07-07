@@ -106,14 +106,14 @@
         <div class="card-arrow" />
       </div>
       <!-- Cara trasera: título, input, botón y compartir -->
-      <div class="card-face card-back flex flex-col items-center justify-center w-full bg-gray-900 p-6">
-        <div class="text-lg font-semibold text-gray-100 mb-6">¡Enterate si baja de precio!</div>
+      <div class="card-face card-back flex flex-col items-center justify-center w-full bg-white text-gray-800 p-6">
+        <div class="text-lg font-semibold text-gray-800 mb-6">¡Enterate si baja de precio!</div>
         <div class="w-full max-w-xs flex flex-col items-center">
           <input
             v-model="whatsapp"
             type="text"
             placeholder="+549 223 353-3333 <-Tu WhatsApp"
-            class="rounded px-3 py-2 w-full bg-gray-800 text-white placeholder-gray-400 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 mb-4"
+            class="rounded px-3 py-2 w-full bg-gray-200 text-gray-800 placeholder-gray-400 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 mb-4"
             style="box-sizing: border-box;"
           />
           <button
@@ -124,7 +124,7 @@
           <!-- Botón de compartir -->
           <button
             @click.stop="shareProperty"
-            class="w-full py-2 rounded bg-gray-700 text-white font-semibold shadow-md transition-all duration-200 hover:bg-gray-600 focus:outline-none flex items-center justify-center gap-2"
+            class="w-full py-2 rounded bg-green-500 text-white font-semibold shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:bg-green-600 focus:outline-none flex items-center justify-center gap-2"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.368a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
