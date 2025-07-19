@@ -1,0 +1,107 @@
+# Task ID: 22
+# Title: Fix Favorites Synchronization After Pinia Persistence Plugin Integration
+# Status: pending
+# Dependencies: 21
+# Priority: medium
+# Description: Debug and fix the favorites feature reactivity issues that emerged after integrating pinia-plugin-persistedstate, ensuring proper state management across components.
+# Details:
+1. Analyze the current implementation of the favorites store in `favorites.ts`:
+   - Review the Pinia store structure and state definition
+   - Examine how the store is registered with the persistence plugin
+   - Check for any reactivity-breaking patterns in the store implementation
+
+2. Debug the persistence plugin configuration:
+   - Verify the correct import and setup of `pinia-plugin-persistedstate`
+   - Check the persistence options (storage type, key naming, paths)
+   - Ensure the plugin is properly registered with the Pinia instance
+   - Look for potential conflicts with other plugins or middleware
+
+3. Inspect affected components like `PropertyCard.vue`:
+   - Review how components access and modify the favorites state
+   - Check for direct state mutations instead of actions
+   - Verify proper use of computed properties for reactive state
+   - Ensure components are correctly subscribing to state changes
+
+4. Fix the reactivity issues:
+   - Update the store definition to ensure proper reactivity with the persistence plugin
+   - Modify the persistence configuration if needed
+   - Refactor component interactions with the store to follow best practices
+   - Implement proper two-way binding between persisted state and UI
+
+5. Implement a comprehensive solution:
+   ```typescript
+   // Example fix for favorites.ts
+   import { defineStore } from 'pinia'
+   
+   export const useFavoritesStore = defineStore('favorites', {
+     state: () => ({
+       items: []
+     }),
+     actions: {
+       toggleFavorite(propertyId) {
+         const index = this.items.indexOf(propertyId)
+         if (index === -1) {
+           this.items.push(propertyId)
+         } else {
+           this.items.splice(index, 1)
+         }
+       },
+       isFavorite(propertyId) {
+         return this.items.includes(propertyId)
+       }
+     },
+     persist: {
+       key: 'user-favorites',
+       storage: localStorage,
+       paths: ['items']
+     }
+   })
+   ```
+
+6. Update the main Pinia setup in the Nuxt application:
+   ```typescript
+   // plugins/pinia-persistence.ts
+   import { createPinia } from 'pinia'
+   import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
+   
+   export default defineNuxtPlugin(nuxtApp => {
+     const pinia = createPinia()
+     pinia.use(piniaPluginPersistedstate)
+     nuxtApp.vueApp.use(pinia)
+   })
+   ```
+
+7. Ensure proper hydration in SSR context:
+   - Handle potential hydration mismatches between server and client
+   - Implement proper initialization of persisted state during app startup
+
+# Test Strategy:
+1. Unit Testing:
+   - Test the favorites store in isolation:
+     - Verify that adding/removing favorites works correctly
+     - Ensure the persistence mechanism correctly saves and retrieves state
+     - Test edge cases like adding duplicates or removing non-existent items
+   - Test the store with mocked persistence plugin to verify correct interaction
+
+2. Component Testing:
+   - Test `PropertyCard.vue` and other components that use the favorites store
+   - Verify that UI elements correctly reflect the favorites state
+   - Ensure toggling favorites from the UI correctly updates the store
+   - Test that components react properly to external state changes
+
+3. Integration Testing:
+   - Test the full favorites workflow from UI interaction to persistence and back
+   - Verify that favorites persist correctly across page refreshes
+   - Test synchronization across multiple components using the same store
+   - Ensure proper hydration in SSR context without errors
+
+4. Manual Testing:
+   - Perform user flow testing of the favorites feature
+   - Test across different browsers to ensure consistent behavior
+   - Verify that favorites are correctly maintained during navigation
+   - Test performance with a large number of favorites
+
+5. Regression Testing:
+   - Ensure that fixing the favorites feature doesn't break other functionality
+   - Verify that other persisted stores continue to function correctly
+   - Check that the application startup performance isn't negatively impacted

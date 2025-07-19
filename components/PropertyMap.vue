@@ -146,7 +146,38 @@ import PropertyCard from './PropertyCard.vue';
 import PropertyModal from './PropertyModal.vue';
 import LoginModal from './LoginModal.vue';
 import { useFavoritesStore } from '~/stores/favorites';
+import { useLoginModalStore } from '~/stores/loginModal';
 import { useToast } from 'vue-toastification';
+import { useSupabaseUser } from '#imports';
+
+// --- NUEVA LLAMADA A LA API ---
+const { data: properties, pending, error } = await useFetch('https://fapi.showtimeprop.com/properties/all', {
+  lazy: true, // Carga los datos en segundo plano sin bloquear la navegación
+  server: false, // Asegura que la llamada se haga solo en el lado del cliente
+  transform: (data) => {
+    if (!Array.isArray(data)) return []; // Devuelve un array vacío si los datos no son los esperados
+    // Mapea los datos para normalizar los campos de coordenadas
+    return data
+      .filter(p => p && p.latitude && p.longitude) // FILTRA propiedades sin coordenadas
+      .map(property => ({
+        ...property,
+        lat: parseFloat(property.latitude),  // Usa 'latitude' y lo convierte a número
+        lng: parseFloat(property.longitude) // Usa 'longitude' y lo convierte a número
+      }));
+  },
+  // Valor por defecto mientras se cargan los datos
+  default: () => []
+});
+
+watch(error, (newError) => {
+  if (newError) {
+    console.error('Error fetching properties:', newError);
+    // Opcional: mostrar una notificación al usuario
+    // toast.error('No se pudieron cargar las propiedades. Intente de nuevo más tarde.');
+  }
+});
+// --- FIN DE LA NUEVA LLAMADA A LA API ---
+
 
 const supabase = useNuxtApp().$supabase
 const user = useSupabaseUser()
@@ -230,6 +261,7 @@ const isLoggedIn = computed(() => !!user.value)
 const showLoginModal = ref(false)
 
 const favoritesStore = useFavoritesStore();
+const loginModal = useLoginModalStore();
 const toast = useToast();
 
 const sortOptions = [
@@ -243,7 +275,12 @@ const sortOptions = [
 ];
 
 const formatPriceForBubble = (priceString) => {
-  const num = parseInt(priceString.replace(/\./g, ''), 10);
+  // ¡LA SOLUCIÓN! Si no hay precio, no falles, solo devuelve un string vacío.
+  if (!priceString) {
+    return '';
+  }
+  // Añadimos String() para más seguridad, por si el precio llega como número.
+  const num = parseInt(String(priceString).replace(/\./g, ''), 10);
   if (isNaN(num)) return '';
   if (num >= 1000000) {
     const value = num / 1000000;
@@ -256,7 +293,7 @@ const formatPriceForBubble = (priceString) => {
 };
 
 const updateMarkersForZoom = () => {
-  if (!map) return;
+  if (!map || !properties.value) return;
   const currentZoom = map.getZoom();
   const isBubbleView = currentZoom > ZOOM_THRESHOLD;
 
@@ -264,54 +301,40 @@ const updateMarkersForZoom = () => {
     const markerEl = markerElements.value[prop.id];
     if (!markerEl) continue;
 
-    const isSelected = markerEl.classList.contains('selected');
-    const currentView = markerEl.dataset.view;
-    const newView = isBubbleView ? 'bubble' : 'dot';
-
-    if (currentView === newView) {
-        if (isSelected && !markerEl.classList.contains('selected')) {
-            markerEl.classList.add('selected');
-        } else if (!isSelected && markerEl.classList.contains('selected')) {
-            markerEl.classList.remove('selected');
-        }
-        // Cambiar color si fue vista
-        if (viewedProperties.value.has(prop.id)) {
-          markerEl.classList.add('viewed');
-        } else {
-          markerEl.classList.remove('viewed');
-        }
-        continue;
-    }
-
-    markerEl.dataset.view = newView;
+    const dot = markerEl.querySelector('.marker-dot');
+    const bubble = markerEl.querySelector('.price-bubble');
+    if (!dot || !bubble) continue;
 
     if (isBubbleView) {
-      markerEl.className = 'price-bubble';
-      markerEl.innerHTML = `
-        <div class="price-bubble-container">
-          <span class="price-text">${formatPriceForBubble(prop.price)}</span>
-        </div>
-        ${prop.hasVirtualTour ? `<div class="bubble-badge-external tour">3D TOUR</div>` : ''}
-        ${prop.isNew ? '<div class="bubble-badge-external new">NEW</div>' : ''}
-      `;
+      dot.style.opacity = '0';
+      dot.style.pointerEvents = 'none';
+      bubble.style.opacity = '1';
+      bubble.style.pointerEvents = 'auto';
     } else {
-      markerEl.className = 'marker-dot';
-      markerEl.innerHTML = '';
+      dot.style.opacity = '1';
+      dot.style.pointerEvents = 'auto';
+      bubble.style.opacity = '0';
+      bubble.style.pointerEvents = 'none';
     }
 
-    // Cambiar color si fue vista
+    const isSelected = selectedProperty.value?.id === prop.id;
+    // La clase 'selected' ahora se maneja directamente en el contenedor
+    if (isSelected) {
+      markerEl.classList.add('selected');
+    } else {
+      markerEl.classList.remove('selected');
+    }
+
     if (viewedProperties.value.has(prop.id)) {
       markerEl.classList.add('viewed');
     } else {
       markerEl.classList.remove('viewed');
     }
-
-    if (isSelected) {
-      markerEl.classList.add('selected');
-    }
   }
 };
 
+
+/*
 const properties = ref([
   {
     id: 1,
@@ -410,6 +433,7 @@ const properties = ref([
     ]
   }
 ]);
+*/
 
 onMounted(async () => {
   // Importar dinámicamente solo en el cliente
@@ -428,10 +452,34 @@ onMounted(async () => {
     // Agregar controles de navegación
     map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
-    map.on('load', () => {
+    const addMarkersToMap = () => {
+      if (!map || !properties.value) return;
+
       properties.value.forEach(property => {
+        // Este chequeo es crucial
+        if (!property || isNaN(property.lat) || isNaN(property.lng)) {
+          console.warn('Skipping property with invalid data:', property);
+          return;
+        }
+
         const el = document.createElement('div');
-        el.className = 'marker';
+        el.className = 'marker-container';
+
+        const dot = document.createElement('div');
+        dot.className = 'marker-dot';
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'price-bubble';
+        bubble.innerHTML = `
+          <div class="price-bubble-container">
+            <span class="price-text">${formatPriceForBubble(property.price)}</span>
+          </div>
+          ${property.hasVirtualTour ? `<div class="bubble-badge-external tour">3D TOUR</div>` : ''}
+          ${property.isNew ? '<div class="bubble-badge-external new">NEW</div>' : ''}
+        `;
+
+        el.appendChild(dot);
+        el.appendChild(bubble);
 
         el.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -440,10 +488,26 @@ onMounted(async () => {
 
         markerElements.value[property.id] = el;
 
-        new maplibregl.Marker({ element: el })
+        new maplibregl.Marker({ element: el, anchor: 'bottom' }) // ANCLAJE INFERIOR
           .setLngLat([property.lng, property.lat])
           .addTo(map);
       });
+      updateMarkersForZoom();
+    };
+
+
+    map.on('load', () => {
+      addMarkersToMap();
+
+      // Observar cambios en 'properties' para volver a añadir los marcadores si llegan tarde
+      watch(properties, (newProperties) => {
+        if (newProperties && newProperties.length > 0) {
+          // Limpiar marcadores existentes antes de añadir nuevos
+          Object.values(markerElements.value).forEach(el => el.remove());
+          markerElements.value = {};
+          addMarkersToMap();
+        }
+      }, { deep: true });
     });
 
     // Ocultar el card al arrastrar el mapa
@@ -572,15 +636,6 @@ onMounted(async () => {
         markerElements.value[newVal.id].classList.add('active-marker');
       }
     });
-
-    // Detectar usuario logueado al cargar
-    const { data: { user } } = await supabase.auth.getUser()
-    isLoggedIn.value = !!user
-    // Escuchar cambios de sesión
-    supabase.auth.onAuthStateChange((_event, session) => {
-      isLoggedIn.value = !!session?.user
-      if (session?.user) showLoginModal.value = false
-    })
   }
 });
 
@@ -711,8 +766,9 @@ const updateFilteredProperties = () => {
 };
 
 const toggleFavorite = (property) => {
-  if (!isLoggedIn.value) {
-    showLoginModal.value = true;
+  if (!user.value) {
+    loginModal.open();
+    toast.info("Debes iniciar sesión para guardar favoritos");
     return;
   }
   if (!property || !property.id) {
@@ -826,6 +882,24 @@ html, body {
   height: 100%;
 }
 
+.marker-container {
+  /* Contenedor invisible que sirve de ancla. Su parte inferior es el punto geográfico. */
+  width: 120px;
+  height: 80px;
+  cursor: pointer;
+  /* background: rgba(0,255,0,0.2); /* Descomentar para depurar y ver el área del contenedor */
+}
+
+.marker-dot, .price-bubble {
+  /* Todo se posiciona hacia arriba desde la parte inferior del contenedor */
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%); /* Solo centrado horizontal, no vertical */
+  will-change: opacity;
+  transition: opacity 0.2s ease-in-out;
+}
+
 .marker {
   position: relative; /* Requerido para la animación del pseudo-elemento */
   background-color: #EF4444; /* Tailwind's red-500 */
@@ -863,19 +937,19 @@ html, body {
 }
 
 .marker-dot {
+  /* Ajustamos la posición para que su centro esté en el ancla */
+  transform: translate(-50%, -50%);
   position: relative;
   background-color: #EF4444;
   width: 20px;
   height: 20px;
   border-radius: 50%;
   border: 2px solid white;
-  cursor: pointer;
   box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
 }
 
 .price-bubble {
-  position: relative;
-  cursor: pointer;
+  /* Este ya está centrado, solo definimos su apariencia */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -932,34 +1006,34 @@ html, body {
 }
 
 .bubble-badge-external.new {
-  top: -18px; /* Aún más arriba */
+  top: -20px;
   left: 50%;
-  transform: translateX(-45px);
+  transform: translateX(-50%) translateX(-25px); /* Centra y luego desplaza */
 }
 
 .bubble-badge-external.tour {
-  top: -18px; /* Misma altura que NEW para consistencia */
+  top: -20px;
   left: 50%;
-  transform: translateX(5px); /* Desplazamiento reducido para centrarla más */
+  transform: translateX(-50%) translateX(25px); /* Centra y luego desplaza */
 }
 
-.price-bubble.selected .price-bubble-container {
+.marker-container.selected .price-bubble-container,
+.marker-container.selected .marker-dot {
   background-color: #333;
 }
-.price-bubble.selected .price-bubble-container::after {
+.marker-container.selected .price-bubble-container::after {
   border-top-color: #333;
 }
 
-.price-bubble.selected::after {
+.marker-container.selected::after {
   content: '';
   position: absolute;
+  bottom: 10px; /* Posicionado cerca del ancla */
   left: 50%;
-  top: 12px;
   transform: translateX(-50%);
-  width: 90%;
-  padding-bottom: 45%;
-  height: 0;
-  border-radius: 16px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
   background-color: #333;
   animation: sonar-wave 1.5s infinite ease-out;
   z-index: -1;
@@ -967,21 +1041,21 @@ html, body {
 
 @keyframes sonar-wave {
   0% {
-    transform: scale(1);
+    transform: translateX(-50%) scale(0.5);
     opacity: 0.6;
   }
   100% {
-    transform: scale(2.5);
+    transform: translateX(-50%) scale(2.5);
     opacity: 0;
   }
 }
 
-.marker-dot.viewed, .price-bubble.viewed .price-bubble-container {
+.marker-container.viewed .marker-dot, 
+.marker-container.viewed .price-bubble-container {
   background-color: #38e8ff !important; /* Turquesa claro */
   border-color: #fff !important; /* Borde blanco */
-  border-width: 2px !important;
 }
-.price-bubble.viewed .price-bubble-container {
+.marker-container.viewed .price-bubble-container {
   color: #222 !important;
 }
 
@@ -999,25 +1073,7 @@ html, body {
   box-shadow: 0 0 1px 2px rgba(239, 68, 68, 0.7);
   animation: sonar 1.5s infinite;
   pointer-events: none;
-  z-index: 2;
-}
-
-.price-bubble.sonar-active::after,
-.price-bubble.selected::after,
-.price-bubble.active-marker::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 40px;
-  height: 40px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background-color: transparent;
-  box-shadow: 0 0 1px 2px rgba(239, 68, 68, 0.7);
-  animation: sonar 1.5s infinite;
-  pointer-events: none;
-  z-index: 2;
+  z-index: -1; /* Detrás del marcador */
 }
 
 .price-bubble.sonar-active .price-bubble-container {

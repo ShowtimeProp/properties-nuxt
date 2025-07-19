@@ -2,33 +2,33 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 export const useFavoritesStore = defineStore('favorites', () => {
-  const favorites = ref<any[]>([]) // Array de objetos de propiedad completos
+  const favorites = ref<any[]>([])
 
-  // Getter para comprobar si una propiedad es favorita por su ID
-  const isFavorite = computed(() => {
-    return (propertyId: string) => favorites.value.some(p => p.id === propertyId)
-  })
+  // Convertido a un método simple para mayor fiabilidad
+  function isFavorite(propertyId: string | number): boolean {
+    if (!propertyId) return false;
+    // Usamos '==' para comparar sin importar el tipo (string vs number)
+    return favorites.value.some(p => p.id == propertyId)
+  }
 
-  // Getter que devuelve el array de IDs de favoritos
   const favoriteIds = computed(() => {
     return favorites.value.map(p => p.id)
   })
 
-  // Acción para añadir/quitar un favorito
   function toggleFavorite(property: any) {
     if (!property || !property.id) return
     
-    const index = favorites.value.findIndex(p => p.id === property.id)
+    const index = favorites.value.findIndex(p => p.id == property.id)
     if (index === -1) {
-      favorites.value.push(property) // Añadir
+      favorites.value.push(property)
     } else {
-      favorites.value.splice(index, 1) // Quitar
+      favorites.value.splice(index, 1)
     }
   }
 
   return {
     favorites,
-    isFavorite,
+    isFavorite, // Ahora es un método
     favoriteIds,
     toggleFavorite,
   }

@@ -1,0 +1,80 @@
+# Task ID: 21
+# Title: Fix Supabase Trigger Infinite Loop in User Profile Handling
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Debug and fix the `handle_new_user` trigger in Supabase that's causing a 'stack depth limit exceeded' error and 500 Internal Server Error when fetching user profiles.
+# Details:
+1. Analyze the current implementation of the `handle_new_user` database trigger:
+   - Review the SQL function code that's triggered on user creation
+   - Identify the recursive loop in the trigger logic
+   - Examine how the trigger interacts with the `profiles` table
+
+2. Debug the specific cause of the infinite loop:
+   - Check if the trigger is being fired recursively by its own actions
+   - Examine if RLS policies are causing additional trigger executions
+   - Look for circular references between tables or functions
+   - Review any cascading operations that might re-trigger the function
+
+3. Fix the trigger implementation:
+   - Modify the `handle_new_user` function to prevent recursive calls
+   - Consider adding a guard clause to prevent re-entry into the function
+   - Example fix pattern:
+     ```sql
+     CREATE OR REPLACE FUNCTION public.handle_new_user()
+     RETURNS TRIGGER AS $$
+     BEGIN
+       -- Guard clause to prevent recursive triggering
+       IF (TG_OP = 'INSERT' AND NEW.email NOT LIKE '%@internal.temp%') THEN
+         INSERT INTO public.profiles (id, user_id, full_name, role)
+         VALUES (gen_random_uuid(), NEW.id, NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'role')
+         ON CONFLICT DO NOTHING;
+       END IF;
+       RETURN NEW;
+     END;
+     $$ LANGUAGE plpgsql SECURITY DEFINER;
+     ```
+
+4. Review and update RLS policies on the `profiles` table:
+   - Check if policies are causing additional database operations that trigger the function
+   - Ensure policies are correctly scoped and don't cause unintended side effects
+   - Example of corrected RLS policy:
+     ```sql
+     CREATE POLICY "Users can read their own profile" 
+     ON profiles FOR SELECT 
+     USING (auth.uid() = user_id);
+     ```
+
+5. Test the fix in a development environment before deploying to production
+6. Document the root cause and solution for future reference
+
+# Test Strategy:
+1. Reproduce the error:
+   - Create a test case that reliably reproduces the 'stack depth limit exceeded' error
+   - Document the exact steps and API calls that trigger the issue
+
+2. Unit testing:
+   - Test the modified trigger function in isolation with various input scenarios
+   - Verify the function handles edge cases properly (null values, special characters, etc.)
+   - Confirm the guard clause prevents recursive execution
+
+3. Integration testing:
+   - Test user registration flow end-to-end
+   - Verify profile creation works correctly after the fix
+   - Confirm that fetching user profiles no longer results in 500 errors
+   - Test with multiple concurrent user registrations to ensure stability
+
+4. Performance testing:
+   - Measure database query performance before and after the fix
+   - Ensure the fix doesn't introduce new performance bottlenecks
+   - Verify the system handles high load scenarios properly
+
+5. Regression testing:
+   - Ensure other authentication flows still work correctly
+   - Verify that existing users can still access their profiles
+   - Check that RLS policies still properly protect data
+
+6. Monitoring:
+   - Implement additional logging around the trigger execution
+   - Set up alerts for any recurrence of the issue
+   - Monitor database performance metrics after deploying the fix

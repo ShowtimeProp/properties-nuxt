@@ -6,8 +6,10 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
+    '@pinia-plugin-persistedstate/nuxt',
     '@nuxtjs/google-fonts',
-    '@nuxtjs/supabase'
+    '@nuxtjs/supabase',
+    '@vueuse/nuxt',
   ],
 
   supabase: {
@@ -18,7 +20,8 @@ export default defineNuxtConfig({
       login: '/',
       callback: '/confirm',
       exclude: [],
-    }
+    },
+    redirect: false
   },
 
   googleFonts: {
@@ -31,5 +34,9 @@ export default defineNuxtConfig({
     'swiper/css',
     'swiper/css/pagination',
     'swiper/css/navigation'
-  ]
+  ],
+
+  build: {
+    transpile: ['lucide-vue-next'],
+  }
 })

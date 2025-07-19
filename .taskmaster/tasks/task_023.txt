@@ -1,0 +1,113 @@
+# Task ID: 23
+# Title: Implement Responsive Property Cards with Mobile Slider
+# Status: pending
+# Dependencies: 22
+# Priority: medium
+# Description: Convert the vertical list of property cards to a horizontal slider on mobile devices to improve user experience and optimize screen space on smaller viewports.
+# Details:
+1. Analyze the current property cards implementation in the Nuxt.js frontend:
+   - Identify the component(s) responsible for rendering property cards
+   - Review the existing CSS/Tailwind classes used for the card layout
+
+2. Install and configure Swiper.js:
+   - Add Swiper.js to the project dependencies: `npm install swiper`
+   - Import Swiper styles in the appropriate location
+   - Create a Vue wrapper component for Swiper if needed
+
+3. Implement responsive behavior:
+   - Use CSS media queries or Tailwind's responsive prefixes to apply different layouts based on screen size
+   - For desktop (>= 768px): Maintain the current vertical list layout
+   - For mobile (< 768px): Implement the horizontal slider using Swiper.js
+
+4. Create the Swiper implementation:
+   ```vue
+   <template>
+     <div class="property-cards-container">
+       <!-- Desktop view (vertical list) -->
+       <div class="hidden md:block">
+         <div v-for="property in properties" :key="property.id" class="mb-4">
+           <PropertyCard :property="property" />
+         </div>
+       </div>
+       
+       <!-- Mobile view (horizontal slider) -->
+       <div class="block md:hidden">
+         <swiper
+           :slides-per-view="1.2"
+           :space-between="16"
+           :pagination="{ clickable: true }"
+         >
+           <swiper-slide v-for="property in properties" :key="property.id">
+             <PropertyCard :property="property" />
+           </swiper-slide>
+         </swiper>
+       </div>
+     </div>
+   </template>
+   
+   <script setup>
+   import { Swiper, SwiperSlide } from 'swiper/vue';
+   import { Pagination } from 'swiper/modules';
+   import 'swiper/css';
+   import 'swiper/css/pagination';
+   
+   // Import the property card component
+   import PropertyCard from '@/components/PropertyCard.vue';
+   
+   // Define props or composables to get properties data
+   const props = defineProps({
+     properties: {
+       type: Array,
+       required: true
+     }
+   });
+   </script>
+   ```
+
+5. Optimize the slider for mobile experience:
+   - Configure appropriate touch sensitivity and swipe behavior
+   - Add pagination indicators to show available cards
+   - Implement "peek" behavior to show a portion of the next card
+   - Ensure proper handling of card actions (favorites, details) within the slider
+
+6. Test the implementation across various device sizes and orientations
+   - Verify smooth transitions between desktop and mobile layouts
+   - Ensure all card functionality remains accessible in slider mode
+
+7. Optimize performance:
+   - Implement lazy loading for images in the slider
+   - Use Vue's virtual DOM efficiently to prevent unnecessary re-renders
+   - Consider implementing skeleton loaders for cards while data is loading
+
+# Test Strategy:
+1. Responsive Layout Testing:
+   - Use browser developer tools to test the component at various viewport widths
+   - Verify that the vertical list appears on desktop (>= 768px) and the horizontal slider appears on mobile (< 768px)
+   - Test the transition point to ensure smooth layout switching
+
+2. Functional Testing:
+   - Verify all property card functionality works in both layouts:
+     - Clicking on cards navigates to property details
+     - Action buttons (favorite, share, etc.) work correctly
+     - All information is visible and properly formatted
+
+3. Swiper.js Specific Testing:
+   - Test horizontal swiping gestures on touch devices
+   - Verify pagination indicators correctly show the current position
+   - Test edge cases (first and last card behavior)
+   - Ensure proper handling of different card heights
+
+4. Cross-browser and Device Testing:
+   - Test on multiple browsers (Chrome, Safari, Firefox)
+   - Test on actual mobile devices (iOS and Android)
+   - Verify performance and smoothness of animations
+
+5. Accessibility Testing:
+   - Ensure keyboard navigation works for the slider
+   - Verify proper ARIA attributes are applied
+   - Test with screen readers to ensure the slider is accessible
+
+6. Performance Testing:
+   - Measure and compare page load times before and after implementation
+   - Check for memory leaks during extended slider usage
+   - Verify smooth scrolling and transitions even with many cards
