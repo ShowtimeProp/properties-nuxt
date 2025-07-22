@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-50" @click.self="resetAndClose">
+  <div v-if="isOpen" class="fixed inset-0 z-50" @click.self="resetAndClose">
     <!-- Contenedor Intermedio para Centrado Robusto -->
     <div class="flex items-center justify-center min-h-screen w-full bg-black/40 px-4 py-8">
       
@@ -112,10 +112,13 @@
   
   <script setup>
 import { ref } from 'vue';
+import { useLoginModalStore } from '~/stores/loginModal';
+import { storeToRefs } from 'pinia';
+
 
 const supabase = useSupabaseClient();
-const props = defineProps({ show: Boolean });
-const emit = defineEmits(['close']);
+const loginModalStore = useLoginModalStore();
+const { isOpen } = storeToRefs(loginModalStore);
 
 // Estado del formulario
 const formStep = ref('email'); // 'email' | 'password'
@@ -159,7 +162,7 @@ function resetForm() {
 
 function resetAndClose() {
   resetForm();
-  emit('close');
+  loginModalStore.close();
 }
 
 // --- Autenticación con Supabase ---

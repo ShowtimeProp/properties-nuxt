@@ -162,7 +162,8 @@ const { data: properties, pending, error } = await useFetch('https://fapi.showti
       .map(property => ({
         ...property,
         lat: parseFloat(property.latitude),  // Usa 'latitude' y lo convierte a número
-        lng: parseFloat(property.longitude) // Usa 'longitude' y lo convierte a número
+        lng: parseFloat(property.longitude), // Usa 'longitude' y lo convierte a número
+        images: property.images_array || [] // AÑADIDO: Mapea images_array a images
       }));
   },
   // Valor por defecto mientras se cargan los datos

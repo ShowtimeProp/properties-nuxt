@@ -4,7 +4,7 @@
       <!-- Cara frontal -->
       <div class="card-face card-front flex flex-col h-full w-full" style="background:#fff;">
         <!-- Imagen principal -->
-        <div class="relative w-full" style="aspect-ratio:16/9; min-height:0;">
+        <div class="relative w-full" style="aspect-ratio:3/2; min-height:0;">
           <ClientOnly>
             <Swiper
               v-if="property.images?.length"
@@ -63,38 +63,50 @@
           <div>
             <div class="flex items-center gap-2 mb-1">
               <span class="zillow-price">{{ formatCurrency(property.price) }}</span>
-              <span v-if="property.expenses" class="zillow-expenses">+ {{ formatCurrency(property.expenses) }} exp.</span>
+              <span v-if="property.expenses && property.expenses > 0" class="zillow-expenses">+ {{ formatCurrency(property.expenses) }} exp.</span>
             </div>
           </div>
           <!-- Dirección y zona/localidad (segundo renglón) -->
           <div class="flex items-center gap-2 text-xs text-gray-700 mb-1">
-            <span class="truncate">{{ property.address }}</span>
+            <span class="truncate">{{ property.address || 'Dirección no disponible' }}</span>
             <span v-if="property.zone || property.localidad" class="mx-1 text-gray-300">|</span>
             <span class="truncate">{{ property.zone || property.localidad }}</span>
           </div>
-          <!-- Características principales (tercer renglón) -->
-          <div class="flex items-center gap-3 text-xs text-gray-700 mb-1 zillow-features">
-            <span>{{ property.total_surface }} m² tot.</span>
-            <span class="mx-1 text-gray-300">|</span>
-            <span>{{ property.ambience }} amb.</span>
-            <span class="mx-1 text-gray-300">|</span>
-            <div class="flex items-center gap-4">
-              <div class="flex flex-col items-center justify-center">
-                <svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7v11m0-4h18m0 4v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"/><path d="M7 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg>
-                <span>{{ property.bedrooms }}</span>
-              </div>
-              <div class="flex flex-col items-center justify-center">
-                <svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12h16a1 1 0 0 1 1 1v3a4 4 0 0 1-4 4h-10a4 4 0 0 1-4-4v-3a1 1 0 0 1 1-1z"/><path d="M6 12v-7a2 2 0 0 1 2-2h3v2.25"/><path d="M4 21l1-1.5"/><path d="M20 21l-1-1.5"/></svg>
-                <span>{{ property.bathrooms }}</span>
-              </div>
-              <div class="flex flex-col items-center justify-center">
-                <svg class="icon-inline" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
-                <span>{{ property.garage_count }}</span>
-              </div>
+          <!-- Características principales (tercer renglón) - REFACTORIZADO -->
+          <div class="flex items-center flex-wrap text-sm text-gray-700 mb-1 zillow-features font-medium">
+            <!-- Dormitorios -->
+            <div v-if="property.bedrooms" class="flex items-center pr-2">
+              <svg class="icon-inline h-4 w-4 text-gray-500 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7v11m0-4h18m0 4v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"/><path d="M7 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/></svg>
+              <span class="font-bold">{{ property.bedrooms }}</span>
+            </div>
+            <!-- Baños -->
+            <div v-if="property.bathrooms" class="flex items-center border-l border-gray-300 px-2">
+              <svg class="icon-inline h-4 w-4 text-gray-500 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12h16a1 1 0 0 1 1 1v3a4 4 0 0 1-4 4h-10a4 4 0 0 1-4-4v-3a1 1 0 0 1 1-1z"/><path d="M6 12v-7a2 2 0 0 1 2-2h3v2.25"/><path d="M4 21l1-1.5"/><path d="M20 21l-1-1.5"/></svg>
+              <span class="font-bold">{{ property.bathrooms }}</span>
+            </div>
+            <!-- Cocheras -->
+            <div v-if="property.garage_count > 0" class="flex items-center border-l border-gray-300 px-2">
+              <svg class="icon-inline h-4 w-4 text-gray-500 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
+              <span class="font-bold">{{ property.garage_count }}</span>
+            </div>
+            <!-- Superficie y Precio/m2 -->
+            <div v-if="property.area_m2 || property.total_surface" class="flex items-center border-l border-gray-300 px-2">
+              <span class="font-bold">{{ property.area_m2 || property.total_surface }}</span>
+              <span class="text-gray-500 ml-1">m² Tot.</span>
+              <template v-if="property.price_per_m2">
+                <span class="text-gray-400 mx-1">-</span>
+                <span class="text-gray-500">$</span>
+                <span class="font-bold">{{ new Intl.NumberFormat('es-AR').format(property.price_per_m2) }}</span>
+                <span class="text-gray-500 ml-1">/m²</span>
+              </template>
+            </div>
+            <!-- Tipo de Operación y Propiedad -->
+            <div v-if="property.property_type && property.tipo_operacion" class="flex items-center border-l border-gray-300 pl-2 text-gray-500 capitalize">
+              <span>{{ property.property_type }} en {{ property.tipo_operacion.toLowerCase() }}</span>
             </div>
           </div>
           <!-- Inmobiliaria (cuarto renglón) -->
-          <div class="text-[10px] text-gray-400 mt-1 truncate">{{ property.realty }}</div>
+          <div class="text-[10px] text-gray-400 mt-1 truncate">{{ property.realty || 'Inmobiliaria no especificada' }}</div>
           <!-- Icono compartir -->
           <div class="absolute bottom-3 right-3 z-20" @click.stop="isFlipped = true">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 opacity-80 transition-all duration-200 cursor-pointer share-icon">
@@ -340,6 +352,19 @@ function handleFavoriteClick(event) {
 .swiper-button-next-custom {
   right: 10px;
 }
+
+/* --- NUEVOS ESTILOS PARA LA PAGINACIÓN --- */
+:deep(.swiper-pagination-bullet) {
+  background-color: white;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+:deep(.swiper-pagination-bullet-active) {
+  opacity: 1;
+  background-color: white;
+}
+/* --- FIN DE NUEVOS ESTILOS --- */
 
 .favorite-btn {
   background: none;

@@ -45,7 +45,7 @@
       <span class="text-white text-sm font-bold mx-auto">Menú</span>
     </div>
   </nav>
-  <LoginModal v-model="showLoginModal" />
+  <LoginModal />
 </template>
 
 <script setup>
@@ -60,7 +60,8 @@ const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const router = useRouter()
 const loginModalStore = useLoginModalStore()
-const { isOpen: showLoginModal } = storeToRefs(loginModalStore)
+// Eliminamos la referencia a showLoginModal que ya no se usa en la plantilla
+// const { isOpen: showLoginModal } = storeToRefs(loginModalStore)
 
 const searchText = ref('')
 const listening = ref(false)
