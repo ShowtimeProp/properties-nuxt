@@ -34,20 +34,18 @@
           </svg>
         </button>
       </div>
-      <!-- Lista de Propiedades en Grid (sin menú de ordenamiento) -->
+      <!-- Lista de Propiedades en Grid -->
       <div ref="scrollContainer" class="flex-1 overflow-y-auto p-4">
-        <div v-if="sortedProperties.length > 0" class="grid grid-cols-1 gap-4">
-          <PropertySlideCardClean
+        <div v-if="sortedProperties.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4 place-items-center">
+          <PropertyCard
             v-for="property in sortedProperties"
             :key="property.id"
             :property="property"
             :is-favorite="isFavorite(property)"
             :is-logged-in="isLoggedIn"
             @toggle-favorite="toggleFavorite(property)"
-            @activate-sonar="activateSonarFromSlide"
-            @open-modal="openModalFromSlide"
+            @open-modal="openModalFromSlide(property)"
             @login-request="showLoginModal = true"
-            class="mx-auto"
           />
         </div>
         <div v-else class="h-full flex items-center justify-center p-8 text-gray-500">
@@ -136,13 +134,12 @@
 </template>
 
 <script setup>
-import PropertySlideCardClean from './PropertySlideCardClean.vue';
+import PropertyCard from './PropertyCard.vue';
 import { onMounted, onUnmounted, ref, watch, nextTick, computed } from 'vue';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
-import PropertyCard from './PropertyCard.vue';
 import PropertyModal from './PropertyModal.vue';
 import LoginModal from './LoginModal.vue';
 import { useFavoritesStore } from '~/stores/favorites';
@@ -699,6 +696,10 @@ const handleClickOutside = (event) => {
 };
 
 const openModalFromSlide = (property) => {
+  // Activa el sonar y centra el mapa para una mejor UX
+  activateSonarFromSlide(property);
+  
+  // Abre el modal de detalles
   selectedProperty.value = property;
   isModalOpen.value = true;
   openedFromSlide.value = true;
