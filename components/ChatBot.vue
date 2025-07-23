@@ -65,7 +65,9 @@
 
 <script setup>
 import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { useSearchStore } from '~/stores/search';
 
+const searchStore = useSearchStore();
 const open = ref(false)
 const input = ref('')
 const loading = ref(false)
@@ -109,15 +111,15 @@ let recognition = null
 
 async function sendMessage() {
   if (!input.value.trim()) return
-  messages.value.push({ author: 'user', text: input.value, time: getCurrentTime(), footer: 'enviado' })
-  loading.value = true
-  const userMsg = input.value
+  const userQuery = input.value;
+  messages.value.push({ author: 'user', text: userQuery, time: getCurrentTime(), footer: 'enviado' })
   input.value = ''
-  // Simulación de respuesta IA
-  setTimeout(() => {
-    messages.value.push({ author: 'bot', text: 'Showy está pensando... (aquí responderá la IA)', time: getCurrentTime(), footer: 'enviado' })
-    loading.value = false
-  }, 1200)
+  
+  // Llama a la acción del store para iniciar la búsqueda
+  searchStore.setSearchQuery(userQuery);
+
+  // Opcional: podrías mostrar un mensaje de "Buscando..."
+  messages.value.push({ author: 'bot', text: 'Ok, buscando propiedades que coincidan con lo que me pediste...', time: getCurrentTime(), footer: 'enviado' })
 }
 
 function startListening() {

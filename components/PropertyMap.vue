@@ -146,8 +146,54 @@ import { useFavoritesStore } from '~/stores/favorites';
 import { useLoginModalStore } from '~/stores/loginModal';
 import { useToast } from 'vue-toastification';
 import { useSupabaseUser } from '#imports';
+import { useSearchStore } from '~/stores/search';
 
-// --- NUEVA LLAMADA A LA API ---
+const searchStore = useSearchStore();
+
+// --- BÚSQUEDA SEMÁNTICA ---
+// Observa cambios en la consulta de búsqueda del store
+watch(() => searchStore.searchQuery, (newQuery) => {
+  if (newQuery) {
+    performSemanticSearch(newQuery);
+  } else {
+    // Si la búsqueda se limpia, vuelve a cargar todas las propiedades (opcional)
+    // fetchAllProperties(); // Necesitaríamos refactorizar para tener esta función
+  }
+});
+
+async function performSemanticSearch(query) {
+  try {
+    const results = await $fetch('https://fapi.showtimeprop.com/search', {
+      method: 'POST',
+      body: {
+        query: query,
+        top_k: 50 // Traer hasta 50 resultados
+      }
+    });
+
+    // Actualiza el store con los resultados
+    searchStore.setSearchResults(results);
+
+    // Actualiza los marcadores en el mapa
+    // Primero, transformamos los resultados para que tengan el formato correcto
+    const formattedResults = results.map(property => ({
+      ...property,
+      lat: parseFloat(property.latitude),
+      lng: parseFloat(property.longitude),
+      images: property.images_array || []
+    }));
+    
+    properties.value = formattedResults;
+
+  } catch (err) {
+    console.error("Error en la búsqueda semántica:", err);
+    toast.error("Hubo un error al realizar la búsqueda.");
+    searchStore.clearSearch(); // Limpia el estado de búsqueda en caso de error
+  }
+}
+
+
+// --- LLAMADA INICIAL A LA API ---
 const { data: properties, pending, error } = await useFetch('https://fapi.showtimeprop.com/properties/all', {
   lazy: true, // Carga los datos en segundo plano sin bloquear la navegación
   server: false, // Asegura que la llamada se haga solo en el lado del cliente
