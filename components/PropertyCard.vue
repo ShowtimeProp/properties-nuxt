@@ -102,7 +102,17 @@
             </div>
             <!-- Tipo de Operación y Propiedad -->
             <div v-if="property.property_type && property.tipo_operacion" class="flex items-center border-l border-gray-300 pl-2 text-gray-500 capitalize">
-              <span>{{ property.property_type }} en {{ property.tipo_operacion.toLowerCase() }}</span>
+              <span 
+                :class="[
+                  'px-2', 'py-1', 'rounded-md', 'text-xs', 'font-bold',
+                  { 
+                    'bg-green-500 text-white': property.tipo_operacion.toLowerCase().includes('venta'),
+                    'bg-orange-500 text-white': property.tipo_operacion.toLowerCase().includes('alquiler')
+                  }
+                ]"
+              >
+                {{ property.property_type }} en {{ property.tipo_operacion.toLowerCase() }}
+              </span>
             </div>
           </div>
           <!-- Inmobiliaria (cuarto renglón) -->
