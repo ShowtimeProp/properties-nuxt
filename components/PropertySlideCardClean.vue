@@ -174,6 +174,10 @@ onMounted(() => {
 })
 
 function formatCurrency(price) {
+  // ¡LA SOLUCIÓN! Si no hay precio, no falles.
+  if (price === null || typeof price === 'undefined') {
+    return '';
+  }
   let num;
   if (typeof price === 'string') {
     num = parseInt(price.replace(/\./g, '').replace(',', '.'), 10);

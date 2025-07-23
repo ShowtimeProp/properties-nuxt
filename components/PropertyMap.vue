@@ -22,12 +22,12 @@
     <!-- Panel de Listado de Propiedades -->
     <div 
       ref="propertyListPanel"
-      class="fixed top-0 right-0 w-[750px] bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col pt-[110px]"
+      class="fixed top-0 right-0 bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col pt-[110px] w-full md:w-[450px] lg:w-[40%] max-w-[750px]"
       style="height: 100vh; box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1)"
       :class="{ 'translate-x-0': showPropertyList, 'translate-x-full': !showPropertyList }"
     >
       <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-        <h3 class="text-lg font-semibold">Propiedades encontradas</h3>
+        <h3 class="text-lg font-semibold">{{ sortedProperties.length }} propiedades en esta zona</h3>
         <button @click="togglePropertyList" class="text-gray-500 hover:text-gray-700">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -36,7 +36,7 @@
       </div>
       <!-- Lista de Propiedades en Grid (sin menú de ordenamiento) -->
       <div ref="scrollContainer" class="flex-1 overflow-y-auto p-4">
-        <div v-if="sortedProperties.length > 0" class="grid grid-cols-2 gap-4">
+        <div v-if="sortedProperties.length > 0" class="grid grid-cols-1 gap-4">
           <PropertySlideCardClean
             v-for="property in sortedProperties"
             :key="property.id"
@@ -509,6 +509,9 @@ onMounted(async () => {
           addMarkersToMap();
         }
       }, { deep: true });
+
+      // ACTUALIZA LA LISTA CUANDO EL MAPA SE MUEVE
+      map.on('moveend', updateFilteredProperties);
     });
 
     // Ocultar el card al arrastrar el mapa
@@ -671,9 +674,12 @@ const deleteShape = () => {
 };
 
 const togglePropertyList = () => {
+  console.log('Botón "Ver Listado" clickeado. Estado actual de showPropertyList:', showPropertyList.value);
   showPropertyList.value = !showPropertyList.value;
+  console.log('Nuevo estado de showPropertyList:', showPropertyList.value);
   if (showPropertyList.value) {
     selectedProperty.value = null;
+    // Llama al filtro la primera vez que se abre el panel
     updateFilteredProperties();
   }
 };
@@ -736,10 +742,16 @@ const sortedProperties = computed(() => {
   const properties = [...filteredProperties.value];
   
   return properties.sort((a, b) => {
-    const priceA = parseInt(a.price.replace(/\./g, ''));
-    const priceB = parseInt(b.price.replace(/\./g, ''));
-    const priceM2A = priceA / a.total_surface;
-    const priceM2B = priceB / b.total_surface;
+    // Robust price parsing
+    const priceA = a.price ? parseInt(String(a.price).replace(/\./g, ''), 10) : 0;
+    const priceB = b.price ? parseInt(String(b.price).replace(/\./g, ''), 10) : 0;
+    
+    // Robust surface data for price/m2 calculation
+    const surfaceA = a.total_surface > 0 ? a.total_surface : 1;
+    const surfaceB = b.total_surface > 0 ? b.total_surface : 1;
+
+    const priceM2A = priceA / surfaceA;
+    const priceM2B = priceB / surfaceB;
     
     switch (sortBy.value) {
       case 'price-asc':
@@ -761,9 +773,22 @@ const sortedProperties = computed(() => {
 });
 
 const updateFilteredProperties = () => {
-  // Por ahora, mostramos todas las propiedades
-  // En una implementación real, aquí filtrarías las propiedades basadas en el área dibujada
-  filteredProperties.value = [...properties.value];
+  if (!map || !properties.value) {
+    filteredProperties.value = [];
+    return;
+  }
+  
+  // Obtiene los límites geográficos de la vista actual del mapa
+  const bounds = map.getBounds();
+  
+  // Filtra solo las propiedades que están dentro de esos límites
+  filteredProperties.value = properties.value.filter(p => {
+    // Asegurarse de que lat y lng son números válidos antes de comprobar
+    if (typeof p.lng === 'number' && typeof p.lat === 'number') {
+      return bounds.contains([p.lng, p.lat]);
+    }
+    return false;
+  });
 };
 
 const toggleFavorite = (property) => {
