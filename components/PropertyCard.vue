@@ -179,22 +179,21 @@ import { useSupabaseUser } from '#imports';
 import { useToast } from 'vue-toastification';
 
 const user = useSupabaseUser();
-const store = useFavoritesStore();
-const { isFavorite } = storeToRefs(store);
-const { toggleFavorite } = store;
-const toast = useToast();
+const favoritesStore = useFavoritesStore();
 const loginModal = useLoginModalStore();
+const toast = useToast();
 
 const props = defineProps({
   property: {
     type: Object,
     required: true
-  },
-  isFavorite: {
-    type: Boolean,
-    default: false
   }
-})
+});
+
+const isFavorite = computed(() => {
+  return favoritesStore.isFavorite(props.property?.id);
+});
+
 const swiperRef = ref(null)
 const swiperInstance = ref(null)
 const showPrevButton = ref(false)
@@ -283,7 +282,7 @@ function handleFavoriteClick(event) {
     toast.info("Debes iniciar sesión para guardar favoritos");
     return;
   }
-  toggleFavorite(props.property)
+  favoritesStore.toggleFavorite(props.property)
 }
 </script>
 

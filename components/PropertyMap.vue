@@ -41,8 +41,6 @@
             v-for="property in sortedProperties"
             :key="property.id"
             :property="property"
-            :is-favorite="isFavorite(property)"
-            :is-logged-in="isLoggedIn"
             @toggle-favorite="toggleFavorite(property)"
             @open-modal="openModalFromSlide(property)"
             @login-request="showLoginModal = true"
@@ -96,8 +94,6 @@
       <div style="position: relative;">
         <PropertyCard 
           :property="selectedProperty" 
-          :is-favorite="isFavorite(selectedProperty)"
-          :is-logged-in="isLoggedIn"
           @toggle-favorite="toggleFavorite(selectedProperty)"
           @close="selectedProperty = null"
           @open-modal="isModalOpen = true"

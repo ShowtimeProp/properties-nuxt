@@ -1,0 +1,56 @@
+# Documento de Requisitos del Producto (PRD) - Plataforma Inmobiliaria SaaS Multi-Tenant
+
+## 1. Visión General del Producto
+
+Crear un sistema SaaS (Software as a Service) inmobiliario multi-tenant diseñado para "realtors" (inmobiliarias y agentes individuales). La plataforma permitirá a cada realtor gestionar su propio portal de cara al cliente y un potente backend para la administración de su negocio.
+
+## 2. Características Clave
+
+### 2.1. Arquitectura Multi-Tenant
+
+-   **Portales de Cliente Aislados**: Cada realtor (tenant) tendrá su propio portal "Front End" personalizable.
+    -   Soporte para subdominios (ej. `inmobiliaria-perez.showtimeprop.com`).
+    -   Soporte para dominios personalizados (ej. `www.inmobiliaria-perez.com`).
+    -   Branding personalizable: logo, colores primarios/secundarios.
+-   **Dashboard de Realtor (Backend)**: Cada realtor tendrá acceso a un dashboard "Backend" para gestionar sus operaciones.
+    -   Acceso seguro y aislado por tenant.
+
+### 2.2. Portal del Cliente (Frontend)
+
+-   **Visualización de Propiedades**:
+    -   Mapa interactivo como vista principal.
+    -   Búsqueda y filtro de propiedades (precio, zona, tipo, etc.).
+    -   Vista de detalle de cada propiedad.
+-   **Gestión de Cuentas de Usuario Final**:
+    -   Registro e inicio de sesión para clientes.
+    -   Perfiles de cliente.
+-   **Funcionalidades de Interacción**:
+    -   Guardar propiedades como favoritas.
+    -   Agendar visitas (showings) a propiedades.
+    -   Alertas de baja de precio.
+
+### 2.3. Dashboard del Realtor (Backend)
+
+-   **Gestión de Propiedades**:
+    -   CRUD (Crear, Leer, Actualizar, Eliminar) de propiedades.
+    -   Carga masiva de propiedades (ej. vía CSV, API).
+-   **CRM y Gestión de Leads**:
+    -   Base de datos de clientes (leads).
+    -   Seguimiento de la actividad del cliente en el portal:
+        -   Propiedades vistas.
+        -   Propiedades favoritas.
+        -   Visitas agendadas.
+-   **Seguimiento de Transacciones**:
+    -   Visualización del "pipeline" de transacciones para cada cliente.
+    -   Etapas personalizables para cada tipo de transacción (Compra, Venta, Alquiler, Alquiler Temporario).
+    -   Ejemplos de etapas (Compra): Búsqueda activa, En negociación, Oferta aceptada, En proceso de cierre, Cerrada.
+
+## 3. Stack Tecnológico (Propuesta Inicial)
+
+-   **Frontend**: Nuxt.js (Vue 3) con TailwindCSS y Pinia.
+-   **Backend (API Principal)**: FastAPI (Python).
+-   **Autenticación y Gestión de Usuarios**: Supabase.
+-   **Base de Datos Transaccional**: PostgreSQL.
+-   **Base de Datos Vectorial (Búsqueda Semántica)**: Qdrant.
+-   **Orquestación y Despliegue**: Docker Swarm con Portainer.
+-   **Automatización de Workflows**: n8n (para tareas como el price watchdog). 
