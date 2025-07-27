@@ -176,8 +176,9 @@ import { useFavoritesStore } from '~/stores/favorites';
 import { useLoginModalStore } from '~/stores/loginModal';
 import { storeToRefs } from 'pinia';
 import { useSupabaseUser } from '#imports';
-import { useToast } from 'vue-toastification';
+import Toast from 'vue-toastification';
 
+const { useToast } = Toast;
 const user = useSupabaseUser();
 const favoritesStore = useFavoritesStore();
 const loginModal = useLoginModalStore();

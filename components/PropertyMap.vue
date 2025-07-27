@@ -140,10 +140,11 @@ import PropertyModal from './PropertyModal.vue';
 import LoginModal from './LoginModal.vue';
 import { useFavoritesStore } from '~/stores/favorites';
 import { useLoginModalStore } from '~/stores/loginModal';
-import { useToast } from 'vue-toastification';
+import Toast from 'vue-toastification';
 import { useSupabaseUser } from '#imports';
 import { useSearchStore } from '~/stores/search';
 
+const { useToast } = Toast;
 const searchStore = useSearchStore();
 const config = useRuntimeConfig();
 
