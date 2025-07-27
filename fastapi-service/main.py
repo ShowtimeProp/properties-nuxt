@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel
 from qdrant_client import QdrantClient, models
 import os
@@ -36,9 +36,19 @@ app = FastAPI(
 )
 
 # --- Add CORS Middleware ---
+# Define the specific origins that are allowed to make requests.
+allowed_origins = [
+    "http://localhost:3000",          # For local development
+    "https://showtimeprop.com",       # Your main production domain
+    "https://www.showtimeprop.com",   # Your www production domain
+    "https://bnicolini.showtimeprop.com" # Your tenant subdomain
+    # Add other tenant subdomains here as they are created, or use a wildcard pattern
+    # For wildcard subdomains, you might need allow_origin_regex in production
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,31 +59,34 @@ app.add_middleware(
 async def tenant_middleware(request: Request, call_next):
     host = request.headers.get("host", "").split(":")[0]
     prod_base_domain = "showtimeprop.com"
+    api_host = f"fapi.{prod_base_domain}"
     subdomain = None
 
-    if host.endswith(prod_base_domain):
-        subdomain = host.replace(f".{prod_base_domain}", "")
+    # We only resolve tenants for hosts that are NOT the main API host
+    if host.endswith(prod_base_domain) and host != api_host:
+        subdomain = host.split(f".{prod_base_domain}")[0]
+    # Also handle localhost subdomains for local tenant testing
     elif host.endswith(".localhost"):
         subdomain = host.split('.')[0]
 
-    if request.url.path in ["/", "/docs", "/openapi.json"]:
-        return await call_next(request)
+    tenant_id = None
+    if subdomain:
+        try:
+            # If there's a subdomain, we MUST find a matching tenant
+            response = supabase_cli.table("tenants").select("id").eq("subdomain", subdomain).single().execute()
+            if not response.data:
+                # Use a more specific error for debugging
+                return Response(content=f'{{"detail":"Tenant with subdomain \'{subdomain}\' not found."}}', status_code=404, media_type="application/json")
+            
+            tenant_id = response.data['id']
+        except Exception as e:
+            print(f"Error during tenant resolution: {e}")
+            return Response(content='{"detail":"Error resolving tenant."}', status_code=500, media_type="application/json")
 
-    if not subdomain:
-        raise HTTPException(status_code=404, detail="Tenant not found. No subdomain provided.")
-
-    try:
-        response = supabase_cli.table("tenants").select("id").eq("subdomain", subdomain).single().execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail=f"Tenant '{subdomain}' not found.")
-        
-        request.state.tenant_id = response.data['id']
-    except Exception as e:
-        # Log the exception for detailed debugging
-        print(f"Error during tenant resolution: {e}")
-        raise HTTPException(status_code=500, detail="Error resolving tenant.")
-
-    return await call_next(request)
+    request.state.tenant_id = tenant_id # This will be the UUID or None
+    
+    response = await call_next(request)
+    return response
 
 # Initialize clients
 try:
@@ -105,19 +118,23 @@ def test_tenant_resolution(request: Request):
 @app.get("/properties/all", summary="Get All Properties")
 def get_all_properties(request: Request):
     tenant_id = getattr(request.state, "tenant_id", None)
-    if not tenant_id:
-        raise HTTPException(status_code=400, detail="Could not determine tenant.")
     
-    print(f"Fetching all properties for tenant: {tenant_id}")
+    scroll_filter = None
+    if tenant_id:
+        print(f"Fetching all properties for tenant: {tenant_id}")
+        scroll_filter = models.Filter(
+            must=[models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id))]
+        )
+    else:
+        print("Fetching all properties without tenant filter.")
+
     try:
         results, _ = qdrant_cli.scroll(
             collection_name=settings["collection_name"],
             limit=1000,
             with_payload=True,
             with_vectors=False,
-            scroll_filter=models.Filter(
-                must=[models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id))]
-            )
+            scroll_filter=scroll_filter # Pass the filter here (can be None)
         )
         return [record.payload for record in results]
     except Exception as e:
@@ -128,8 +145,11 @@ def get_all_properties(request: Request):
 @app.post("/search", summary="Semantic Property Search")
 def search(request: Request, search_request: SearchRequestModel):
     tenant_id = getattr(request.state, "tenant_id", None)
+
     if not tenant_id:
-        raise HTTPException(status_code=400, detail="Could not determine tenant.")
+        # For now, block searches on the main domain without a tenant context
+        # In the future, this could search public properties or similar
+        raise HTTPException(status_code=400, detail="Search requires a tenant context. Please use a subdomain.")
 
     print(f"Performing search for tenant: {tenant_id}")
     try:
@@ -148,7 +168,8 @@ def search(request: Request, search_request: SearchRequestModel):
                 ))
         
         conditions.append(models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id)))
-        query_filter = models.Filter(must=conditions)
+        
+        query_filter = models.Filter(must=conditions) if conditions else None
 
         hits = qdrant_cli.search(
             collection_name=settings["collection_name"],

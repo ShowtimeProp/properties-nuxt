@@ -145,6 +145,30 @@ import { useSupabaseUser } from '#imports';
 import { useSearchStore } from '~/stores/search';
 
 const searchStore = useSearchStore();
+const config = useRuntimeConfig();
+
+// --- API Endpoint Configuration ---
+const apiBaseUrl = computed(() => {
+  if (process.server) {
+    // En el servidor, siempre usamos la URL base configurada (para SSR, etc.)
+    return config.public.apiBaseUrl;
+  }
+  // En el cliente, determinamos la URL dinámicamente.
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // Para desarrollo local, usamos la URL del .env
+    return config.public.apiBaseUrl;
+  }
+  // Para producción, construimos la URL a partir del subdominio.
+  // Asumimos que la API está en fapi.dominio.com
+  const parts = hostname.split('.');
+  if (parts.length > 2) {
+    // bnicolini.showtimeprop.com -> fapi.showtimeprop.com
+    return `https://fapi.${parts.slice(-2).join('.')}`;
+  }
+  // showtimeprop.com -> fapi.showtimeprop.com
+  return `https://fapi.${hostname}`;
+});
 
 // --- BÚSQUEDA SEMÁNTICA ---
 // Observa cambios en la consulta de búsqueda del store
@@ -159,7 +183,8 @@ watch(() => searchStore.searchQuery, (newQuery) => {
 
 async function performSemanticSearch(query) {
   try {
-    const results = await $fetch('https://fapi.showtimeprop.com/search', {
+    const searchUrl = new URL('/search', apiBaseUrl.value).href;
+    const results = await $fetch(searchUrl, {
       method: 'POST',
       body: {
         query: query,
@@ -190,7 +215,12 @@ async function performSemanticSearch(query) {
 
 
 // --- LLAMADA INICIAL A LA API ---
-const { data: properties, pending, error } = await useFetch('https://fapi.showtimeprop.com/properties/all', {
+const propertiesApiUrl = computed(() => {
+  if (!apiBaseUrl.value) return '';
+  return new URL('/properties/all', apiBaseUrl.value).href;
+});
+
+const { data: properties, pending, error } = await useFetch(propertiesApiUrl, {
   lazy: true, // Carga los datos en segundo plano sin bloquear la navegación
   server: false, // Asegura que la llamada se haga solo en el lado del cliente
   transform: (data) => {
