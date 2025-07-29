@@ -45,10 +45,14 @@ allowed_origins = [
     # Add other tenant subdomains here as they are created, or use a wildcard pattern
     # For wildcard subdomains, you might need allow_origin_regex in production
 ]
+# Regex to allow any Vercel deployment URL
+vercel_regex = r"https://.*-alex-nicolinis-projects\.vercel\.app"
+
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=vercel_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

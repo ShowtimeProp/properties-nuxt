@@ -222,23 +222,58 @@ const propertiesApiUrl = computed(() => {
 });
 
 const { data: properties, pending, error } = await useFetch(propertiesApiUrl, {
-  lazy: true, // Carga los datos en segundo plano sin bloquear la navegación
-  server: false, // Asegura que la llamada se haga solo en el lado del cliente
-  transform: (data) => {
-    if (!Array.isArray(data)) return []; // Devuelve un array vacío si los datos no son los esperados
-    // Mapea los datos para normalizar los campos de coordenadas
-    return data
-      .filter(p => p && p.latitude && p.longitude) // FILTRA propiedades sin coordenadas
-      .map(property => ({
-        ...property,
-        lat: parseFloat(property.latitude),  // Usa 'latitude' y lo convierte a número
-        lng: parseFloat(property.longitude), // Usa 'longitude' y lo convierte a número
-        images: property.images_array || [] // AÑADIDO: Mapea images_array a images
-      }));
-  },
-  // Valor por defecto mientras se cargan los datos
-  default: () => []
+  watch: [propertiesApiUrl], // Vuelve a ejecutar si la URL cambia
+  immediate: false // No se ejecuta inmediatamente en el servidor
 });
+
+// Ejecutar la llamada solo en el cliente
+onMounted(() => {
+  if (propertiesApiUrl.value) {
+    useFetch(propertiesApiUrl, {
+      lazy: true,
+      server: false,
+      transform: (response) => {
+        if (!Array.isArray(response)) return []; // Devuelve un array vacío si los datos no son los esperados
+        // Mapea los datos para normalizar los campos de coordenadas
+        return response
+          .filter(p => p && p.latitude && p.longitude) // FILTRA propiedades sin coordenadas
+          .map(property => ({
+            ...property,
+            lat: parseFloat(property.latitude),  // Usa 'latitude' y lo convierte a número
+            lng: parseFloat(property.longitude), // Usa 'longitude' y lo convierte a número
+            images: property.images_array || [] // AÑADIDO: Mapea images_array a images
+          }));
+      }
+    }).then(result => {
+      properties.value = result.data.value;
+    });
+  }
+});
+
+
+watch(propertiesApiUrl, (newUrl) => {
+  if (newUrl && typeof window !== 'undefined') {
+     useFetch(newUrl, {
+      lazy: true,
+      server: false,
+      transform: (response) => {
+        if (!Array.isArray(response)) return []; // Devuelve un array vacío si los datos no son los esperados
+        // Mapea los datos para normalizar los campos de coordenadas
+        return response
+          .filter(p => p && p.latitude && p.longitude) // FILTRA propiedades sin coordenadas
+          .map(property => ({
+            ...property,
+            lat: parseFloat(property.latitude),  // Usa 'latitude' y lo convierte a número
+            lng: parseFloat(property.longitude), // Usa 'longitude' y lo convierte a número
+            images: property.images_array || [] // AÑADIDO: Mapea images_array a images
+          }));
+      }
+    }).then(result => {
+      properties.value = result.data.value;
+    });
+  }
+});
+
 
 watch(error, (newError) => {
   if (newError) {
