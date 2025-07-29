@@ -176,13 +176,13 @@ import { useFavoritesStore } from '~/stores/favorites';
 import { useLoginModalStore } from '~/stores/loginModal';
 import { storeToRefs } from 'pinia';
 import { useSupabaseUser } from '#imports';
-import Toast from 'vue-toastification';
+// import Toast from 'vue-toastification';
 
-const { useToast } = Toast;
+// const { useToast } = Toast;
 const user = useSupabaseUser();
 const favoritesStore = useFavoritesStore();
 const loginModal = useLoginModalStore();
-const toast = useToast();
+// const toast = useToast();
 
 const props = defineProps({
   property: {
@@ -266,7 +266,7 @@ watch(isFlipped, (val) => {
 function setPriceDropAlert() {
   if (!user.value) {
     loginModal.open();
-    toast.info("Debes iniciar sesión para crear una alerta.");
+    // toast.info("Debes iniciar sesión para crear una alerta.");
     return;
   }
   
@@ -280,7 +280,7 @@ function handleFavoriteClick(event) {
   event.stopPropagation()
   if (!user.value) {
     loginModal.open();
-    toast.info("Debes iniciar sesión para guardar favoritos");
+    // toast.info("Debes iniciar sesión para guardar favoritos");
     return;
   }
   favoritesStore.toggleFavorite(props.property)

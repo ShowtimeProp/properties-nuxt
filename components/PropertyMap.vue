@@ -140,11 +140,11 @@ import PropertyModal from './PropertyModal.vue';
 import LoginModal from './LoginModal.vue';
 import { useFavoritesStore } from '~/stores/favorites';
 import { useLoginModalStore } from '~/stores/loginModal';
-import Toast from 'vue-toastification';
+// import Toast from 'vue-toastification';
 import { useSupabaseUser } from '#imports';
 import { useSearchStore } from '~/stores/search';
 
-const { useToast } = Toast;
+// const { useToast } = Toast;
 const searchStore = useSearchStore();
 const config = useRuntimeConfig();
 
@@ -209,7 +209,7 @@ async function performSemanticSearch(query) {
 
   } catch (err) {
     console.error("Error en la búsqueda semántica:", err);
-    toast.error("Hubo un error al realizar la búsqueda.");
+    // toast.error("Hubo un error al realizar la búsqueda."); // Toast removed
     searchStore.clearSearch(); // Limpia el estado de búsqueda en caso de error
   }
 }
@@ -258,7 +258,7 @@ watch(error, (newError) => {
   if (newError) {
     console.error('Error fetching properties:', newError);
     // Opcional: mostrar una notificación al usuario
-    // toast.error('No se pudieron cargar las propiedades. Intente de nuevo más tarde.');
+    // toast.error('No se pudieron cargar las propiedades. Intente de nuevo más tarde.'); // Toast removed
   }
 });
 // --- FIN DE LA NUEVA LLAMADA A LA API ---
@@ -347,7 +347,6 @@ const showLoginModal = ref(false)
 
 const favoritesStore = useFavoritesStore();
 const loginModal = useLoginModalStore();
-const toast = useToast();
 
 const sortOptions = [
   { value: 'relevance', label: 'Relevancia' },
@@ -882,11 +881,11 @@ const updateFilteredProperties = () => {
 const toggleFavorite = (property) => {
   if (!user.value) {
     loginModal.open();
-    toast.info("Debes iniciar sesión para guardar favoritos");
+    // toast.info("Debes iniciar sesión para guardar favoritos"); // Toast removed
     return;
   }
   if (!property || !property.id) {
-    toast.error('No se puede agregar a favoritos: propiedad inválida.');
+    // toast.error('No se puede agregar a favoritos: propiedad inválida.'); // Toast removed
     return;
   }
 
@@ -898,9 +897,9 @@ const toggleFavorite = (property) => {
     ? `${property.title || 'Propiedad'} agregada a favoritos!`
     : `${property.title || 'Propiedad'} eliminada de favoritos.`;
   
-  toast.success(message, {
-    icon: !wasFavorite ? 'fas fa-heart text-red-500' : 'fas fa-trash-alt'
-  });
+  // toast.success(message, { // Toast removed
+  //   icon: !wasFavorite ? 'fas fa-heart text-red-500' : 'fas fa-trash-alt'
+  // });
 };
 
 const isFavorite = (property) => {
