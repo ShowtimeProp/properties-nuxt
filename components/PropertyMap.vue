@@ -221,59 +221,38 @@ const propertiesApiUrl = computed(() => {
   return new URL('/properties/all', apiBaseUrl.value).href;
 });
 
-const { data: properties, pending, error } = await useFetch(propertiesApiUrl, {
-  watch: [propertiesApiUrl], // Vuelve a ejecutar si la URL cambia
-  immediate: false // No se ejecuta inmediatamente en el servidor
-});
+const properties = ref([]);
+const pending = ref(true);
+const error = ref(null);
 
 // Ejecutar la llamada solo en el cliente
 onMounted(() => {
   if (propertiesApiUrl.value) {
-    useFetch(propertiesApiUrl, {
+    pending.value = true;
+    error.value = null;
+    useFetch(propertiesApiUrl.value, {
       lazy: true,
       server: false,
       transform: (response) => {
-        if (!Array.isArray(response)) return []; // Devuelve un array vacío si los datos no son los esperados
-        // Mapea los datos para normalizar los campos de coordenadas
+        if (!Array.isArray(response)) return [];
         return response
-          .filter(p => p && p.latitude && p.longitude) // FILTRA propiedades sin coordenadas
+          .filter(p => p && p.latitude && p.longitude)
           .map(property => ({
             ...property,
-            lat: parseFloat(property.latitude),  // Usa 'latitude' y lo convierte a número
-            lng: parseFloat(property.longitude), // Usa 'longitude' y lo convierte a número
-            images: property.images_array || [] // AÑADIDO: Mapea images_array a images
+            lat: parseFloat(property.latitude),
+            lng: parseFloat(property.longitude),
+            images: property.images_array || []
           }));
       }
     }).then(result => {
       properties.value = result.data.value;
+      error.value = result.error.value;
+      pending.value = false;
     });
+  } else {
+    pending.value = false;
   }
 });
-
-
-watch(propertiesApiUrl, (newUrl) => {
-  if (newUrl && typeof window !== 'undefined') {
-     useFetch(newUrl, {
-      lazy: true,
-      server: false,
-      transform: (response) => {
-        if (!Array.isArray(response)) return []; // Devuelve un array vacío si los datos no son los esperados
-        // Mapea los datos para normalizar los campos de coordenadas
-        return response
-          .filter(p => p && p.latitude && p.longitude) // FILTRA propiedades sin coordenadas
-          .map(property => ({
-            ...property,
-            lat: parseFloat(property.latitude),  // Usa 'latitude' y lo convierte a número
-            lng: parseFloat(property.longitude), // Usa 'longitude' y lo convierte a número
-            images: property.images_array || [] // AÑADIDO: Mapea images_array a images
-          }));
-      }
-    }).then(result => {
-      properties.value = result.data.value;
-    });
-  }
-});
-
 
 watch(error, (newError) => {
   if (newError) {
