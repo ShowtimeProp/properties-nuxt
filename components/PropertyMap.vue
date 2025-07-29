@@ -151,23 +151,26 @@ const config = useRuntimeConfig();
 // --- API Endpoint Configuration ---
 const apiBaseUrl = computed(() => {
   if (typeof window === 'undefined') {
-    // En el servidor, siempre usamos la URL base configurada (para SSR, etc.)
+    // En el servidor, siempre usamos la URL base configurada.
     return config.public.apiBaseUrl;
   }
+
   // En el cliente, determinamos la URL dinámicamente.
   const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    // Para desarrollo local, usamos la URL del .env
+
+  // Si es un despliegue de Vercel (o localhost), usa la URL del .env
+  if (hostname.endsWith('.vercel.app') || hostname === 'localhost' || hostname === '127.0.0.1') {
     return config.public.apiBaseUrl;
   }
-  // Para producción, construimos la URL a partir del subdominio.
-  // Asumimos que la API está en fapi.dominio.com
+
+  // Para dominios de producción personalizados (ej: bnicolini.showtimeprop.com)
   const parts = hostname.split('.');
   if (parts.length > 2) {
     // bnicolini.showtimeprop.com -> fapi.showtimeprop.com
     return `https://fapi.${parts.slice(-2).join('.')}`;
   }
-  // showtimeprop.com -> fapi.showtimeprop.com
+  
+  // Fallback para el dominio principal (showtimeprop.com -> fapi.showtimeprop.com)
   return `https://fapi.${hostname}`;
 });
 
