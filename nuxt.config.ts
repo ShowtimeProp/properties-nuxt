@@ -43,6 +43,6 @@ export default defineNuxtConfig({
   ],
 
   build: {
-    transpile: ['lucide-vue-next'],
+    transpile: ['lucide-vue-next', 'vue-toastification']
   }
 })

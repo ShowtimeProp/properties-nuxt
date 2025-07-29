@@ -1,19 +1,26 @@
 <template>
-  <div class="flex flex-col h-screen">
+  <div class="relative min-h-screen bg-gray-50">
     <TopNavBar />
-    <div class="flex-1 min-h-0">
+    <ClientOnly>
       <PropertyMap />
-    </div>
+    </ClientOnly>
+    <LoginModal />
+    <ChatBot />
   </div>
-  <ChatBot />
 </template>
 
 <script setup>
 import TopNavBar from '~/components/TopNavBar.vue'
 import PropertyMap from '~/components/PropertyMap.vue'
+import LoginModal from '~/components/LoginModal.vue'
 import ChatBot from '~/components/ChatBot.vue'
+
+// Define el layout si es necesario, o déjalo por defecto.
+// definePageMeta({
+//   layout: 'default' 
+// });
 </script>
 
-<style>
-/* Los estilos ahora están dentro del componente PropertyMap.vue */
+<style scoped>
+/* Estilos específicos para esta página si son necesarios */
 </style>

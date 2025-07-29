@@ -1,21 +1,18 @@
 <template>
-  <div class="relative min-h-screen bg-gray-50">
-    <TopNavBar />
-    <ClientOnly>
-      <PropertyMap />
-    </ClientOnly>
-    <LoginModal />
-    <ChatBot />
+  <div>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
   </div>
 </template>
 
-<script setup>
-import TopNavBar from '~/components/TopNavBar.vue'
-import PropertyMap from '~/components/PropertyMap.vue'
-import LoginModal from '~/components/LoginModal.vue'
-import ChatBot from '~/components/ChatBot.vue'
+<script setup lang="ts">
 </script>
 
 <style>
-/* Estilos globales si son necesarios */
+html, body, #__nuxt {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
 </style>
