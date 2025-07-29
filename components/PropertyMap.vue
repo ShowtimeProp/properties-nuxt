@@ -150,7 +150,7 @@ const config = useRuntimeConfig();
 
 // --- API Endpoint Configuration ---
 const apiBaseUrl = computed(() => {
-  if (process.server) {
+  if (typeof window === 'undefined') {
     // En el servidor, siempre usamos la URL base configurada (para SSR, etc.)
     return config.public.apiBaseUrl;
   }
