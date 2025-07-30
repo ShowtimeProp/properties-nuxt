@@ -230,6 +230,12 @@ const error = ref(null);
 
 // Ejecutar la llamada solo en el cliente
 onMounted(() => {
+  // --- DIAGNÓSTICO ---
+  console.log("Componente montado. Verificando URL de la API...");
+  console.log("Valor de config.public.apiBaseUrl:", config.public.apiBaseUrl);
+  console.log("URL calculada para la API:", propertiesApiUrl.value);
+  // --- FIN DIAGNÓSTICO ---
+
   if (propertiesApiUrl.value) {
     pending.value = true;
     error.value = null;

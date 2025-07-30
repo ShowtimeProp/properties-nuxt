@@ -41,7 +41,7 @@ allowed_origins = [
     "http://localhost:3000",          # For local development
     "https://showtimeprop.com",       # Your main production domain
     "https://www.showtimeprop.com",   # Your www production domain
-    "https://bnicolini.showtimeprop.com" # Your tenant subdomain
+    "https://bnicolini.showtimeprop.com" # Your tenant subdomains
     # Add other tenant subdomains here as they are created, or use a wildcard pattern
     # For wildcard subdomains, you might need allow_origin_regex in production
 ]
@@ -61,36 +61,57 @@ app.add_middleware(
 # --- Tenant Resolution Middleware ---
 @app.middleware("http")
 async def tenant_middleware(request: Request, call_next):
-    host = request.headers.get("host", "").split(":")[0]
+    # Determine the hostname of the service making the request.
+    # Prefer the 'Origin' header for cross-domain requests (Vercel, localhost).
+    # Fallback to 'Host' for direct API calls (curl, Postman).
+    origin = request.headers.get("origin")
+    host_header = request.headers.get("host", "")
+    
+    request_hostname = ""
+    if origin:
+        # Origin format: "https://subdomain.domain.com" -> we need "subdomain.domain.com"
+        request_hostname = origin.split("://")[1].split(":")[0]
+    else:
+        request_hostname = host_header.split(":")[0]
+
+    # --- Tenant Resolution Logic ---
+    tenant_id = None
+    subdomain = None
     prod_base_domain = "showtimeprop.com"
     api_host = f"fapi.{prod_base_domain}"
-    subdomain = None
 
-    # We only resolve tenants for hosts that are NOT the main API host
-    if host.endswith(prod_base_domain) and host != api_host:
-        subdomain = host.split(f".{prod_base_domain}")[0]
-    # Also handle localhost subdomains for local tenant testing
-    elif host.endswith(".localhost"):
-        subdomain = host.split('.')[0]
+    # Don't try to resolve a tenant for Vercel preview URLs, localhost, or the API's own host
+    if request_hostname.endswith('.vercel.app') or request_hostname == 'localhost' or request_hostname == api_host:
+        print(f"Request from special source '{request_hostname}'. No tenant filter will be applied.")
+        tenant_id = None
+    # For production domains, extract the subdomain
+    elif request_hostname.endswith(f".{prod_base_domain}"):
+        # Extracts "bnicolini" from "bnicolini.showtimeprop.com"
+        temp_subdomain = request_hostname.split(f".{prod_base_domain}")[0]
+        # Avoid treating "www" or the main domain as a tenant
+        if temp_subdomain and temp_subdomain != "www":
+             subdomain = temp_subdomain
 
-    tenant_id = None
+    # If we found a valid subdomain, get its ID from Supabase
     if subdomain:
+        print(f"Found subdomain '{subdomain}'. Resolving tenant ID...")
         try:
-            # If there's a subdomain, we MUST find a matching tenant
             response = supabase_cli.table("tenants").select("id").eq("subdomain", subdomain).single().execute()
             if not response.data:
-                # Use a more specific error for debugging
                 return Response(content=f'{{"detail":"Tenant with subdomain \'{subdomain}\' not found."}}', status_code=404, media_type="application/json")
             
             tenant_id = response.data['id']
+            print(f"Request mapped to tenant ID: {tenant_id}")
         except Exception as e:
-            print(f"Error during tenant resolution: {e}")
+            print(f"Error during tenant resolution for subdomain '{subdomain}': {e}")
             return Response(content='{"detail":"Error resolving tenant."}', status_code=500, media_type="application/json")
 
-    request.state.tenant_id = tenant_id # This will be the UUID or None
+    # Attach tenant_id (or None) to the request state for use in endpoints
+    request.state.tenant_id = tenant_id
     
     response = await call_next(request)
     return response
+
 
 # Initialize clients
 try:
@@ -140,6 +161,9 @@ def get_all_properties(request: Request):
             with_vectors=False,
             scroll_filter=scroll_filter # Pass the filter here (can be None)
         )
+        # --- DEBUGGING PRINT ---
+        print(f"Qdrant query returned {len(results)} properties.")
+        # --- END DEBUGGING ---
         return [record.payload for record in results]
     except Exception as e:
         print(f"Error retrieving all properties: {e}")
