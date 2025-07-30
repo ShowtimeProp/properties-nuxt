@@ -221,7 +221,10 @@ async function performSemanticSearch(query) {
 // --- LLAMADA INICIAL A LA API ---
 const propertiesApiUrl = computed(() => {
   if (!apiBaseUrl.value) return '';
-  return new URL('/properties/all', apiBaseUrl.value).href;
+  // Cache busting: Añadimos un timestamp para asegurar que la URL sea única en cada carga.
+  const url = new URL('/properties/all', apiBaseUrl.value);
+  url.searchParams.set('t', new Date().getTime());
+  return url.href;
 });
 
 const properties = ref([]);
