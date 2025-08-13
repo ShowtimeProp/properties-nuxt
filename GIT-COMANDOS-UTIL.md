@@ -84,7 +84,7 @@ git clone https://github.com/ShowtimeProp/properties-nuxt.git
 
 ```bash
 git add .
-git commit -m "Tu mensaje de commit"
+git commit -m "fix: Añade cache busting a la llamada de la API de propiedades"
 git push
 ```
 

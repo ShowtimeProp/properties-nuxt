@@ -130,440 +130,106 @@
 </template>
 
 <script setup>
-import PropertyCard from './PropertyCard.vue';
 import { onMounted, onUnmounted, ref, watch, nextTick, computed } from 'vue';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
+
+import PropertyCard from './PropertyCard.vue';
 import PropertyModal from './PropertyModal.vue';
 import LoginModal from './LoginModal.vue';
+
 import { useFavoritesStore } from '~/stores/favorites';
 import { useLoginModalStore } from '~/stores/loginModal';
-// import Toast from 'vue-toastification';
-import { useSupabaseUser } from '#imports';
 import { useSearchStore } from '~/stores/search';
+import { useSupabaseUser } from '#imports';
 
-// const { useToast } = Toast;
+// --- STORES Y ESTADO GENERAL ---
 const searchStore = useSearchStore();
 const config = useRuntimeConfig();
+const user = useSupabaseUser();
+const favoritesStore = useFavoritesStore();
+const loginModal = useLoginModalStore();
 
-// --- API Endpoint Configuration ---
+const properties = ref([]);
+const pending = ref(true);
+const error = ref(null);
+const filteredProperties = ref([]);
+const isModalOpen = ref(false);
+const openedFromSlide = ref(false);
+const cardPosition = ref({ x: 0, y: 0 });
+const cardPlacement = ref('top');
+
+// dimensiones/posición para tooltip de dibujo (evitar warnings)
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 0);
+const windowHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 0);
+const mouse = ref({ x: 0, y: 0 });
+
+// --- ESTADO DE UI PARA DIBUJO Y PANELES ---
+const isDrawing = ref(false);
+const showPropertyList = ref(false);
+const isTridentOpen = ref(false);
+const shapeDrawn = ref(false);
+
+// --- ESTADO DEL MAPA Y UI ---
+const mapContainer = ref(null);
+let map = null; // No reactivo para MapLibre
+const markerElements = ref({});
+const selectedProperty = ref(null);
+const isSidePanelOpen = ref(false);
+const showLoginModal = ref(false);
+let draw = null;
+
+// --- COMPUTED PROPS ---
+const sortedProperties = computed(() => {
+  // Aquí puedes añadir la lógica de ordenamiento que tenías antes si la necesitas.
+  return filteredProperties.value;
+});
+
 const apiBaseUrl = computed(() => {
-  if (typeof window === 'undefined') {
-    // En el servidor, siempre usamos la URL base configurada.
-    return config.public.apiBaseUrl;
-  }
-
-  // En el cliente, determinamos la URL dinámicamente.
+  if (typeof window === 'undefined') return config.public.apiBaseUrl;
   const hostname = window.location.hostname;
-
-  // Si es un despliegue de Vercel (o localhost), usa la URL del .env
   if (hostname.endsWith('.vercel.app') || hostname === 'localhost' || hostname === '127.0.0.1') {
     return config.public.apiBaseUrl;
   }
-
-  // Para dominios de producción personalizados (ej: bnicolini.showtimeprop.com)
   const parts = hostname.split('.');
-  if (parts.length > 2) {
-    // bnicolini.showtimeprop.com -> fapi.showtimeprop.com
-    return `https://fapi.${parts.slice(-2).join('.')}`;
-  }
-  
-  // Fallback para el dominio principal (showtimeprop.com -> fapi.showtimeprop.com)
+  if (parts.length > 2) return `https://fapi.${parts.slice(-2).join('.')}`;
   return `https://fapi.${hostname}`;
 });
 
-// --- BÚSQUEDA SEMÁNTICA ---
-// Observa cambios en la consulta de búsqueda del store
-watch(() => searchStore.searchQuery, (newQuery) => {
-  if (newQuery) {
-    performSemanticSearch(newQuery);
-  } else {
-    // Si la búsqueda se limpia, vuelve a cargar todas las propiedades (opcional)
-    // fetchAllProperties(); // Necesitaríamos refactorizar para tener esta función
-  }
-});
-
-async function performSemanticSearch(query) {
-  try {
-    const searchUrl = new URL('/search', apiBaseUrl.value).href;
-    const results = await $fetch(searchUrl, {
-      method: 'POST',
-      body: {
-        query: query,
-        top_k: 50 // Traer hasta 50 resultados
-      }
-    });
-
-    // Actualiza el store con los resultados
-    searchStore.setSearchResults(results);
-
-    // Actualiza los marcadores en el mapa
-    // Primero, transformamos los resultados para que tengan el formato correcto
-    const formattedResults = results.map(property => ({
-      ...property,
-      lat: parseFloat(property.latitude),
-      lng: parseFloat(property.longitude),
-      images: property.images_array || []
-    }));
-    
-    properties.value = formattedResults;
-
-  } catch (err) {
-    console.error("Error en la búsqueda semántica:", err);
-    // toast.error("Hubo un error al realizar la búsqueda."); // Toast removed
-    searchStore.clearSearch(); // Limpia el estado de búsqueda en caso de error
-  }
-}
-
-
-// --- LLAMADA INICIAL A LA API ---
 const propertiesApiUrl = computed(() => {
   if (!apiBaseUrl.value) return '';
-  // Cache busting: Añadimos un timestamp para asegurar que la URL sea única en cada carga.
   const url = new URL('/properties/all', apiBaseUrl.value);
   url.searchParams.set('t', new Date().getTime());
   return url.href;
 });
 
-const properties = ref([]);
-const pending = ref(true);
-const error = ref(null);
-
-// Ejecutar la llamada solo en el cliente
-onMounted(() => {
-  // --- DIAGNÓSTICO ---
-  console.log("Componente montado. Verificando URL de la API...");
-  console.log("Valor de config.public.apiBaseUrl:", config.public.apiBaseUrl);
-  console.log("URL calculada para la API:", propertiesApiUrl.value);
-  // --- FIN DIAGNÓSTICO ---
-
-  if (propertiesApiUrl.value) {
-    pending.value = true;
-    error.value = null;
-    useFetch(propertiesApiUrl.value, {
-      lazy: true,
-      server: false,
-      transform: (response) => {
-        if (!Array.isArray(response)) return [];
-        return response
-          .filter(p => p && p.latitude && p.longitude)
-          .map(property => ({
-            ...property,
-            lat: parseFloat(property.latitude),
-            lng: parseFloat(property.longitude),
-            images: property.images_array || []
-          }));
-      }
-    }).then(result => {
-      properties.value = result.data.value;
-      error.value = result.error.value;
-      pending.value = false;
-    });
-  } else {
-    pending.value = false;
-  }
-});
-
-watch(error, (newError) => {
-  if (newError) {
-    console.error('Error fetching properties:', newError);
-    // Opcional: mostrar una notificación al usuario
-    // toast.error('No se pudieron cargar las propiedades. Intente de nuevo más tarde.'); // Toast removed
-  }
-});
-// --- FIN DE LA NUEVA LLAMADA A LA API ---
-
-
-const supabase = useNuxtApp().$supabase
-const user = useSupabaseUser()
-// Asegurarse de que MapboxDraw funcione con MapLibre
-if (typeof window !== 'undefined') {
-  window.MapboxDraw = MapboxDraw;
-}
-
-const mapContainer = ref(null)
-let map = null // No reactivo, para evitar problemas con el proxy de Vue
-const selectedProperty = ref(null);
-const isTridentOpen = ref(false);
-const scrollContainer = ref(null);
-const propertyListPanel = ref(null);
-const toggleButton = ref(null);
-const mapWrapper = ref(null)
-const navHeight = ref(81)
-
-const loadMoreProperties = () => {
-  // Placeholder for infinite scroll logic
-  console.log('Loading more properties...');
-  // In a real application, you would fetch more data here
-  // and append it to the sortedProperties array.
-};
-
-onMounted(() => {
-  if (scrollContainer.value) {
-    scrollContainer.value.addEventListener('scroll', () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value;
-      if (scrollTop + clientHeight >= scrollHeight - 50) { // 50px from bottom
-        loadMoreProperties();
-      }
-    });
-  }
-  
-  // Agregar listener global para cerrar el panel al hacer click fuera
-  document.addEventListener('click', handleClickOutside);
-  windowWidth = window.innerWidth;
-  windowHeight = window.innerHeight;
-  nextTick(() => {
-    const nav = document.querySelector('nav.fixed');
-    if (nav) {
-      navHeight.value = nav.offsetHeight;
-    }
-  });
-});
-
-onUnmounted(() => {
-  if (scrollContainer.value) {
-    scrollContainer.value.removeEventListener('scroll', () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value;
-      if (scrollTop + clientHeight >= scrollHeight - 50) {
-        loadMoreProperties();
-      }
-    });
-  }
-  
-  // Remover listener global
-  document.removeEventListener('click', handleClickOutside);
-});
-const shapeDrawn = ref(false);
-const showPropertyList = ref(false);
-const sortBy = ref('relevance');
-const favorites = ref(new Set());
-let draw = null;
-const isModalOpen = ref(false);
-const markerElements = ref({});
-const ZOOM_THRESHOLD = 14.0;
-const filteredProperties = ref([]);
-const showSortMenu = ref(false);
-const viewedProperties = ref(new Set());
-const cardPosition = ref({ x: 0, y: 0 });
-const cardPlacement = ref('top'); // 'top' o 'bottom'
-const propertyModalRef = ref(null);
-const openedFromSlide = ref(false);
-const mouse = ref({ x: 0, y: 0 });
-const isDrawing = ref(false);
-let windowWidth = 0;
-let windowHeight = 0;
-const isLoggedIn = computed(() => !!user.value)
-const showLoginModal = ref(false)
-
-const favoritesStore = useFavoritesStore();
-const loginModal = useLoginModalStore();
-
-const sortOptions = [
-  { value: 'relevance', label: 'Relevancia' },
-  { value: 'price-asc', label: 'Menor precio' },
-  { value: 'price-desc', label: 'Mayor precio' },
-  { value: 'price-m2-asc', label: 'Menor precio/m²' },
-  { value: 'price-m2-desc', label: 'Mayor precio/m²' },
-  { value: 'size-asc', label: 'Menor tamaño' },
-  { value: 'size-desc', label: 'Mayor tamaño' }
-];
-
+// --- FUNCIONES ---
 const formatPriceForBubble = (priceString) => {
-  // ¡LA SOLUCIÓN! Si no hay precio, no falles, solo devuelve un string vacío.
-  if (!priceString) {
-    return '';
-  }
-  // Añadimos String() para más seguridad, por si el precio llega como número.
-  const num = parseInt(String(priceString).replace(/\./g, ''), 10);
-  if (isNaN(num)) return '';
-  if (num >= 1000000) {
-    const value = num / 1000000;
-    return (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)) + 'M';
-  }
-  if (num >= 1000) {
-    return `${Math.round(num / 1000)}K`;
-  }
-  return num.toString();
+    if (!priceString) return '';
+    const num = parseInt(String(priceString).replace(/\./g, ''), 10);
+    if (isNaN(num)) return '';
+    if (num >= 1000000) return (num / 1000000).toFixed(1).replace('.0', '') + 'M';
+    if (num >= 1000) return `${Math.round(num / 1000)}K`;
+    return num.toString();
 };
 
-const updateMarkersForZoom = () => {
-  if (!map || !properties.value) return;
-  const currentZoom = map.getZoom();
-  const isBubbleView = currentZoom > ZOOM_THRESHOLD;
-
-  for (const prop of properties.value) {
-    const markerEl = markerElements.value[prop.id];
-    if (!markerEl) continue;
-
-    const dot = markerEl.querySelector('.marker-dot');
-    const bubble = markerEl.querySelector('.price-bubble');
-    if (!dot || !bubble) continue;
-
-    if (isBubbleView) {
-      dot.style.opacity = '0';
-      dot.style.pointerEvents = 'none';
-      bubble.style.opacity = '1';
-      bubble.style.pointerEvents = 'auto';
-    } else {
-      dot.style.opacity = '1';
-      dot.style.pointerEvents = 'auto';
-      bubble.style.opacity = '0';
-      bubble.style.pointerEvents = 'none';
+const addMarkersToMap = () => {
+    if (!map || !properties.value || properties.value.length === 0) {
+        console.log('addMarkersToMap: sin mapa o sin propiedades', { hasMap: !!map, count: properties.value?.length || 0 });
+        return;
     }
-
-    const isSelected = selectedProperty.value?.id === prop.id;
-    // La clase 'selected' ahora se maneja directamente en el contenedor
-    if (isSelected) {
-      markerEl.classList.add('selected');
-    } else {
-      markerEl.classList.remove('selected');
-    }
-
-    if (viewedProperties.value.has(prop.id)) {
-      markerEl.classList.add('viewed');
-    } else {
-      markerEl.classList.remove('viewed');
-    }
-  }
-};
-
-
-/*
-const properties = ref([
-  {
-    id: 1,
-    lng: -57.54,
-    lat: -38.01,
-    title: 'Departamento céntrico',
-    price: '150.000',
-    expenses: '12.000',
-    address: 'Corrientes 2345, Mar del Plata',
-    zone: 'Centro',
-    total_surface: 75,
-    ambience: 3,
-    bedrooms: 2,
-    bathrooms: 2,
-    garage_count: 1,
-    realty: 'REMAX BIANCA NICOLINI',
-    hasVirtualTour: true,
-    badge: '3D TOUR',
-    isNew: false,
-    images: [
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=360&h=180&fit=crop',
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=360&h=180&fit=crop',
-      'https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=360&h=180&fit=crop'
-    ]
-  },
-  {
-    id: 2,
-    lng: -57.555,
-    lat: -38.005,
-    title: 'Casa con vista al mar',
-    price: '320.000',
-    expenses: '25.000',
-    address: 'Bv. Marítimo 1100',
-    zone: 'Playa Grande',
-    total_surface: 120,
-    ambience: 4,
-    bedrooms: 3,
-    bathrooms: 3,
-    garage_count: 2,
-    realty: 'INMOBILIARIA COSTA',
-    hasVirtualTour: false,
-    badge: null,
-    isNew: false,
-    images: [
-      'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=360&h=180&fit=crop',
-      'https://images.unsplash.com/photo-1572120360610-d971b9d7767c?q=80&w=360&h=180&fit=crop',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=360&h=180&fit=crop'
-    ]
-  },
-  {
-    id: 3,
-    lng: -57.53,
-    lat: -37.99,
-    title: 'Chalet en zona residencial',
-    price: '210.000',
-    expenses: '18.000',
-    address: 'Formosa 850',
-    zone: 'Los Troncos',
-    total_surface: 90,
-    ambience: 3,
-    bedrooms: 2,
-    bathrooms: 2,
-    garage_count: 1,
-    realty: 'INMOBILIARIA LOS PINOS',
-    hasVirtualTour: false,
-    badge: null,
-    isNew: false,
-    images: [
-      'https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=360&h=180&fit=crop',
-      'https://images.unsplash.com/photo-1568605114967-8130f3a36994?q=80&w=360&h=180&fit=crop',
-      'https://images.unsplash.com/photo-1605276374104-5de67d60924f?q=80&w=360&h=180&fit=crop'
-    ]
-  },
-  {
-    id: 4,
-    lng: -57.56,
-    lat: -38.02,
-    title: 'Loft moderno',
-    price: '185.000',
-    expenses: '15.000',
-    address: 'Alvarado 3120',
-    zone: 'Macrocentro',
-    total_surface: 65,
-    ambience: 2,
-    bedrooms: 1,
-    bathrooms: 1,
-    garage_count: 0,
-    realty: 'INMOBILIARIA URBANA',
-    hasVirtualTour: false,
-    badge: 'NUEVO',
-    isNew: true,
-    images: [
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=360&h=180&fit=crop',
-      'https://images.unsplash.com/photo-1598228723793-52759bba239c?q=80&w=360&h=180&fit=crop',
-      'https://images.unsplash.com/photo-1540518614846-7eded433c457?q=80&w=360&h=180&fit=crop'
-    ]
-  }
-]);
-*/
-
-onMounted(async () => {
-  // Importar dinámicamente solo en el cliente
-  const maplibregl = await import('maplibre-gl');
-  await import('maplibre-gl/dist/maplibre-gl.css');
-
-  if (mapContainer.value) {
-    // Configuración del mapa con MapTiler
-    map = new maplibregl.Map({
-      container: mapContainer.value,
-      style: `https://api.maptiler.com/maps/streets/style.json?key=RqptbBn3gxBTDHGJ4a3O`,
-      center: [-57.5425, -38.0179],
-      zoom: 13
-    });
-
-    // Agregar controles de navegación
-    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
-
-    const addMarkersToMap = () => {
-      if (!map || !properties.value) return;
-
-      properties.value.forEach(property => {
-        // Este chequeo es crucial
-        if (!property || isNaN(property.lat) || isNaN(property.lng)) {
-          console.warn('Skipping property with invalid data:', property);
-          return;
-        }
-
+    console.log('addMarkersToMap: creando marcadores', properties.value.length);
+    Object.values(markerElements.value).forEach(el => el.remove());
+    markerElements.value = {};
+    properties.value.forEach(property => {
+        if (!property || isNaN(property.lat) || isNaN(property.lng)) return;
         const el = document.createElement('div');
         el.className = 'marker-container';
-
+        el.style.zIndex = '5';
         const dot = document.createElement('div');
         dot.className = 'marker-dot';
-        
         const bubble = document.createElement('div');
         bubble.className = 'price-bubble';
         bubble.innerHTML = `
@@ -573,410 +239,161 @@ onMounted(async () => {
           ${property.hasVirtualTour ? `<div class="bubble-badge-external tour">3D TOUR</div>` : ''}
           ${property.isNew ? '<div class="bubble-badge-external new">NEW</div>' : ''}
         `;
-
         el.appendChild(dot);
         el.appendChild(bubble);
-
         el.addEventListener('click', (e) => {
           e.stopPropagation();
-          showPropertyCard(property);
+          showFloatingCard(property);
         });
-
         markerElements.value[property.id] = el;
-
-        new maplibregl.Marker({ element: el, anchor: 'bottom' }) // ANCLAJE INFERIOR
-          .setLngLat([property.lng, property.lat])
-          .addTo(map);
-      });
-      updateMarkersForZoom();
-    };
-
-
-    map.on('load', () => {
-      addMarkersToMap();
-
-      // Observar cambios en 'properties' para volver a añadir los marcadores si llegan tarde
-      watch(properties, (newProperties) => {
-        if (newProperties && newProperties.length > 0) {
-          // Limpiar marcadores existentes antes de añadir nuevos
-          Object.values(markerElements.value).forEach(el => el.remove());
-          markerElements.value = {};
-          addMarkersToMap();
-        }
-      }, { deep: true });
-
-      // ACTUALIZA LA LISTA CUANDO EL MAPA SE MUEVE
-      map.on('moveend', updateFilteredProperties);
+        new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([property.lng, property.lat]).addTo(map);
     });
+    updateMarkersVisibility();
+};
 
-    // Ocultar el card al arrastrar el mapa
-    map.on('dragstart', () => {
-      selectedProperty.value = null;
-    });
+const updateFilteredProperties = () => {
+    if (!map || !properties.value) {
+        filteredProperties.value = [];
+        return;
+    }
+    const bounds = map.getBounds();
+    filteredProperties.value = properties.value.filter(p => 
+        typeof p.lng === 'number' && typeof p.lat === 'number' && bounds.contains([p.lng, p.lat])
+    );
+};
 
-    // Ocultar el card al hacer click en el mapa (fuera de una burbuja)
-    map.on('click', (e) => {
-      if (e.originalEvent.target === map.getCanvas()) {
-        selectedProperty.value = null;
-      }
-    });
-
-    updateMarkersForZoom();
-    map.on('zoom', updateMarkersForZoom);
-
-    // Inicializar MapboxDraw con estilos compatibles
-    draw = new MapboxDraw({
-      displayControlsDefault: false, // Usaremos nuestros propios controles
-      controls: {
-        polygon: true,
-        trash: false // Usaremos un botón de eliminar personalizado
-      },
-      styles: [
-        // Estilo para el polígono activo (cuando se está dibujando)
-        {
-          id: 'gl-draw-polygon-fill-active',
-          type: 'fill',
-          filter: ['all',
-            ['==', 'active', 'true'],
-            ['==', '$type', 'Polygon']
-          ],
-          paint: {
-            'fill-color': '#3bb2d0',
-            'fill-outline-color': '#3bb2d0',
-            'fill-opacity': 0.1
-          }
-        },
-        // Estilo para el polígono inactivo
-        {
-          id: 'gl-draw-polygon-fill-inactive',
-          type: 'fill',
-          filter: ['all',
-            ['==', 'active', 'false'],
-            ['==', '$type', 'Polygon']
-          ],
-          paint: {
-            'fill-color': '#3bb2d0',
-            'fill-outline-color': '#3bb2d0',
-            'fill-opacity': 0.1
-          }
-        },
-        // Estilo para el borde del polígono activo
-        {
-          id: 'gl-draw-polygon-stroke-active',
-          type: 'line',
-          filter: ['all',
-            ['==', 'active', 'true'],
-            ['==', '$type', 'Polygon']
-          ],
-          layout: {},
-          paint: {
-            'line-color': '#6366f1',
-            'line-width': 2,
-            'line-dasharray': [2, 2]
-          }
-        },
-        // Estilo para el borde del polígono inactivo
-        {
-          id: 'gl-draw-polygon-stroke-inactive',
-          type: 'line',
-          filter: ['all',
-            ['==', 'active', 'false'],
-            ['==', '$type', 'Polygon']
-          ],
-          layout: {},
-          paint: {
-            'line-color': '#6366f1',
-            'line-width': 2
-          }
-        },
-        // Estilo para los puntos de control
-        {
-          id: 'gl-draw-polygon-and-line-vertex-active',
-          type: 'circle',
-          filter: ['all',
-            ['==', 'meta', 'vertex'],
-            ['==', '$type', 'Point']
-          ],
-          paint: {
-            'circle-radius': 4,
-            'circle-color': '#6366f1',
-            'circle-stroke-color': '#fff',
-            'circle-stroke-width': 2
-          }
-        }
-      ]
-    });
-    map.addControl(draw, 'bottom-right');
-
-    // Detectar si está en modo dibujo para mostrar el tooltip
-    map.on('draw.modechange', (e) => {
-      isDrawing.value = e.mode === 'draw_polygon';
-    });
-    map.on('draw.create', () => {
-      isDrawing.value = false;
-      shapeDrawn.value = true;
-    });
-    map.on('draw.delete', () => {
-      isDrawing.value = false;
-      shapeDrawn.value = false;
-    });
-
-    map.on('style.load', () => {
-      console.log('El estilo del mapa se ha cargado completamente.');
-    });
-
-    watch(selectedProperty, (newVal, oldVal) => {
-      // Quitar clase del marcador antiguo
-      if (oldVal && markerElements.value[oldVal.id]) {
-        markerElements.value[oldVal.id].classList.remove('active-marker');
-      }
-      // Añadir clase al nuevo marcador
-      if (newVal && markerElements.value[newVal.id]) {
-        markerElements.value[newVal.id].classList.add('active-marker');
-      }
-    });
-  }
-});
-
-onUnmounted(() => {
-  if (map) {
-    map.remove();
-  }
-});
-
-const toggleTrident = () => {
-  if (shapeDrawn.value) return; // No permitir otro dibujo si ya hay uno
-  isTridentOpen.value = true;
-  nextTick(() => {
-    startDrawing();
-    isDrawing.value = true;
+const updateMarkersVisibility = () => {
+  if (!map) return;
+  const zoom = map.getZoom();
+  const showBubbles = zoom >= 14; // umbral
+  Object.values(markerElements.value).forEach((el) => {
+    const dot = el.querySelector('.marker-dot');
+    const bubble = el.querySelector('.price-bubble');
+    if (dot) {
+      dot.style.opacity = showBubbles ? '0' : '1';
+      dot.style.pointerEvents = showBubbles ? 'none' : 'auto';
+    }
+    if (bubble) {
+      bubble.style.opacity = showBubbles ? '1' : '0';
+      bubble.style.pointerEvents = showBubbles ? 'auto' : 'none';
+    }
   });
-};
-
-const startDrawing = () => {
-  isTridentOpen.value = false;
-  if (draw) {
-    draw.changeMode('draw_polygon');
-  }
-};
-
-const deleteShape = () => {
-  if (draw) {
-    draw.deleteAll();
-    shapeDrawn.value = false;
-    filteredProperties.value = [];
-  }
 };
 
 const togglePropertyList = () => {
-  console.log('Botón "Ver Listado" clickeado. Estado actual de showPropertyList:', showPropertyList.value);
   showPropertyList.value = !showPropertyList.value;
-  console.log('Nuevo estado de showPropertyList:', showPropertyList.value);
   if (showPropertyList.value) {
-    selectedProperty.value = null;
-    // Llama al filtro la primera vez que se abre el panel
     updateFilteredProperties();
   }
 };
 
-const handleClickOutside = (event) => {
-  if (!showPropertyList.value) return;
-  const isClickInsidePanel = propertyListPanel.value && propertyListPanel.value.contains(event.target);
-  const isClickOnToggleButton = toggleButton.value && toggleButton.value.contains(event.target);
-  const isClickInsideModal = propertyModalRef.value && propertyModalRef.value.contains(event.target);
-  if (!isClickInsidePanel && !isClickOnToggleButton && !isClickInsideModal) {
-    showPropertyList.value = false;
-    // Quitar sonar activo de todos los marcadores
-    Object.values(markerElements.value).forEach(el => {
-      el.classList.remove('sonar-active');
-    });
-  }
+const showFloatingCard = (property) => {
+  if (!map) return;
+  selectedProperty.value = property;
+  openedFromSlide.value = false;
+  isModalOpen.value = false;
+  const p = map.project([property.lng, property.lat]);
+  // centrar card (ancho aprox 310)
+  const x = Math.max(10, Math.min(p.x - 155, windowWidth.value - 320));
+  const y = Math.max(10, Math.min(p.y - 360, windowHeight.value - 360));
+  cardPosition.value = { x, y };
+  cardPlacement.value = p.y < 360 ? 'top' : 'bottom';
 };
 
 const openModalFromSlide = (property) => {
-  // Activa el sonar y centra el mapa para una mejor UX
-  activateSonarFromSlide(property);
-  
-  // Abre el modal de detalles
   selectedProperty.value = property;
-  isModalOpen.value = true;
   openedFromSlide.value = true;
-};
-
-const activateSonarFromSlide = (property) => {
-  // Quitar sonar activo de todos los marcadores
-  Object.values(markerElements.value).forEach(el => {
-    el.classList.remove('sonar-active');
-  });
-  // Centrar el mapa en la propiedad
-  if (map) {
-    map.flyTo({
-      center: [property.lng, property.lat],
-      zoom: 15
-    });
-  }
-  // Activar el efecto sonar en el marcador correspondiente
-  const markerEl = markerElements.value[property.id];
-  if (markerEl) {
-    markerEl.classList.add('sonar-active');
-  }
-};
-
-const selectPropertyFromList = (property) => {
-  if (isModalOpen.value && openedFromSlide.value) return;
-  // Quitar sonar activo de todos los marcadores
-  Object.values(markerElements.value).forEach(el => {
-    el.classList.remove('sonar-active');
-  });
-  selectedProperty.value = property;
-  if (map) {
-    map.flyTo({
-      center: [property.lng, property.lat],
-      zoom: 15
-    });
-  }
-};
-
-const sortedProperties = computed(() => {
-  const properties = [...filteredProperties.value];
-  
-  return properties.sort((a, b) => {
-    // Robust price parsing
-    const priceA = a.price ? parseInt(String(a.price).replace(/\./g, ''), 10) : 0;
-    const priceB = b.price ? parseInt(String(b.price).replace(/\./g, ''), 10) : 0;
-    
-    // Robust surface data for price/m2 calculation
-    const surfaceA = a.total_surface > 0 ? a.total_surface : 1;
-    const surfaceB = b.total_surface > 0 ? b.total_surface : 1;
-
-    const priceM2A = priceA / surfaceA;
-    const priceM2B = priceB / surfaceB;
-    
-    switch (sortBy.value) {
-      case 'price-asc':
-        return priceA - priceB;
-      case 'price-desc':
-        return priceB - priceA;
-      case 'price-m2-asc':
-        return priceM2A - priceM2B;
-      case 'price-m2-desc':
-        return priceM2B - priceM2A;
-      case 'size-asc':
-        return a.total_surface - b.total_surface;
-      case 'size-desc':
-        return b.total_surface - a.total_surface;
-      default:
-        return 0; // Relevancia (sin ordenar o orden original)
-    }
-  });
-});
-
-const updateFilteredProperties = () => {
-  if (!map || !properties.value) {
-    filteredProperties.value = [];
-    return;
-  }
-  
-  // Obtiene los límites geográficos de la vista actual del mapa
-  const bounds = map.getBounds();
-  
-  // Filtra solo las propiedades que están dentro de esos límites
-  filteredProperties.value = properties.value.filter(p => {
-    // Asegurarse de que lat y lng son números válidos antes de comprobar
-    if (typeof p.lng === 'number' && typeof p.lat === 'number') {
-      return bounds.contains([p.lng, p.lat]);
-    }
-    return false;
-  });
+  isModalOpen.value = true;
 };
 
 const toggleFavorite = (property) => {
-  if (!user.value) {
-    loginModal.open();
-    // toast.info("Debes iniciar sesión para guardar favoritos"); // Toast removed
+  if (!user?.value) {
+    showLoginModal.value = true;
     return;
   }
-  if (!property || !property.id) {
-    // toast.error('No se puede agregar a favoritos: propiedad inválida.'); // Toast removed
-    return;
-  }
-
-  const wasFavorite = favoritesStore.isFavorite(property.id);
-  
   favoritesStore.toggleFavorite(property);
-  
-  const message = !wasFavorite
-    ? `${property.title || 'Propiedad'} agregada a favoritos!`
-    : `${property.title || 'Propiedad'} eliminada de favoritos.`;
-  
-  // toast.success(message, { // Toast removed
-  //   icon: !wasFavorite ? 'fas fa-heart text-red-500' : 'fas fa-trash-alt'
-  // });
 };
 
-const isFavorite = (property) => {
-  if (!property || !property.id) return false;
-  return favoritesStore.isFavorite(property.id);
-};
+// --- CICLO DE VIDA ---
+onMounted(async () => {
+  if (propertiesApiUrl.value) {
+    console.log('API URL para propiedades:', propertiesApiUrl.value); // LOG PARA DEBUG
+    pending.value = true;
+    error.value = null;
+    try {
+      const raw = await $fetch(propertiesApiUrl.value, { cache: 'no-store' });
+      let data = [];
+      if (Array.isArray(raw)) {
+        const normalized = raw.map((property) => {
+          let latRaw = property?.lat ?? property?.latitude ?? property?.latitud;
+          let lngRaw = property?.lng ?? property?.longitude ?? property?.longitud ?? property?.lon;
+          let lat = latRaw != null ? parseFloat(String(latRaw)) : NaN;
+          let lng = lngRaw != null ? parseFloat(String(lngRaw)) : NaN;
+          if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && typeof property?.location === 'string') {
+            const match = property.location.match(/POINT\s*\(\s*(-?[0-9]*\.?[0-9]+)\s+(-?[0-9]*\.?[0-9]+)\s*\)/i);
+            if (match) {
+              lng = parseFloat(match[1]);
+              lat = parseFloat(match[2]);
+            }
+          }
+          return {
+            ...property,
+            lat,
+            lng,
+            images: property?.images_array || property?.images || [],
+          };
+        });
+        data = normalized.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+      }
+      console.log('Resultado de la API (fetch directo):', { count: data.length });
+      properties.value = data;
+    } catch (e) {
+      console.error('Error obteniendo propiedades:', e);
+      error.value = e;
+    } finally {
+      pending.value = false;
+    }
+  } else {
+    console.error('La URL de la API de propiedades no está configurada.'); // LOG PARA DEBUG
+    pending.value = false;
+  }
 
-// Actualizar propiedades filtradas cuando se dibuja un área
-watch(shapeDrawn, (newVal) => {
-  if (newVal && showPropertyList.value) {
+  if (mapContainer.value) {
+    map = new maplibregl.Map({
+      container: mapContainer.value,
+      style: `https://api.maptiler.com/maps/streets/style.json?key=RqptbBn3gxBTDHGJ4a3O`,
+      center: [-57.5425, -38.0179],
+      zoom: 13
+    });
+    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+    map.on('load', () => {
+      updateFilteredProperties();
+      if (properties.value.length > 0) addMarkersToMap();
+      map.on('moveend', updateFilteredProperties);
+      map.on('zoom', updateMarkersVisibility);
+    });
+  }
+});
+
+watch(properties, (newProperties) => {
+  if (newProperties && newProperties.length > 0 && map && map.isStyleLoaded()) {
+    addMarkersToMap();
     updateFilteredProperties();
   }
-});
+}, { deep: true });
 
-function showPropertyCard(property) {
-  // Quitar sonar activo de todos los marcadores
-  Object.values(markerElements.value).forEach(el => {
-    el.classList.remove('sonar-active');
-  });
-  selectedProperty.value = property;
-  viewedProperties.value.add(property.id);
-  // Calcular posición del card
-  const pixel = map.project([property.lng, property.lat]);
-  // Obtener dimensiones del mapa y del card
-  const mapRect = mapContainer.value.getBoundingClientRect();
-  const cardWidth = 310;
-  const cardHeight = 282 + 18; // 18px de la flecha
-  // Por defecto, arriba de la burbuja
-  let x = pixel.x - cardWidth / 2;
-  let y = pixel.y - cardHeight + 18; // 18px: la flecha debe apuntar al dot
-  let placement = 'top';
-  // Offset mínimo para la barra de navegación expandida (120px)
-  const minY = 120;
-  // Si se sale por arriba, mostrar abajo
-  if (y < minY) {
-    y = pixel.y + 18; // 18px: la flecha debe apuntar al dot
-    placement = 'bottom';
-  }
-  // Si se sale por la izquierda
-  if (x < 0) x = 8;
-  // Si se sale por la derecha
-  if (x + cardWidth > mapRect.width) x = mapRect.width - cardWidth - 8;
-  cardPosition.value = { x, y };
-  cardPlacement.value = placement;
-}
-
-function handleCloseModal() {
-  isModalOpen.value = false;
-  if (openedFromSlide.value) {
-    selectedProperty.value = null;
-  }
-  openedFromSlide.value = false;
-}
-
-function handleMouseMove(e) {
-  mouse.value = { x: e.clientX, y: e.clientY };
-}
-
-watch(isDrawing, (val) => {
-  if (val) {
-    window.addEventListener('mousemove', handleMouseMove);
-  } else {
-    window.removeEventListener('mousemove', handleMouseMove);
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', () => {
+      windowWidth.value = window.innerWidth;
+      windowHeight.value = window.innerHeight;
+    });
+    window.addEventListener('mousemove', (e) => {
+      mouse.value = { x: e.clientX, y: e.clientY };
+    });
   }
 });
+
 </script>
 
 <style>
