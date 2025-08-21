@@ -1,24 +1,13 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50" @click.self="resetAndClose">
-    <!-- Contenedor Intermedio para Centrado Robusto -->
-    <div class="flex items-center justify-center min-h-screen w-full bg-black/40 px-4 py-8">
+  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center w-full bg-black/40 px-4 py-2" @click.self="resetAndClose">
       
       <!-- Contenedor del Modal -->
-      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full h-fit p-6 sm:p-8 relative transition-all duration-300" @click.stop>
+      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-2 sm:p-3 relative transition-all duration-300" @click.stop>
         
-        <!-- Botón de Cerrar -->
-        <button
-          class="absolute top-3 right-3 flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-indigo-500 transition-colors"
-          @click="resetAndClose"
-          aria-label="Cerrar"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+
 
         <!-- Video -->
-        <div class="w-full mb-4">
+        <div class="w-full mb-1">
           <iframe
             class="rounded-lg shadow-md w-full aspect-video"
             src="https://www.youtube.com/embed/dQw4w9WgXcQ"
@@ -33,7 +22,7 @@
         <h1 class="text-2xl font-bold text-gray-800 text-center mb-1">
           {{ formStep === 'email' ? 'Inicie sesión o regístrese' : 'Cree su contraseña' }}
         </h1>
-        <p class="text-gray-500 text-center mb-6">
+        <p class="text-gray-500 text-center mb-2">
           {{ formStep === 'email' ? 'Ingrese su email para continuar' : `Para la cuenta: ${email}` }}
         </p>
 
@@ -103,8 +92,6 @@
             Registrarse con Google
           </button>
         </div>
-
-      </div>
 
       </div>
     </div>
@@ -235,10 +222,36 @@ async function loginWithGoogle() {
   </script>
   
   <style scoped>
-/* Opcional: añade una transición suave a la altura del modal si cambia */
+/* Controlar la altura del modal para que se ajuste al contenido */
 .transition-all {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
-  }
-  </style>
+}
+
+/* Forzar que el modal se ajuste al contenido - CSS más agresivo */
+.bg-white {
+  height: fit-content !important;
+  max-height: fit-content !important;
+  min-height: auto !important;
+  overflow: visible !important;
+}
+
+/* Reducir el espacio del separador */
+.flex.items-center.my-4 {
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Forzar que el contenedor principal no tenga altura mínima */
+.fixed.inset-0 {
+  min-height: auto !important;
+  height: auto !important;
+}
+
+/* Asegurar que el modal se ajuste al contenido */
+.flex.items-center.justify-center {
+  align-items: flex-start !important;
+  padding-top: 2rem !important;
+}
+</style>

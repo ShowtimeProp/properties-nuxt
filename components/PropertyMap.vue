@@ -120,12 +120,15 @@
       v-if="isModalOpen && selectedProperty"
       ref="propertyModalRef"
       :property="selectedProperty"
+      :isFavorite="favoritesStore.isFavorite(selectedProperty?.id)"
       @close="handleCloseModal"
+      @toggle-favorite="toggleFavorite"
+      @login-request="() => { console.log('PropertyMap recibió login-request'); loginModal.open(); console.log('loginModal.isOpen ahora es:', loginModal.isOpen); }"
     />
   </Transition>
 
   <!-- Modal de login -->
-  <LoginModal :show="showLoginModal" @close="showLoginModal = false" />
+  <LoginModal />
 
 </template>
 
@@ -178,7 +181,7 @@ let map = null; // No reactivo para MapLibre
 const markerElements = ref({});
 const selectedProperty = ref(null);
 const isSidePanelOpen = ref(false);
-const showLoginModal = ref(false);
+// const showLoginModal = ref(false); // Ya no se usa, se usa el store
 let draw = null;
 
 // --- COMPUTED PROPS ---
@@ -289,6 +292,7 @@ const togglePropertyList = () => {
 
 const showFloatingCard = (property) => {
   if (!map) return;
+  console.log('showFloatingCard llamado con:', property);
   selectedProperty.value = property;
   openedFromSlide.value = false;
   isModalOpen.value = false;
@@ -298,20 +302,38 @@ const showFloatingCard = (property) => {
   const y = Math.max(10, Math.min(p.y - 360, windowHeight.value - 360));
   cardPosition.value = { x, y };
   cardPlacement.value = p.y < 360 ? 'top' : 'bottom';
+  console.log('Card posicionada en:', { x, y, placement: cardPlacement.value });
 };
 
 const openModalFromSlide = (property) => {
+  console.log('openModalFromSlide llamado con:', property);
   selectedProperty.value = property;
   openedFromSlide.value = true;
   isModalOpen.value = true;
+  console.log('Estado del modal después de abrir:', { isModalOpen: isModalOpen.value, selectedProperty: selectedProperty.value });
 };
 
 const toggleFavorite = (property) => {
+  console.log('toggleFavorite llamado en PropertyMap con:', property);
+  console.log('user?.value:', user?.value);
+  
   if (!user?.value) {
+    console.log('Usuario no logueado, mostrando modal de login');
     showLoginModal.value = true;
     return;
   }
+  
+  console.log('Usuario logueado, llamando a favoritesStore.toggleFavorite');
   favoritesStore.toggleFavorite(property);
+  console.log('favoritesStore.toggleFavorite ejecutado');
+};
+
+const handleCloseModal = () => {
+  console.log('handleCloseModal llamado');
+  isModalOpen.value = false;
+  openedFromSlide.value = false;
+  selectedProperty.value = null;
+  console.log('Estado del modal después de cerrar:', { isModalOpen: isModalOpen.value, selectedProperty: selectedProperty.value });
 };
 
 // --- CICLO DE VIDA ---
@@ -650,5 +672,3 @@ html, body {
   animation: animatedGradient 6s ease-in-out infinite;
 }
 </style>
-/ /   0 8 / 1 9 / 2 0 2 5   0 1 : 5 9 : 1 9  
- 

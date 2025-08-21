@@ -1,14 +1,14 @@
 <template>
-  <div class="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center" @click.self="handleCloseModal">
-    <div class="bg-white shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col relative overflow-hidden">
+  <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" @click.self="handleCloseModal">
+    <div class="bg-white shadow-2xl w-full max-w-6xl h-[90vh] max-h-[90vh] flex flex-col relative overflow-hidden rounded-lg">
       <!-- Barra superior: branding, favoritos, compartir, tour -->
-      <div class="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-white/80 sticky top-0 z-50">
-        <div class="flex-1 flex justify-center">
-          <span class="text-2xl font-bold tracking-wide text-indigo-700 select-none">Showtime Prop</span>
+      <div class="flex items-center justify-between px-8 pt-12 pb-6 border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-50">
+        <div class="flex-1 flex justify-start">
+          <span class="text-3xl font-bold tracking-wide text-indigo-700 select-none">Showtime Prop</span>
         </div>
         <div class="flex items-center gap-3">
           <!-- Corazón de favoritos sincronizado y animado -->
-          <button @click="toggleFavorite" :aria-pressed="isFavorite" class="focus:outline-none">
+          <button @click="toggleFavorite" @click.native="console.log('Click nativo en corazón')" :aria-pressed="isFavorite" class="focus:outline-none" style="cursor: pointer;">
             <svg :class="['w-8 h-8 transition-all duration-300', isFavorite ? 'fill-red-500 animate-fav-pulse' : 'fill-gray-200', 'stroke-indigo-500']" viewBox="0 0 24 24" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
             </svg>
@@ -23,17 +23,23 @@
           <button class="ml-2 px-6 py-2 rounded bg-gradient-to-r from-cyan-400 via-indigo-500 to-cyan-500 text-white font-bold text-base shadow-md transition-all duration-200 hover:shadow-lg hover:from-cyan-300 hover:to-indigo-400 focus:outline-none">
             Solicitar Tour
           </button>
+          <!-- Botón de cerrar más visible -->
+          <button @click="handleCloseModal" class="ml-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
       <div class="flex-grow overflow-y-auto flex flex-col">
         <!-- Swiper de paneles principales -->
-        <div class="w-full bg-gray-100 flex flex-col items-center justify-center pt-4 pb-2 group">
+        <div class="w-full bg-gray-100 flex flex-col items-center group">
           <Swiper
             :modules="[Navigation, Thumbs]"
             :navigation="true"
             :thumbs="{ swiper: thumbsSwiper }"
             :slides-per-view="1"
-            class="w-full max-w-5xl h-[480px] rounded-xl shadow-2xl swiper-modal-main"
+            class="w-full max-w-5xl h-[480px] rounded-xl shadow-2xl swiper-modal-main mt-2"
             @swiper="setMainSwiper"
           >
             <SwiperSlide v-for="(slide, idx) in slides" :key="idx">
@@ -74,7 +80,7 @@
         </div>
 
         <!-- Datos principales -->
-        <div class="p-6 flex flex-col gap-4">
+        <div class="p-4 flex flex-col gap-3">
           <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h2 class="text-3xl font-bold text-gray-900 mb-1">{{ property.title }}</h2>
@@ -129,6 +135,7 @@ import { Navigation, Thumbs } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/navigation'
 import 'swiper/css/thumbs'
+import { useSupabaseUser } from '#imports'
 
 const props = defineProps({
   property: {
@@ -137,7 +144,7 @@ const props = defineProps({
   },
   isFavorite: Boolean
 });
-const emit = defineEmits(['close', 'toggle-favorite']);
+const emit = defineEmits(['close', 'toggle-favorite', 'login-request']);
 
 const thumbsSwiper = ref(null)
 const mainSwiper = ref(null)
@@ -174,18 +181,58 @@ function shareProperty() {
 // Sincronización y animación del favorito
 const isFavorite = ref(props.isFavorite)
 watch(() => props.isFavorite, (val) => { isFavorite.value = val })
+
+// Verificar si el usuario está logueado
+const user = useSupabaseUser()
+
 function toggleFavorite() {
+  console.log('toggleFavorite llamado en PropertyModal')
+  console.log('user.value:', user.value)
+  console.log('props.isFavorite:', props.isFavorite)
+  console.log('isFavorite.value:', isFavorite.value)
+  
+  if (!user.value) {
+    console.log('Usuario no logueado, emitiendo login-request')
+    // Si no está logueado, emitir evento para mostrar modal de login
+    emit('login-request')
+    return
+  }
+  
+  console.log('Usuario logueado, procediendo con toggle')
+  // Si está logueado, proceder con el toggle
   isFavorite.value = !isFavorite.value
+  console.log('Nuevo isFavorite.value:', isFavorite.value)
   emit('toggle-favorite', props.property)
+  console.log('Evento toggle-favorite emitido')
 }
 
 function handleCloseModal(event) {
+  console.log('PropertyModal handleCloseModal llamado');
   if (event) event.stopPropagation();
   emit('close');
+  console.log('PropertyModal emit close enviado');
 }
 </script>
 
 <style scoped>
+/* Asegurar que el modal esté bien posicionado */
+.fixed.inset-0 {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+}
+
+/* Asegurar que el contenido del modal esté centrado */
+.flex.justify-center.items-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
 @keyframes fav-pulse {
   0% { transform: scale(1); filter: drop-shadow(0 0 0 #f87171); }
   50% { transform: scale(1.18); filter: drop-shadow(0 0 8px #f87171); }
