@@ -34,6 +34,7 @@
       <div class="flex-grow overflow-y-auto flex flex-col">
         <!-- Swiper de paneles principales -->
         <div class="w-full bg-gray-100 flex flex-col items-center group">
+          <!-- Debug: Forzar rebuild de Vercel -->
           <Swiper
             :modules="[Navigation, Thumbs]"
             :navigation="true"
