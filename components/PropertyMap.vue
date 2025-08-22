@@ -193,18 +193,31 @@ const sortedProperties = computed(() => {
 const apiBaseUrl = computed(() => {
   if (typeof window === 'undefined') return config.public.apiBaseUrl;
   const hostname = window.location.hostname;
+  console.log('🔍 Debug apiBaseUrl:', { hostname, configValue: config.public.apiBaseUrl });
+  
   if (hostname.endsWith('.vercel.app') || hostname === 'localhost' || hostname === '127.0.0.1') {
+    console.log('✅ Usando config.public.apiBaseUrl:', config.public.apiBaseUrl);
     return config.public.apiBaseUrl;
   }
   const parts = hostname.split('.');
-  if (parts.length > 2) return `https://fapi.${parts.slice(-2).join('.')}`;
-  return `https://fapi.${hostname}`;
+  if (parts.length > 2) {
+    const customUrl = `https://fapi.${parts.slice(-2).join('.')}`;
+    console.log('🌐 Usando URL personalizada:', customUrl);
+    return customUrl;
+  }
+  const customUrl = `https://fapi.${hostname}`;
+  console.log('🌐 Usando URL personalizada:', customUrl);
+  return customUrl;
 });
 
 const propertiesApiUrl = computed(() => {
-  if (!apiBaseUrl.value) return '';
+  if (!apiBaseUrl.value) {
+    console.log('❌ apiBaseUrl.value es vacío');
+    return '';
+  }
   const url = new URL('/properties/all', apiBaseUrl.value);
   url.searchParams.set('t', new Date().getTime());
+  console.log('🔗 propertiesApiUrl generada:', url.href);
   return url.href;
 });
 
