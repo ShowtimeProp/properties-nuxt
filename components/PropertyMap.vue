@@ -346,7 +346,7 @@ const showFloatingCard = (property) => {
   if (selectedProperty.value) {
     showPropertyList.value = false;
   }
-  
+
   selectedProperty.value = property;
   openedFromSlide.value = false;
   isModalOpen.value = false;
@@ -426,7 +426,7 @@ const adjustMapForCard = (property) => {
   }, 550);
 };
 
-// Función para posicionar el card después del ajuste del mapa
+// Función para posicionar el card con más espacio en los bordes
 const positionCard = (property) => {
   if (!map) return;
   
@@ -434,14 +434,18 @@ const positionCard = (property) => {
   const cardWidth = 320;
   const cardHeight = 360;
   
-  // Calcular posición centrada del card
-  const x = Math.max(10, Math.min(p.x - (cardWidth / 2), windowWidth.value - cardWidth - 10));
-  const y = Math.max(10, Math.min(p.y - cardHeight - 20, windowHeight.value - cardHeight - 10));
+  // Aumentar márgenes para mejor visibilidad
+  const marginX = 40; // Más espacio en los lados
+  const marginY = 50; // Más espacio arriba y abajo
+  
+  // Calcular posición centrada del card con más espacio
+  const x = Math.max(marginX, Math.min(p.x - (cardWidth / 2), windowWidth.value - cardWidth - marginX));
+  const y = Math.max(marginY, Math.min(p.y - cardHeight - 20, windowHeight.value - cardHeight - marginY));
   
   cardPosition.value = { x, y };
-  cardPlacement.value = p.y < cardHeight + 40 ? 'top' : 'bottom';
+  cardPlacement.value = p.y < cardHeight + 60 ? 'top' : 'bottom'; // Ajustar threshold también
   
-  console.log('Card posicionado en:', { x, y, placement: cardPlacement.value });
+  console.log('Card posicionado con más espacio en:', { x, y, placement: cardPlacement.value, margins: { x: marginX, y: marginY } });
 };
 
 const openModalFromSlide = (property) => {
