@@ -351,8 +351,8 @@ const showFloatingCard = (property) => {
   openedFromSlide.value = false;
   isModalOpen.value = false;
   
-  // Calcular posición del card y ajustar mapa si es necesario
-  adjustMapForCard(property);
+  // Posicionar el card SIN mover el mapa
+  positionCard(property);
 };
 
 // Función para ajustar el mapa automáticamente para que el card sea visible
@@ -507,10 +507,20 @@ onMounted(async () => {
         data = normalized.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
       }
       console.log('Resultado de la API (fetch directo):', { count: data.length });
-      // NO cargar propiedades inicialmente - solo almacenar para uso futuro
+      // Cargar todas las propiedades pero mostrar solo las del área inicial
       allProperties.value = data;
-      properties.value = []; // Array vacío inicialmente
-      console.log(`Propiedades almacenadas: ${allProperties.value.length} totales, mostrando: ${properties.value.length}`);
+      
+      // Filtrar propiedades del área inicial de Mar del Plata
+      if (map) {
+        const bounds = map.getBounds();
+        properties.value = data.filter(p => 
+          typeof p.lng === 'number' && typeof p.lat === 'number' && bounds.contains([p.lng, p.lat])
+        );
+        console.log(`Propiedades cargadas en área inicial: ${properties.value.length} de ${allProperties.value.length} totales`);
+      } else {
+        // Si el mapa no está listo, cargar todas temporalmente
+        properties.value = data;
+      }
     } catch (e) {
       console.error('Error obteniendo propiedades:', e);
       error.value = e;
