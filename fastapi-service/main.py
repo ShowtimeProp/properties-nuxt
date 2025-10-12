@@ -666,13 +666,16 @@ async def get_realtor_metrics(realtor_id: str, request: Request):
     try:
         tenant_id = request.state.tenant_id
         
+        # Get Supabase client
+        supabase_client = create_client(settings["supabase_url"], settings["supabase_key"])
+        
         # Verify realtor belongs to tenant
-        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        realtor_query = supabase_client.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
         if not realtor_query.data:
             raise HTTPException(status_code=404, detail="Realtor not found.")
         
         # Get metrics using the database function
-        metrics_query = supabase.rpc("get_realtor_metrics", {
+        metrics_query = supabase_client.rpc("get_realtor_metrics", {
             "p_realtor_id": realtor_id,
             "p_date": "2024-01-15"  # You can make this dynamic
         }).execute()
@@ -702,18 +705,21 @@ async def get_pipeline_data(realtor_id: str, request: Request):
     try:
         tenant_id = request.state.tenant_id
         
+        # Get Supabase client
+        supabase_client = create_client(settings["supabase_url"], settings["supabase_key"])
+        
         # Verify realtor belongs to tenant
-        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        realtor_query = supabase_client.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
         if not realtor_query.data:
             raise HTTPException(status_code=404, detail="Realtor not found.")
         
         # Get pipeline data using the database function
-        pipeline_query = supabase.rpc("get_leads_by_stage", {
+        pipeline_query = supabase_client.rpc("get_leads_by_stage", {
             "p_realtor_id": realtor_id
         }).execute()
         
         # Get individual leads for each stage
-        leads_query = supabase.table("lead_pipeline").select("""
+        leads_query = supabase_client.table("lead_pipeline").select("""
             id,
             lead_id,
             stage,
@@ -738,13 +744,16 @@ async def get_recent_activities(realtor_id: str, request: Request, limit: int = 
     try:
         tenant_id = request.state.tenant_id
         
+        # Get Supabase client
+        supabase_client = create_client(settings["supabase_url"], settings["supabase_key"])
+        
         # Verify realtor belongs to tenant
-        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        realtor_query = supabase_client.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
         if not realtor_query.data:
             raise HTTPException(status_code=404, detail="Realtor not found.")
         
         # Get recent activities using the database function
-        activities_query = supabase.rpc("get_recent_activities", {
+        activities_query = supabase_client.rpc("get_recent_activities", {
             "p_realtor_id": realtor_id,
             "p_limit": limit
         }).execute()
@@ -766,13 +775,16 @@ async def create_activity(activity_data: dict, request: Request):
         realtor_id = activity_data.get("realtor_id")
         lead_id = activity_data.get("lead_id")
         
+        # Get Supabase client
+        supabase_client = create_client(settings["supabase_url"], settings["supabase_key"])
+        
         # Verify realtor belongs to tenant
-        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        realtor_query = supabase_client.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
         if not realtor_query.data:
             raise HTTPException(status_code=404, detail="Realtor not found.")
         
         # Create activity
-        activity_insert = supabase.table("realtor_activities").insert({
+        activity_insert = supabase_client.table("realtor_activities").insert({
             "realtor_id": realtor_id,
             "lead_id": lead_id,
             "activity_type": activity_data.get("activity_type"),
@@ -798,13 +810,16 @@ async def update_lead_stage(lead_id: str, stage_data: dict, request: Request):
         new_stage = stage_data.get("stage")
         realtor_id = stage_data.get("realtor_id")
         
+        # Get Supabase client
+        supabase_client = create_client(settings["supabase_url"], settings["supabase_key"])
+        
         # Verify realtor belongs to tenant
-        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        realtor_query = supabase_client.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
         if not realtor_query.data:
             raise HTTPException(status_code=404, detail="Realtor not found.")
         
         # Update lead stage
-        update_query = supabase.table("lead_pipeline").update({
+        update_query = supabase_client.table("lead_pipeline").update({
             "stage": new_stage,
             "last_activity": "now()"
         }).eq("lead_id", lead_id).eq("realtor_id", realtor_id).execute()
@@ -825,13 +840,16 @@ async def create_email_template(template_data: dict, request: Request):
         tenant_id = request.state.tenant_id
         realtor_id = template_data.get("realtor_id")
         
+        # Get Supabase client
+        supabase_client = create_client(settings["supabase_url"], settings["supabase_key"])
+        
         # Verify realtor belongs to tenant
-        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        realtor_query = supabase_client.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
         if not realtor_query.data:
             raise HTTPException(status_code=404, detail="Realtor not found.")
         
         # Create email template
-        template_insert = supabase.table("email_templates").insert({
+        template_insert = supabase_client.table("email_templates").insert({
             "realtor_id": realtor_id,
             "name": template_data.get("name"),
             "subject": template_data.get("subject"),
@@ -853,13 +871,16 @@ async def get_email_templates(realtor_id: str, request: Request):
     try:
         tenant_id = request.state.tenant_id
         
+        # Get Supabase client
+        supabase_client = create_client(settings["supabase_url"], settings["supabase_key"])
+        
         # Verify realtor belongs to tenant
-        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        realtor_query = supabase_client.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
         if not realtor_query.data:
             raise HTTPException(status_code=404, detail="Realtor not found.")
         
         # Get email templates
-        templates_query = supabase.table("email_templates").select("*").eq("realtor_id", realtor_id).eq("is_active", True).execute()
+        templates_query = supabase_client.table("email_templates").select("*").eq("realtor_id", realtor_id).eq("is_active", True).execute()
         
         return {
             "realtor_id": realtor_id,
