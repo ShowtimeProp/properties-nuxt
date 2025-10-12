@@ -654,4 +654,340 @@ def get_client_history(request: Request, client_id: str):
         }
     except Exception as e:
         print(f"Error retrieving client history: {e}")
-        raise HTTPException(status_code=500, detail="Could not retrieve client history.") 
+        raise HTTPException(status_code=500, detail="Could not retrieve client history.")
+
+# =====================================================
+# DASHBOARD ENDPOINTS FOR REALTORS
+# =====================================================
+
+@app.get("/dashboard/metrics/{realtor_id}")
+async def get_realtor_metrics(realtor_id: str, request: Request):
+    """Get dashboard metrics for a specific realtor."""
+    try:
+        tenant_id = request.state.tenant_id
+        
+        # Verify realtor belongs to tenant
+        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        if not realtor_query.data:
+            raise HTTPException(status_code=404, detail="Realtor not found.")
+        
+        # Get metrics using the database function
+        metrics_query = supabase.rpc("get_realtor_metrics", {
+            "p_realtor_id": realtor_id,
+            "p_date": "2024-01-15"  # You can make this dynamic
+        }).execute()
+        
+        if metrics_query.data:
+            metrics = metrics_query.data[0]
+        else:
+            metrics = {
+                "total_leads": 0,
+                "active_leads": 0,
+                "converted_leads": 0,
+                "revenue": 0
+            }
+        
+        return {
+            "realtor_id": realtor_id,
+            "metrics": metrics,
+            "date": "2024-01-15"
+        }
+    except Exception as e:
+        print(f"Error retrieving realtor metrics: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve realtor metrics.")
+
+@app.get("/dashboard/pipeline/{realtor_id}")
+async def get_pipeline_data(realtor_id: str, request: Request):
+    """Get pipeline data for a specific realtor."""
+    try:
+        tenant_id = request.state.tenant_id
+        
+        # Verify realtor belongs to tenant
+        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        if not realtor_query.data:
+            raise HTTPException(status_code=404, detail="Realtor not found.")
+        
+        # Get pipeline data using the database function
+        pipeline_query = supabase.rpc("get_leads_by_stage", {
+            "p_realtor_id": realtor_id
+        }).execute()
+        
+        # Get individual leads for each stage
+        leads_query = supabase.table("lead_pipeline").select("""
+            id,
+            lead_id,
+            stage,
+            probability,
+            estimated_value,
+            last_activity,
+            agent_leads!inner(id, name, email, phone)
+        """).eq("realtor_id", realtor_id).execute()
+        
+        return {
+            "realtor_id": realtor_id,
+            "pipeline_summary": pipeline_query.data,
+            "leads": leads_query.data
+        }
+    except Exception as e:
+        print(f"Error retrieving pipeline data: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve pipeline data.")
+
+@app.get("/dashboard/activities/{realtor_id}")
+async def get_recent_activities(realtor_id: str, request: Request, limit: int = 10):
+    """Get recent activities for a specific realtor."""
+    try:
+        tenant_id = request.state.tenant_id
+        
+        # Verify realtor belongs to tenant
+        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        if not realtor_query.data:
+            raise HTTPException(status_code=404, detail="Realtor not found.")
+        
+        # Get recent activities using the database function
+        activities_query = supabase.rpc("get_recent_activities", {
+            "p_realtor_id": realtor_id,
+            "p_limit": limit
+        }).execute()
+        
+        return {
+            "realtor_id": realtor_id,
+            "activities": activities_query.data,
+            "limit": limit
+        }
+    except Exception as e:
+        print(f"Error retrieving recent activities: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve recent activities.")
+
+@app.post("/dashboard/activities")
+async def create_activity(activity_data: dict, request: Request):
+    """Create a new activity for a realtor."""
+    try:
+        tenant_id = request.state.tenant_id
+        realtor_id = activity_data.get("realtor_id")
+        lead_id = activity_data.get("lead_id")
+        
+        # Verify realtor belongs to tenant
+        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        if not realtor_query.data:
+            raise HTTPException(status_code=404, detail="Realtor not found.")
+        
+        # Create activity
+        activity_insert = supabase.table("realtor_activities").insert({
+            "realtor_id": realtor_id,
+            "lead_id": lead_id,
+            "activity_type": activity_data.get("activity_type"),
+            "title": activity_data.get("title"),
+            "description": activity_data.get("description"),
+            "duration_minutes": activity_data.get("duration_minutes"),
+            "outcome": activity_data.get("outcome")
+        }).execute()
+        
+        return {
+            "message": "Activity created successfully.",
+            "activity_id": activity_insert.data[0]["id"]
+        }
+    except Exception as e:
+        print(f"Error creating activity: {e}")
+        raise HTTPException(status_code=500, detail="Could not create activity.")
+
+@app.put("/dashboard/pipeline/{lead_id}/stage")
+async def update_lead_stage(lead_id: str, stage_data: dict, request: Request):
+    """Update the stage of a lead in the pipeline."""
+    try:
+        tenant_id = request.state.tenant_id
+        new_stage = stage_data.get("stage")
+        realtor_id = stage_data.get("realtor_id")
+        
+        # Verify realtor belongs to tenant
+        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        if not realtor_query.data:
+            raise HTTPException(status_code=404, detail="Realtor not found.")
+        
+        # Update lead stage
+        update_query = supabase.table("lead_pipeline").update({
+            "stage": new_stage,
+            "last_activity": "now()"
+        }).eq("lead_id", lead_id).eq("realtor_id", realtor_id).execute()
+        
+        return {
+            "message": "Lead stage updated successfully.",
+            "lead_id": lead_id,
+            "new_stage": new_stage
+        }
+    except Exception as e:
+        print(f"Error updating lead stage: {e}")
+        raise HTTPException(status_code=500, detail="Could not update lead stage.")
+
+@app.post("/dashboard/email-templates")
+async def create_email_template(template_data: dict, request: Request):
+    """Create a new email template for a realtor."""
+    try:
+        tenant_id = request.state.tenant_id
+        realtor_id = template_data.get("realtor_id")
+        
+        # Verify realtor belongs to tenant
+        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        if not realtor_query.data:
+            raise HTTPException(status_code=404, detail="Realtor not found.")
+        
+        # Create email template
+        template_insert = supabase.table("email_templates").insert({
+            "realtor_id": realtor_id,
+            "name": template_data.get("name"),
+            "subject": template_data.get("subject"),
+            "content": template_data.get("content"),
+            "template_type": template_data.get("template_type", "general")
+        }).execute()
+        
+        return {
+            "message": "Email template created successfully.",
+            "template_id": template_insert.data[0]["id"]
+        }
+    except Exception as e:
+        print(f"Error creating email template: {e}")
+        raise HTTPException(status_code=500, detail="Could not create email template.")
+
+@app.get("/dashboard/email-templates/{realtor_id}")
+async def get_email_templates(realtor_id: str, request: Request):
+    """Get all email templates for a specific realtor."""
+    try:
+        tenant_id = request.state.tenant_id
+        
+        # Verify realtor belongs to tenant
+        realtor_query = supabase.table("realtors").select("id").eq("id", realtor_id).eq("tenant_id", tenant_id).execute()
+        if not realtor_query.data:
+            raise HTTPException(status_code=404, detail="Realtor not found.")
+        
+        # Get email templates
+        templates_query = supabase.table("email_templates").select("*").eq("realtor_id", realtor_id).eq("is_active", True).execute()
+        
+        return {
+            "realtor_id": realtor_id,
+            "templates": templates_query.data
+        }
+    except Exception as e:
+        print(f"Error retrieving email templates: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve email templates.")
+
+# =====================================================
+# LIVEKIT ENDPOINTS
+# =====================================================
+
+@app.post("/livekit/generate-token")
+async def generate_livekit_token(request: Request, token_data: dict):
+    """Generate LiveKit access token for user."""
+    try:
+        # Import LiveKit dependencies
+        from livekit import api
+        
+        # Get API key and secret from environment
+        api_key = os.getenv("LIVEKIT_API_KEY", "APIk_showtimeprop_livekit")
+        api_secret = os.getenv("LIVEKIT_API_SECRET", "secret_showtimeprop_livekit_key_2024")
+        
+        # Extract user data
+        user_id = token_data.get("user_id")
+        user_name = token_data.get("user_name", "Usuario")
+        room_name = token_data.get("room_name", "property-agent")
+        
+        # Create access token
+        token = api.AccessToken(api_key, api_secret)
+        token.with_identity(user_id)
+        token.with_name(user_name)
+        token.with_grants(api.VideoGrants(
+            room_join=True,
+            room=room_name,
+            room_list=True,
+            room_create=True,
+            room_record=True,
+            room_admin=True,
+        ))
+        
+        # Set expiration (1 hour)
+        token.with_ttl(3600)
+        
+        return {
+            "token": token.to_jwt(),
+            "room_name": room_name,
+            "expires_in": 3600
+        }
+        
+    except Exception as e:
+        print(f"Error generating LiveKit token: {e}")
+        raise HTTPException(status_code=500, detail="Could not generate LiveKit token.")
+
+@app.post("/livekit/webhook")
+async def livekit_webhook(request: Request):
+    """Handle LiveKit webhook events."""
+    try:
+        # Get the raw body
+        body = await request.body()
+        
+        # Parse webhook data
+        webhook_data = await request.json()
+        
+        print(f"LiveKit webhook received: {webhook_data}")
+        
+        # Handle different event types
+        event_type = webhook_data.get("event")
+        
+        if event_type == "room_finished":
+            # Save conversation to CRM
+            room_name = webhook_data.get("room", {}).get("name")
+            participants = webhook_data.get("room", {}).get("participants", [])
+            
+            print(f"Room finished: {room_name} with {len(participants)} participants")
+            
+            # Here you would save the conversation to your CRM
+            # For now, just log it
+            for participant in participants:
+                if participant.get("identity") == "agent":
+                    print(f"Agent conversation ended in room: {room_name}")
+        
+        elif event_type == "participant_joined":
+            participant = webhook_data.get("participant", {})
+            room_name = webhook_data.get("room", {}).get("name")
+            print(f"Participant joined: {participant.get('identity')} in room {room_name}")
+        
+        elif event_type == "participant_left":
+            participant = webhook_data.get("participant", {})
+            room_name = webhook_data.get("room", {}).get("name")
+            print(f"Participant left: {participant.get('identity')} from room {room_name}")
+        
+        return {"status": "success", "message": "Webhook processed"}
+        
+    except Exception as e:
+        print(f"Error processing LiveKit webhook: {e}")
+        raise HTTPException(status_code=500, detail="Could not process webhook.")
+
+@app.get("/livekit/rooms")
+async def list_livekit_rooms(request: Request):
+    """List active LiveKit rooms."""
+    try:
+        # Import LiveKit dependencies
+        from livekit import api
+        
+        # Get API key and secret from environment
+        api_key = os.getenv("LIVEKIT_API_KEY", "APIk_showtimeprop_livekit")
+        api_secret = os.getenv("LIVEKIT_API_SECRET", "secret_showtimeprop_livekit_key_2024")
+        
+        # Create LiveKit client
+        livekit_client = api.LiveKitAPI(api_key, api_secret)
+        
+        # List rooms
+        rooms = livekit_client.room.list_rooms()
+        
+        return {
+            "rooms": [
+                {
+                    "name": room.name,
+                    "num_participants": room.num_participants,
+                    "creation_time": room.creation_time,
+                    "turn_password": room.turn_password
+                }
+                for room in rooms
+            ]
+        }
+        
+    except Exception as e:
+        print(f"Error listing LiveKit rooms: {e}")
+        raise HTTPException(status_code=500, detail="Could not list rooms.") 

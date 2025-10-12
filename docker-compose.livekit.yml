@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  livekit-server:
+    image: livekit/livekit-server:latest
+    container_name: livekit-server
+    restart: unless-stopped
+    ports:
+      - "7880:7880"  # HTTP API
+      - "7881:7881"  # WebRTC
+      - "7882:7882"  # HTTP WebSocket
+    environment:
+      - LIVEKIT_CONFIG=/etc/livekit.yaml
+      - LIVEKIT_KEYS=APIk_showtimeprop_livekit:secret_showtimeprop_livekit_key_2024
+      - LIVEKIT_DEVELOPMENT=true
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+      - ./recordings:/recordings
+      - ./logs:/logs
+    networks:
+      - livekit-network
+    depends_on:
+      - livekit-redis
+      - livekit-etcd
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7880/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  livekit-redis:
+    image: redis:7-alpine
+    container_name: livekit-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - livekit-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  livekit-etcd:
+    image: quay.io/coreos/etcd:v3.5.0
+    container_name: livekit-etcd
+    restart: unless-stopped
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=10000
+      - ETCD_NAME=livekit-etcd
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://livekit-etcd:2379
+      - ETCD_INITIAL_CLUSTER=livekit-etcd=http://livekit-etcd:2380
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://livekit-etcd:2380
+    command: etcd
+    volumes:
+      - etcd-data:/etcd-data
+    networks:
+      - livekit-network
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Agente inmobiliario con LiveKit
+  livekit-agent:
+    build:
+      context: ./livekit-agent
+      dockerfile: Dockerfile
+    container_name: livekit-agent
+    restart: unless-stopped
+    environment:
+      - LIVEKIT_URL=ws://livekit-server:7880
+      - LIVEKIT_API_KEY=APIk_showtimeprop_livekit
+      - LIVEKIT_API_SECRET=secret_showtimeprop_livekit_key_2024
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - QDRANT_URL=${QDRANT_URL}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
+    volumes:
+      - ./livekit-agent:/app
+    networks:
+      - livekit-network
+    depends_on:
+      - livekit-server
+      - livekit-redis
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://livekit-server:7880/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis-data:
+    driver: local
+  etcd-data:
+    driver: local
+
+networks:
+  livekit-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

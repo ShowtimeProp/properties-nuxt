@@ -1,0 +1,70 @@
+port: 7880
+rtc:
+  tcp_port: 7881
+  use_external_ip: false
+  stun_servers:
+    - stun:stun.l.google.com:19302
+    - stun:stun1.l.google.com:19302
+  turn_servers:
+    - host: turn.showtimeprop.com
+      port: 3478
+      username: turn_user
+      password: turn_password
+      protocol: udp
+
+keys:
+  APIk_showtimeprop_livekit: secret_showtimeprop_livekit_key_2024
+
+redis:
+  address: livekit-redis:6379
+  username: ""
+  password: ""
+  db: 0
+
+etcd:
+  addresses:
+    - livekit-etcd:2379
+
+log_level: info
+
+# Configuración de desarrollo
+development: true
+
+# Configuración de grabación
+room:
+  auto_create: true
+  enable_recording: true
+  enable_remote_unmute: true
+
+# Configuración de transcodificación
+transcoding:
+  enabled: true
+
+# Configuración de audio
+audio:
+  sample_rate: 48000
+  channels: 2
+
+# Configuración de video
+video:
+  max_width: 1920
+  max_height: 1080
+  max_fps: 30
+
+# Configuración de WebRTC
+webrtc:
+  ice_servers:
+    - urls: ["stun:stun.l.google.com:19302"]
+    - urls: ["stun:stun1.l.google.com:19302"]
+
+# Configuración de límites
+limits:
+  max_participants: 100
+  max_track_bitrate: 2000000
+  max_audio_bitrate: 64000
+
+# Configuración de seguridad
+security:
+  allow_insights: true
+  allow_room_creation: true
+  allow_room_join: true

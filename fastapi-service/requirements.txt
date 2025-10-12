@@ -5,4 +5,5 @@ openai>=1.0.0
 python-dotenv==1.0.1
 supabase==2.0.3
 psycopg2-binary==2.9.9
-httpx==0.24.1 
+httpx==0.24.1
+livekit-api==1.0.0 
