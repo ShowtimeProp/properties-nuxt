@@ -210,12 +210,12 @@ const propertiesApiUrl = computed(() => {
 
 // --- FUNCIONES ---
 const formatPriceForBubble = (priceString) => {
-    if (!priceString) return '';
+    if (!priceString) return 'Consultar Precio';
     const num = parseInt(String(priceString).replace(/\./g, ''), 10);
-  if (isNaN(num)) return '';
+    if (isNaN(num)) return 'Consultar Precio';
     if (num >= 1000000) return (num / 1000000).toFixed(1).replace('.0', '') + 'M';
     if (num >= 1000) return `${Math.round(num / 1000)}K`;
-  return num.toString();
+    return num.toString();
 };
 
 const addMarkersToMap = () => {
