@@ -1,5 +1,5 @@
 <template>
-  <nav class="fixed top-0 left-0 w-full z-50 bg-black shadow-lg" @mouseenter="showTopMenu = true" @mouseleave="maybeHideMenu">
+  <nav class="fixed top-0 left-0 w-full z-50 bg-black shadow-lg hidden md:block" @mouseenter="showTopMenu = true" @mouseleave="maybeHideMenu">
     <!-- Primer renglón: Logo y menú, colapsable -->
     <div class="flex justify-between items-center w-full px-6 pt-3">
     </div>

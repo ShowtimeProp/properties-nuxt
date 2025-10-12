@@ -3,13 +3,13 @@
     <div ref="mapContainer" class="w-full h-full"></div>
     
     
-    <!-- Botón Ver Listado -->
+    <!-- Botón Ver Listado - Solo visible en desktop -->
     <button 
       ref="toggleButton"
       @click.stop.prevent="togglePropertyList"
       @touchstart.stop.prevent="togglePropertyList"
       type="button"
-      class="absolute top-20 right-4 md:top-24 md:right-24 z-20 flex items-center gap-2 px-3 py-2 md:px-4 animated-gradient-bg text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors text-sm md:text-base"
+      class="hidden md:flex absolute top-24 right-24 z-20 items-center gap-2 px-4 animated-gradient-bg text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors text-base"
       style="pointer-events: auto;"
     >
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -26,9 +26,9 @@
     ></div>
     
     <!-- Panel de Listado de Propiedades -->
-    <div 
-      ref="propertyListPanel"
-      class="fixed top-0 right-0 bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col pt-[80px] md:pt-[110px] w-full md:w-[450px] lg:w-[40%] max-w-[750px]"
+          <div 
+            ref="propertyListPanel"
+            class="fixed top-0 right-0 bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col pt-[20px] md:pt-[110px] w-full md:w-[450px] lg:w-[40%] max-w-[750px]"
       style="height: 100vh; box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1)"
       :class="{ 'translate-x-0': showPropertyList, 'translate-x-full': !showPropertyList }"
       @click.stop
