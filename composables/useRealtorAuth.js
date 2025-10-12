@@ -1,6 +1,6 @@
 export const useRealtorAuth = () => {
   const supabase = useSupabaseClient()
-  const user = useUser()
+  const user = useSupabaseUser()
 
   const isRealtor = ref(false)
   const realtorProfile = ref(null)

@@ -119,7 +119,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useSupabaseClient, useUser } from '#imports'
+import { useSupabaseClient, useSupabaseUser } from '#imports'
 import MetricCard from '~/components/MetricCard.vue'
 import PipelineBoard from '~/components/PipelineBoard.vue'
 import LeadsTable from '~/components/LeadsTable.vue'
