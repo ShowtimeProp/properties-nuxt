@@ -57,9 +57,9 @@ export default defineNuxtConfig({
             'supabase': ['@supabase/supabase-js'],
             'vue-vendor': ['vue', '@vue/runtime-core'],
           }
-        },
-        chunkSizeWarningLimit: 1000 // Aumentar límite a 1MB
-      }
+        }
+      },
+      chunkSizeWarningLimit: 1000 // Aumentar límite a 1MB
     }
   },
   ssr: false

@@ -375,30 +375,10 @@ onMounted(async () => {
     pending.value = true;
     error.value = null;
     try {
-      // Optimizar carga con timeout más corto y retry
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
-      
-      const raw = await $fetch(propertiesApiUrl.value, { 
-        cache: 'no-store',
-        signal: controller.signal,
-        timeout: 10000
-      });
-      clearTimeout(timeoutId);
-      
+      const raw = await $fetch(propertiesApiUrl.value, { cache: 'no-store' });
       let data = [];
       if (Array.isArray(raw)) {
-        // Procesar propiedades en chunks para mejor performance
-        const chunks = [];
-        const chunkSize = 50; // Procesar de 50 en 50
-        
-        for (let i = 0; i < raw.length; i += chunkSize) {
-          chunks.push(raw.slice(i, i + chunkSize));
-        }
-        
-        // Procesar primer chunk inmediatamente, luego los demás
-        const firstChunk = chunks[0] || [];
-        const normalized = firstChunk.map((property) => {
+        const normalized = raw.map((property) => {
           let latRaw = property?.lat ?? property?.latitude ?? property?.latitud;
           let lngRaw = property?.lng ?? property?.longitude ?? property?.longitud ?? property?.lon;
           let lat = latRaw != null ? parseFloat(String(latRaw)) : NaN;
@@ -417,41 +397,10 @@ onMounted(async () => {
             images: property?.images_array || property?.images || [],
           };
         });
-        
-        properties.value = normalized;
-        pending.value = false;
-        
-        // Procesar chunks restantes de forma asíncrona
-        if (chunks.length > 1) {
-          setTimeout(() => {
-            const remainingData = [];
-            chunks.slice(1).forEach(chunk => {
-              const chunkData = chunk.map((property) => {
-                let latRaw = property?.lat ?? property?.latitude ?? property?.latitud;
-                let lngRaw = property?.lng ?? property?.longitude ?? property?.longitud ?? property?.lon;
-                let lat = latRaw != null ? parseFloat(String(latRaw)) : NaN;
-                let lng = lngRaw != null ? parseFloat(String(lngRaw)) : NaN;
-                if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && typeof property?.location === 'string') {
-                  const match = property.location.match(/POINT\s*\(\s*(-?[0-9]*\.?[0-9]+)\s+(-?[0-9]*\.?[0-9]+)\s*\)/i);
-                  if (match) {
-                    lng = parseFloat(match[1]);
-                    lat = parseFloat(match[2]);
-                  }
-                }
-                return {
-                  ...property,
-                  lat,
-                  lng,
-                  images: property?.images_array || property?.images || [],
-                };
-              });
-              remainingData.push(...chunkData);
-            });
-            properties.value = [...properties.value, ...remainingData];
-          }, 100);
-        }
+        data = normalized.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
       }
-      console.log('Resultado de la API (fetch directo):', { count: properties.value.length });
+      console.log('Resultado de la API (fetch directo):', { count: data.length });
+      properties.value = data;
     } catch (e) {
       console.error('Error obteniendo propiedades:', e);
       error.value = e;
