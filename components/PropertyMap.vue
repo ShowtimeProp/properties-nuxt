@@ -371,60 +371,59 @@ const adjustMapForCard = (property) => {
   // Proyectar la posición de la propiedad en píxeles
   const point = map.project([property.lng, property.lat]);
   
-  // Calcular la posición ideal del card
+  // Calcular la posición ideal del card (centrado sobre el marker)
   let cardX = point.x - (cardWidth / 2);
   let cardY = point.y - cardHeight - 20; // 20px de separación del marker
   
-  // Verificar si el card se sale por los bordes y ajustar el mapa
-  let needsAdjustment = false;
-  let newCenter = map.getCenter();
+  // Calcular el offset necesario para centrar la propiedad + card
+  let offsetX = 0;
+  let offsetY = 0;
   
-  // Ajuste horizontal (izquierda/derecha)
+  // Offset horizontal: mover hacia el centro si el card se sale
   if (cardX < margin) {
-    // Card se sale por la izquierda
-    const offsetX = margin - cardX;
-    const lngOffset = map.unproject([offsetX, 0]).lng - map.unproject([0, 0]).lng;
-    newCenter.lng -= lngOffset;
-    needsAdjustment = true;
+    // Card se sale por la izquierda - mover hacia la derecha
+    offsetX = (mapWidth / 2) - point.x - (cardWidth / 4);
   } else if (cardX + cardWidth > mapWidth - margin) {
-    // Card se sale por la derecha
-    const offsetX = (cardX + cardWidth) - (mapWidth - margin);
-    const lngOffset = map.unproject([offsetX, 0]).lng - map.unproject([0, 0]).lng;
-    newCenter.lng -= lngOffset;
-    needsAdjustment = true;
-  }
-  
-  // Ajuste vertical (arriba/abajo)
-  if (cardY < margin) {
-    // Card se sale por arriba
-    const offsetY = margin - cardY;
-    const latOffset = map.unproject([0, offsetY]).lat - map.unproject([0, 0]).lat;
-    newCenter.lat += latOffset;
-    needsAdjustment = true;
-  } else if (cardY + cardHeight > mapHeight - margin) {
-    // Card se sale por abajo
-    const offsetY = (cardY + cardHeight) - (mapHeight - margin);
-    const latOffset = map.unproject([0, offsetY]).lat - map.unproject([0, 0]).lat;
-    newCenter.lat += latOffset;
-    needsAdjustment = true;
-  }
-  
-  // Aplicar el ajuste del mapa si es necesario
-  if (needsAdjustment) {
-    map.easeTo({
-      center: newCenter,
-      duration: 500, // Animación suave de 500ms
-      easing: (t) => t * (2 - t) // Easing suave
-    });
-    
-    // Esperar a que termine la animación antes de posicionar el card
-    setTimeout(() => {
-      positionCard(property);
-    }, 550);
+    // Card se sale por la derecha - mover hacia la izquierda
+    offsetX = (mapWidth / 2) - point.x + (cardWidth / 4);
   } else {
-    // Si no necesita ajuste, posicionar el card inmediatamente
-    positionCard(property);
+    // Card está bien horizontalmente - pequeño offset hacia el centro
+    offsetX = (mapWidth / 2) - point.x - (cardWidth / 6);
   }
+  
+  // Offset vertical: mover hacia el centro si el card se sale
+  if (cardY < margin) {
+    // Card se sale por arriba - mover hacia abajo
+    offsetY = (mapHeight / 2) - point.y - (cardHeight / 4);
+  } else if (cardY + cardHeight > mapHeight - margin) {
+    // Card se sale por abajo - mover hacia arriba
+    offsetY = (mapHeight / 2) - point.y + (cardHeight / 4);
+  } else {
+    // Card está bien verticalmente - pequeño offset hacia el centro
+    offsetY = (mapHeight / 2) - point.y - (cardHeight / 6);
+  }
+  
+  // Convertir offset de píxeles a coordenadas del mapa
+  const currentCenter = map.getCenter();
+  const offsetPoint = map.unproject([offsetX, offsetY]);
+  
+  // Calcular nuevo centro
+  const newCenter = {
+    lng: currentCenter.lng + (offsetPoint.lng - currentCenter.lng),
+    lat: currentCenter.lat + (offsetPoint.lat - currentCenter.lat)
+  };
+  
+  // Aplicar el ajuste del mapa
+  map.easeTo({
+    center: newCenter,
+    duration: 500, // Animación suave de 500ms
+    easing: (t) => t * (2 - t) // Easing suave
+  });
+  
+  // Esperar a que termine la animación antes de posicionar el card
+  setTimeout(() => {
+    positionCard(property);
+  }, 550);
 };
 
 // Función para posicionar el card después del ajuste del mapa
