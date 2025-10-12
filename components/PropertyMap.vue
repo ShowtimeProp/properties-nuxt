@@ -235,9 +235,12 @@ const addMarkersToMap = () => {
         dot.className = 'marker-dot';
         const bubble = document.createElement('div');
         bubble.className = 'price-bubble';
+        const priceText = formatPriceForBubble(property.price);
+        const isConsultarPrecio = priceText === 'Consultar Precio';
+        
         bubble.innerHTML = `
-        <div class="price-bubble-container">
-            <span class="price-text">${formatPriceForBubble(property.price)}</span>
+        <div class="price-bubble-container ${isConsultarPrecio ? 'consultar-precio' : ''}">
+            <span class="price-text">${priceText}</span>
         </div>
           ${property.hasVirtualTour ? `<div class="bubble-badge-external tour">3D TOUR</div>` : ''}
           ${property.isNew ? '<div class="bubble-badge-external new">NEW</div>' : ''}
@@ -419,20 +422,10 @@ onMounted(async () => {
         data = normalized.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
       }
       console.log('Resultado de la API (fetch directo):', { count: data.length });
-      // Cargar todas las propiedades pero filtrar por el área inicial de Mar del Plata
+      // NO cargar propiedades inicialmente - solo almacenar para uso futuro
       allProperties.value = data;
-      
-      // Filtrar solo las propiedades del área inicial (Mar del Plata/Plaza San Martín)
-      if (map) {
-        const bounds = map.getBounds();
-        properties.value = data.filter(p => 
-          typeof p.lng === 'number' && typeof p.lat === 'number' && bounds.contains([p.lng, p.lat])
-        );
-        console.log(`Propiedades cargadas en área inicial: ${properties.value.length} de ${data.length} totales`);
-  } else {
-        // Si el mapa no está listo, cargar todas temporalmente
-        properties.value = data;
-      }
+      properties.value = []; // Array vacío inicialmente
+      console.log(`Propiedades almacenadas: ${allProperties.value.length} totales, mostrando: ${properties.value.length}`);
     } catch (e) {
       console.error('Error obteniendo propiedades:', e);
       error.value = e;
@@ -603,6 +596,13 @@ html, body {
   align-items: center;
   gap: 5px;
   border: 2px solid white;
+}
+
+/* Texto más pequeño para "Consultar Precio" */
+.price-bubble-container.consultar-precio {
+  font-size: 10px;
+  padding: 4px 8px;
+  line-height: 1.1;
 }
 
 .price-bubble-container::after {
