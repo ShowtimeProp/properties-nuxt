@@ -19,12 +19,20 @@
       <span>Ver Listado</span>
     </button>
     
+    <!-- Overlay invisible para capturar clicks fuera del panel lateral -->
+    <div 
+      v-if="showPropertyList"
+      @click="showPropertyList = false"
+      style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 25; background: transparent;"
+    ></div>
+    
     <!-- Panel de Listado de Propiedades -->
     <div 
       ref="propertyListPanel"
       class="fixed top-0 right-0 bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col pt-[110px] w-full md:w-[450px] lg:w-[40%] max-w-[750px]"
       style="height: 100vh; box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1)"
       :class="{ 'translate-x-0': showPropertyList, 'translate-x-full': !showPropertyList }"
+      @click.stop
     >
       <div class="p-4 border-b border-gray-200 flex justify-between items-center">
         <h3 class="text-lg font-semibold">{{ sortedProperties.length }} propiedades en esta zona</h3>
@@ -92,7 +100,7 @@
     @click="selectedProperty = null"
     style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 25; background: transparent;"
   ></div>
-  
+
   <Transition name="property-card">
     <div v-if="selectedProperty && (!isModalOpen || !openedFromSlide)"
       :style="{ position: 'absolute', left: `${cardPosition.x}px`, top: `${cardPosition.y}px`, zIndex: 30, width: '310px' }"
@@ -247,7 +255,7 @@ const addMarkersToMap = () => {
     console.log('addMarkersToMap: creando marcadores', properties.value.length);
     Object.values(markerElements.value).forEach(el => el.remove());
     markerElements.value = {};
-    properties.value.forEach(property => {
+      properties.value.forEach(property => {
         if (!property || isNaN(property.lat) || isNaN(property.lng)) return;
         const el = document.createElement('div');
         el.className = 'marker-container';
@@ -307,6 +315,8 @@ const updateMarkersVisibility = () => {
 const togglePropertyList = () => {
   showPropertyList.value = !showPropertyList.value;
   if (showPropertyList.value) {
+    // Cerrar el card de propiedad cuando se abre el panel
+    selectedProperty.value = null;
     updateFilteredProperties();
   }
 };
@@ -410,7 +420,7 @@ onMounted(async () => {
     });
     map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
     map.on('load', () => {
-      updateFilteredProperties();
+    updateFilteredProperties();
       if (properties.value.length > 0) addMarkersToMap();
       map.on('moveend', updateFilteredProperties);
       map.on('zoom', updateMarkersVisibility);
@@ -432,7 +442,7 @@ onMounted(() => {
       windowHeight.value = window.innerHeight;
     });
     window.addEventListener('mousemove', (e) => {
-      mouse.value = { x: e.clientX, y: e.clientY };
+  mouse.value = { x: e.clientX, y: e.clientY };
     });
   }
 });
