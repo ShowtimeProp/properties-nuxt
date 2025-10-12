@@ -61,9 +61,9 @@
 
     <!-- Controles de Búsqueda -->
     <div class="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex flex-row items-center gap-3">
-      <!-- Botón de Búsqueda -->
-      <div class="flex items-center gap-2">
-        <button @click="searchInCurrentArea" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg transition-colors">
+      <!-- Botón de Búsqueda - Solo aparece cuando es necesario -->
+      <div v-if="shouldShowSearchButton" class="flex items-center gap-2">
+        <button @click="searchInCurrentArea" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg transition-all duration-300 animate-pulse">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -160,6 +160,7 @@ const mouse = ref({ x: 0, y: 0 });
 
 // --- ESTADO DE UI PARA PANELES ---
 const showPropertyList = ref(false);
+const shouldShowSearchButton = ref(false);
 
 // --- ESTADO DEL MAPA Y UI ---
 const mapContainer = ref(null);
@@ -211,10 +212,10 @@ const propertiesApiUrl = computed(() => {
 const formatPriceForBubble = (priceString) => {
     if (!priceString) return '';
     const num = parseInt(String(priceString).replace(/\./g, ''), 10);
-    if (isNaN(num)) return '';
+  if (isNaN(num)) return '';
     if (num >= 1000000) return (num / 1000000).toFixed(1).replace('.0', '') + 'M';
     if (num >= 1000) return `${Math.round(num / 1000)}K`;
-    return num.toString();
+  return num.toString();
 };
 
 const addMarkersToMap = () => {
@@ -235,9 +236,9 @@ const addMarkersToMap = () => {
         const bubble = document.createElement('div');
         bubble.className = 'price-bubble';
         bubble.innerHTML = `
-          <div class="price-bubble-container">
+        <div class="price-bubble-container">
             <span class="price-text">${formatPriceForBubble(property.price)}</span>
-          </div>
+        </div>
           ${property.hasVirtualTour ? `<div class="bubble-badge-external tour">3D TOUR</div>` : ''}
           ${property.isNew ? '<div class="bubble-badge-external new">NEW</div>' : ''}
         `;
@@ -256,6 +257,7 @@ const addMarkersToMap = () => {
 const updateFilteredProperties = () => {
     if (!map || !properties.value) {
         filteredProperties.value = [];
+        shouldShowSearchButton.value = false;
         return;
     }
     const bounds = map.getBounds();
@@ -263,9 +265,13 @@ const updateFilteredProperties = () => {
         typeof p.lng === 'number' && typeof p.lat === 'number' && bounds.contains([p.lng, p.lat])
     );
     
-    // Auto-activar búsqueda si no hay propiedades en el área visible
+    // Mostrar botón de búsqueda si no hay propiedades en el área visible
+    // Y hay propiedades cargadas en total (significa que el usuario ya se movió)
     if (filteredProperties.value.length === 0 && properties.value.length > 0) {
+        shouldShowSearchButton.value = true;
         showSearchHint();
+    } else {
+        shouldShowSearchButton.value = false;
     }
 };
 
@@ -308,7 +314,7 @@ const togglePropertyList = (event) => {
 
 // Función para mostrar hint de búsqueda con efecto sonoro
 const showSearchHint = () => {
-    // Efecto sonoro (usando Web Audio API)
+    // Efecto sonoro (usando Web Audio API) - Sonido más suave y profesional
     try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
@@ -317,15 +323,16 @@ const showSearchHint = () => {
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
         
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+        // Sonido más suave: Do-Mi (523Hz - 659Hz)
+        oscillator.frequency.setValueAtTime(523, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 0.15);
         
         gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.01);
-        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+        gainNode.gain.linearRampToValueAtTime(0.05, audioContext.currentTime + 0.02); // Volumen más bajo
+        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
         
         oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.2);
+        oscillator.stop(audioContext.currentTime + 0.3);
     } catch (e) {
         console.log('No se pudo reproducir sonido:', e);
     }
@@ -334,11 +341,48 @@ const showSearchHint = () => {
     console.log('🔍 No hay propiedades en esta zona. Usa "Buscar en esta zona" para cargar más.');
 };
 
+// Variable para almacenar todas las propiedades disponibles
+const allProperties = ref([]);
+
 // Función para buscar en el área actual
-const searchInCurrentArea = () => {
+const searchInCurrentArea = async () => {
     console.log('🔍 Buscando en zona actual...');
-    // Aquí podrías implementar lógica para cargar más propiedades del backend
-    // Por ahora, simplemente recargamos las propiedades
+    
+    if (allProperties.value.length === 0) {
+        // Primera vez: cargar todas las propiedades
+        try {
+            const raw = await $fetch(propertiesApiUrl.value, { cache: 'no-store' });
+            if (Array.isArray(raw)) {
+                const normalized = raw.map((property) => {
+                    let latRaw = property?.lat ?? property?.latitude ?? property?.latitud;
+                    let lngRaw = property?.lng ?? property?.longitude ?? property?.longitud ?? property?.lon;
+                    let lat = latRaw != null ? parseFloat(String(latRaw)) : NaN;
+                    let lng = lngRaw != null ? parseFloat(String(lngRaw)) : NaN;
+                    if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && typeof property?.location === 'string') {
+                        const match = property.location.match(/POINT\s*\(\s*(-?[0-9]*\.?[0-9]+)\s+(-?[0-9]*\.?[0-9]+)\s*\)/i);
+                        if (match) {
+                            lng = parseFloat(match[1]);
+                            lat = parseFloat(match[2]);
+                        }
+                    }
+                    return {
+                        ...property,
+                        lat,
+                        lng,
+                        images: property?.images_array || property?.images || [],
+                    };
+                });
+                allProperties.value = normalized.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+                console.log('Todas las propiedades cargadas:', allProperties.value.length);
+            }
+        } catch (e) {
+            console.error('Error cargando propiedades:', e);
+            return;
+        }
+    }
+    
+    // Ahora filtrar y mostrar solo las del área actual
+    properties.value = allProperties.value;
     updateFilteredProperties();
 };
 
@@ -426,7 +470,8 @@ onMounted(async () => {
         data = normalized.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
       }
       console.log('Resultado de la API (fetch directo):', { count: data.length });
-      properties.value = data;
+      // NO cargar todas las propiedades inicialmente - solo las del área visible
+      properties.value = [];
     } catch (e) {
       console.error('Error obteniendo propiedades:', e);
       error.value = e;
@@ -442,7 +487,7 @@ onMounted(async () => {
     map = new maplibregl.Map({
       container: mapContainer.value,
       style: `https://api.maptiler.com/maps/streets/style.json?key=RqptbBn3gxBTDHGJ4a3O`,
-      center: [-57.5425, -38.0179],
+      center: [-57.5425, -38.0179], // Mar del Plata centro
       zoom: 15 // Zoom más cercano para cargar menos propiedades inicialmente
     });
     map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
