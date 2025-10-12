@@ -40,6 +40,8 @@ app = FastAPI(
 allowed_origins = [
     "http://localhost:3000",          # For local development
     "https://showtimeprop.com",       # Your main production domain
+    "https://*.vercel.app",  # Permitir todos los subdominios de Vercel
+    "https://properties-nuxt.vercel.app",  # URL de producción específica
     "https://www.showtimeprop.com",   # Your www production domain
     "https://bnicolini.showtimeprop.com" # Your tenant subdomains
     # Add other tenant subdomains here as they are created, or use a wildcard pattern
@@ -144,14 +146,9 @@ def test_tenant_resolution(request: Request):
 def get_all_properties(request: Request):
     tenant_id = getattr(request.state, "tenant_id", None)
     
-    scroll_filter = None
-    if tenant_id:
-        print(f"Fetching all properties for tenant: {tenant_id}")
-        scroll_filter = models.Filter(
-            must=[models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id))]
-        )
-    else:
-        print("Fetching all properties without tenant filter.")
+    # NUEVA LÓGICA: Siempre mostrar todas las propiedades
+    # El tenant_id se usa solo para identificar al realtor, no para filtrar propiedades
+    print(f"Fetching all properties for tenant: {tenant_id} (all properties visible to all tenants)")
 
     try:
         results, _ = qdrant_cli.scroll(
@@ -159,10 +156,10 @@ def get_all_properties(request: Request):
             limit=1000,
             with_payload=True,
             with_vectors=False,
-            scroll_filter=scroll_filter # Pass the filter here (can be None)
+            scroll_filter=None  # No filter - show all properties
         )
         # --- DEBUGGING PRINT ---
-        print(f"Qdrant query returned {len(results)} properties.")
+        print(f"Qdrant query returned {len(results)} properties for tenant {tenant_id}.")
         # --- END DEBUGGING ---
         return [record.payload for record in results]
     except Exception as e:
@@ -174,12 +171,9 @@ def get_all_properties(request: Request):
 def search(request: Request, search_request: SearchRequestModel):
     tenant_id = getattr(request.state, "tenant_id", None)
 
-    if not tenant_id:
-        # For now, block searches on the main domain without a tenant context
-        # In the future, this could search public properties or similar
-        raise HTTPException(status_code=400, detail="Search requires a tenant context. Please use a subdomain.")
-
-    print(f"Performing search for tenant: {tenant_id}")
+    # NUEVA LÓGICA: Permitir búsqueda sin tenant (mostrar todas las propiedades)
+    print(f"Performing search for tenant: {tenant_id} (searching all properties)")
+    
     try:
         embedding_response = openai_cli.embeddings.create(
             input=search_request.query,
@@ -195,7 +189,8 @@ def search(request: Request, search_request: SearchRequestModel):
                     match=models.MatchValue(value=value)
                 ))
         
-        conditions.append(models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id)))
+        # NO filtrar por tenant_id - buscar en todas las propiedades
+        # conditions.append(models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id)))
         
         query_filter = models.Filter(must=conditions) if conditions else None
 
@@ -210,4 +205,453 @@ def search(request: Request, search_request: SearchRequestModel):
         return [hit.payload for hit in hits]
     except Exception as e:
         print(f"Error during search: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- ENDPOINTS DE FAVORITOS ---
+
+@app.get("/favorites/{client_id}", summary="Get Client Favorites")
+def get_client_favorites(request: Request, client_id: str):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        # Obtener favoritos del cliente para este tenant
+        response = supabase_cli.table("favorites").select("*").eq("tenant_id", tenant_id).eq("client_id", client_id).execute()
+        
+        return {
+            "client_id": client_id,
+            "tenant_id": tenant_id,
+            "favorites": response.data
+        }
+    except Exception as e:
+        print(f"Error retrieving favorites: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve favorites.")
+
+
+@app.post("/favorites/{client_id}/{property_id}", summary="Add Property to Favorites")
+def add_to_favorites(request: Request, client_id: str, property_id: str):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        # Verificar si ya existe
+        existing = supabase_cli.table("favorites").select("*").eq("tenant_id", tenant_id).eq("client_id", client_id).eq("property_id", property_id).execute()
+        
+        if existing.data:
+            return {"message": "Property already in favorites", "favorite": existing.data[0]}
+        
+        # Agregar a favoritos
+        response = supabase_cli.table("favorites").insert({
+            "tenant_id": tenant_id,
+            "client_id": client_id,
+            "property_id": property_id
+        }).execute()
+        
+        return {"message": "Property added to favorites", "favorite": response.data[0]}
+    except Exception as e:
+        print(f"Error adding to favorites: {e}")
+        raise HTTPException(status_code=500, detail="Could not add to favorites.")
+
+
+@app.delete("/favorites/{client_id}/{property_id}", summary="Remove Property from Favorites")
+def remove_from_favorites(request: Request, client_id: str, property_id: str):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        # Eliminar de favoritos
+        response = supabase_cli.table("favorites").delete().eq("tenant_id", tenant_id).eq("client_id", client_id).eq("property_id", property_id).execute()
+        
+        return {"message": "Property removed from favorites", "deleted_count": len(response.data)}
+    except Exception as e:
+        print(f"Error removing from favorites: {e}")
+        raise HTTPException(status_code=500, detail="Could not remove from favorites.")
+
+
+@app.get("/favorites/tenant/{tenant_id}/clients", summary="Get All Clients for Tenant")
+def get_tenant_clients(request: Request, tenant_id: str):
+    # Verificar que el tenant_id coincida con el del request
+    request_tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not request_tenant_id or str(request_tenant_id) != tenant_id:
+        raise HTTPException(status_code=403, detail="Access denied to this tenant's data.")
+    
+    try:
+        # Obtener todos los clientes únicos para este tenant
+        response = supabase_cli.table("favorites").select("client_id, created_at").eq("tenant_id", tenant_id).execute()
+        
+        # Agrupar por client_id y obtener el primer registro (fecha de registro)
+        clients = {}
+        for favorite in response.data:
+            client_id = favorite["client_id"]
+            if client_id not in clients:
+                clients[client_id] = {
+                    "client_id": client_id,
+                    "first_activity": favorite["created_at"],
+                    "favorites_count": 0
+                }
+            clients[client_id]["favorites_count"] += 1
+        
+        return {
+            "tenant_id": tenant_id,
+            "clients": list(clients.values())
+        }
+    except Exception as e:
+        print(f"Error retrieving tenant clients: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve tenant clients.")
+
+
+# --- ENDPOINTS DE USUARIOS/CLIENTES ---
+
+@app.post("/users/register", summary="Register New Client")
+def register_client(request: Request, user_data: dict):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        email = user_data.get("email")
+        full_name = user_data.get("full_name")
+        phone = user_data.get("phone")
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email is required.")
+        
+        # Verificar si el usuario ya existe para este tenant
+        existing = supabase_cli.table("users").select("*").eq("email", email).eq("tenant_id", tenant_id).execute()
+        
+        if existing.data:
+            return {"message": "User already exists", "user": existing.data[0]}
+        
+        # Crear nuevo usuario
+        response = supabase_cli.table("users").insert({
+            "email": email,
+            "full_name": full_name,
+            "phone": phone,
+            "tenant_id": tenant_id
+        }).execute()
+        
+        return {"message": "User registered successfully", "user": response.data[0]}
+    except Exception as e:
+        print(f"Error registering user: {e}")
+        raise HTTPException(status_code=500, detail="Could not register user.")
+
+
+@app.get("/users/{user_id}", summary="Get User by ID")
+def get_user(request: Request, user_id: str):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        response = supabase_cli.table("users").select("*").eq("id", user_id).eq("tenant_id", tenant_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="User not found.")
+        
+        return {"user": response.data[0]}
+    except Exception as e:
+        print(f"Error retrieving user: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve user.")
+
+
+@app.get("/users/email/{email}", summary="Get User by Email")
+def get_user_by_email(request: Request, email: str):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        response = supabase_cli.table("users").select("*").eq("email", email).eq("tenant_id", tenant_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="User not found.")
+        
+        return {"user": response.data[0]}
+    except Exception as e:
+        print(f"Error retrieving user by email: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve user.")
+
+
+@app.get("/users/tenant/{tenant_id}/all", summary="Get All Users for Tenant")
+def get_tenant_users(request: Request, tenant_id: str):
+    # Verificar que el tenant_id coincida con el del request
+    request_tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not request_tenant_id or str(request_tenant_id) != tenant_id:
+        raise HTTPException(status_code=403, detail="Access denied to this tenant's data.")
+    
+    try:
+        response = supabase_cli.table("users").select("*").eq("tenant_id", tenant_id).order("created_at", desc=True).execute()
+        
+        return {
+            "tenant_id": tenant_id,
+            "users": response.data,
+            "total_count": len(response.data)
+        }
+    except Exception as e:
+        print(f"Error retrieving tenant users: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve tenant users.")
+
+
+@app.put("/users/{user_id}/update-login", summary="Update User Last Login")
+def update_user_login(request: Request, user_id: str):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        response = supabase_cli.table("users").update({
+            "last_login": "NOW()"
+        }).eq("id", user_id).eq("tenant_id", tenant_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="User not found.")
+        
+        return {"message": "Login time updated", "user": response.data[0]}
+    except Exception as e:
+        print(f"Error updating user login: {e}")
+        raise HTTPException(status_code=500, detail="Could not update user login.")
+
+
+# --- ENDPOINTS DE VISITAS Y CALIFICACIONES ---
+
+@app.post("/visits/schedule", summary="Schedule Property Visit")
+def schedule_visit(request: Request, visit_data: dict):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        client_id = visit_data.get("client_id")
+        property_id = visit_data.get("property_id")
+        visit_date = visit_data.get("visit_date")
+        realtor_notes = visit_data.get("realtor_notes", "")
+        
+        if not all([client_id, property_id, visit_date]):
+            raise HTTPException(status_code=400, detail="client_id, property_id, and visit_date are required.")
+        
+        # Verificar que el cliente pertenece al tenant
+        client_check = supabase_cli.table("users").select("id").eq("id", client_id).eq("tenant_id", tenant_id).execute()
+        if not client_check.data:
+            raise HTTPException(status_code=404, detail="Client not found or not assigned to this tenant.")
+        
+        # Crear visita
+        response = supabase_cli.table("visits").insert({
+            "tenant_id": tenant_id,
+            "client_id": client_id,
+            "property_id": property_id,
+            "visit_date": visit_date,
+            "realtor_notes": realtor_notes,
+            "visit_status": "scheduled"
+        }).execute()
+        
+        return {"message": "Visit scheduled successfully", "visit": response.data[0]}
+    except Exception as e:
+        print(f"Error scheduling visit: {e}")
+        raise HTTPException(status_code=500, detail="Could not schedule visit.")
+
+
+@app.put("/visits/{visit_id}/complete", summary="Complete Visit with Rating")
+def complete_visit(request: Request, visit_id: str, completion_data: dict):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        rating = completion_data.get("rating")
+        client_notes = completion_data.get("client_notes", "")
+        
+        if not rating or rating < 1 or rating > 5:
+            raise HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
+        
+        # Actualizar visita
+        response = supabase_cli.table("visits").update({
+            "visit_status": "completed",
+            "rating": rating,
+            "client_notes": client_notes,
+            "updated_at": "NOW()"
+        }).eq("id", visit_id).eq("tenant_id", tenant_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Visit not found.")
+        
+        return {"message": "Visit completed successfully", "visit": response.data[0]}
+    except Exception as e:
+        print(f"Error completing visit: {e}")
+        raise HTTPException(status_code=500, detail="Could not complete visit.")
+
+
+@app.get("/visits/client/{client_id}", summary="Get Client Visits")
+def get_client_visits(request: Request, client_id: str):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        # Verificar que el cliente pertenece al tenant
+        client_check = supabase_cli.table("users").select("id").eq("id", client_id).eq("tenant_id", tenant_id).execute()
+        if not client_check.data:
+            raise HTTPException(status_code=404, detail="Client not found or not assigned to this tenant.")
+        
+        # Obtener visitas del cliente
+        response = supabase_cli.table("visits").select("*").eq("client_id", client_id).eq("tenant_id", tenant_id).order("visit_date", desc=True).execute()
+        
+        return {
+            "client_id": client_id,
+            "tenant_id": tenant_id,
+            "visits": response.data
+        }
+    except Exception as e:
+        print(f"Error retrieving client visits: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve client visits.")
+
+
+@app.get("/visits/tenant/{tenant_id}/all", summary="Get All Tenant Visits")
+def get_tenant_visits(request: Request, tenant_id: str):
+    # Verificar que el tenant_id coincida con el del request
+    request_tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not request_tenant_id or str(request_tenant_id) != tenant_id:
+        raise HTTPException(status_code=403, detail="Access denied to this tenant's data.")
+    
+    try:
+        # Obtener todas las visitas del tenant con información del cliente
+        response = supabase_cli.table("visits").select("""
+            *,
+            users!inner(email, full_name, phone)
+        """).eq("tenant_id", tenant_id).order("visit_date", desc=True).execute()
+        
+        return {
+            "tenant_id": tenant_id,
+            "visits": response.data,
+            "total_count": len(response.data)
+        }
+    except Exception as e:
+        print(f"Error retrieving tenant visits: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve tenant visits.")
+
+
+@app.get("/visits/tenant/{tenant_id}/upcoming", summary="Get Upcoming Visits")
+def get_upcoming_visits(request: Request, tenant_id: str):
+    # Verificar que el tenant_id coincida con el del request
+    request_tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not request_tenant_id or str(request_tenant_id) != tenant_id:
+        raise HTTPException(status_code=403, detail="Access denied to this tenant's data.")
+    
+    try:
+        # Obtener visitas programadas (futuras)
+        response = supabase_cli.table("visits").select("""
+            *,
+            users!inner(email, full_name, phone)
+        """).eq("tenant_id", tenant_id).eq("visit_status", "scheduled").gte("visit_date", "NOW()").order("visit_date", desc=False).execute()
+        
+        return {
+            "tenant_id": tenant_id,
+            "upcoming_visits": response.data,
+            "total_count": len(response.data)
+        }
+    except Exception as e:
+        print(f"Error retrieving upcoming visits: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve upcoming visits.")
+
+
+@app.post("/favorites/{client_id}/{property_id}/track", summary="Track Favorite Activity")
+def track_favorite_activity(request: Request, client_id: str, property_id: str, activity_data: dict):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        action = activity_data.get("action", "viewed")  # 'added', 'removed', 'viewed'
+        
+        # Verificar que el cliente pertenece al tenant
+        client_check = supabase_cli.table("users").select("id").eq("id", client_id).eq("tenant_id", tenant_id).execute()
+        if not client_check.data:
+            raise HTTPException(status_code=404, detail="Client not found or not assigned to this tenant.")
+        
+        # Registrar actividad
+        response = supabase_cli.table("favorite_activity").insert({
+            "tenant_id": tenant_id,
+            "client_id": client_id,
+            "property_id": property_id,
+            "action": action
+        }).execute()
+        
+        return {"message": "Activity tracked successfully", "activity": response.data[0]}
+    except Exception as e:
+        print(f"Error tracking favorite activity: {e}")
+        raise HTTPException(status_code=500, detail="Could not track activity.")
+
+
+@app.get("/clients/{client_id}/history", summary="Get Complete Client History")
+def get_client_history(request: Request, client_id: str):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        # Verificar que el cliente pertenece al tenant
+        client_check = supabase_cli.table("users").select("id").eq("id", client_id).eq("tenant_id", tenant_id).execute()
+        if not client_check.data:
+            raise HTTPException(status_code=404, detail="Client not found or not assigned to this tenant.")
+        
+        # Obtener historial completo (favoritos + visitas)
+        favorites_response = supabase_cli.table("favorite_activity").select("*").eq("client_id", client_id).eq("tenant_id", tenant_id).order("created_at", desc=True).execute()
+        
+        visits_response = supabase_cli.table("visits").select("*").eq("client_id", client_id).eq("tenant_id", tenant_id).order("visit_date", desc=True).execute()
+        
+        # Combinar y ordenar por fecha
+        history = []
+        
+        # Agregar favoritos
+        for favorite in favorites_response.data:
+            history.append({
+                "type": "favorite",
+                "property_id": favorite["property_id"],
+                "date": favorite["created_at"],
+                "action": favorite["action"],
+                "rating": None,
+                "notes": None
+            })
+        
+        # Agregar visitas
+        for visit in visits_response.data:
+            history.append({
+                "type": "visit",
+                "property_id": visit["property_id"],
+                "date": visit["visit_date"],
+                "action": visit["visit_status"],
+                "rating": visit["rating"],
+                "notes": visit["client_notes"] or visit["realtor_notes"]
+            })
+        
+        # Ordenar por fecha descendente
+        history.sort(key=lambda x: x["date"], reverse=True)
+        
+        return {
+            "client_id": client_id,
+            "tenant_id": tenant_id,
+            "history": history,
+            "total_activities": len(history)
+        }
+    except Exception as e:
+        print(f"Error retrieving client history: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve client history.") 
