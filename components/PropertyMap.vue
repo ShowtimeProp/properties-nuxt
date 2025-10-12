@@ -350,13 +350,99 @@ const showFloatingCard = (property) => {
   selectedProperty.value = property;
   openedFromSlide.value = false;
   isModalOpen.value = false;
+  
+  // Calcular posición del card y ajustar mapa si es necesario
+  adjustMapForCard(property);
+};
+
+// Función para ajustar el mapa automáticamente para que el card sea visible
+const adjustMapForCard = (property) => {
+  if (!map) return;
+  
+  const cardWidth = 320; // Ancho aproximado del card
+  const cardHeight = 360; // Alto aproximado del card
+  const margin = 20; // Margen de seguridad
+  
+  // Obtener dimensiones del contenedor del mapa
+  const mapContainer = map.getContainer();
+  const mapWidth = mapContainer.clientWidth;
+  const mapHeight = mapContainer.clientHeight;
+  
+  // Proyectar la posición de la propiedad en píxeles
+  const point = map.project([property.lng, property.lat]);
+  
+  // Calcular la posición ideal del card
+  let cardX = point.x - (cardWidth / 2);
+  let cardY = point.y - cardHeight - 20; // 20px de separación del marker
+  
+  // Verificar si el card se sale por los bordes y ajustar el mapa
+  let needsAdjustment = false;
+  let newCenter = map.getCenter();
+  
+  // Ajuste horizontal (izquierda/derecha)
+  if (cardX < margin) {
+    // Card se sale por la izquierda
+    const offsetX = margin - cardX;
+    const lngOffset = map.unproject([offsetX, 0]).lng - map.unproject([0, 0]).lng;
+    newCenter.lng -= lngOffset;
+    needsAdjustment = true;
+  } else if (cardX + cardWidth > mapWidth - margin) {
+    // Card se sale por la derecha
+    const offsetX = (cardX + cardWidth) - (mapWidth - margin);
+    const lngOffset = map.unproject([offsetX, 0]).lng - map.unproject([0, 0]).lng;
+    newCenter.lng -= lngOffset;
+    needsAdjustment = true;
+  }
+  
+  // Ajuste vertical (arriba/abajo)
+  if (cardY < margin) {
+    // Card se sale por arriba
+    const offsetY = margin - cardY;
+    const latOffset = map.unproject([0, offsetY]).lat - map.unproject([0, 0]).lat;
+    newCenter.lat += latOffset;
+    needsAdjustment = true;
+  } else if (cardY + cardHeight > mapHeight - margin) {
+    // Card se sale por abajo
+    const offsetY = (cardY + cardHeight) - (mapHeight - margin);
+    const latOffset = map.unproject([0, offsetY]).lat - map.unproject([0, 0]).lat;
+    newCenter.lat += latOffset;
+    needsAdjustment = true;
+  }
+  
+  // Aplicar el ajuste del mapa si es necesario
+  if (needsAdjustment) {
+    map.easeTo({
+      center: newCenter,
+      duration: 500, // Animación suave de 500ms
+      easing: (t) => t * (2 - t) // Easing suave
+    });
+    
+    // Esperar a que termine la animación antes de posicionar el card
+    setTimeout(() => {
+      positionCard(property);
+    }, 550);
+  } else {
+    // Si no necesita ajuste, posicionar el card inmediatamente
+    positionCard(property);
+  }
+};
+
+// Función para posicionar el card después del ajuste del mapa
+const positionCard = (property) => {
+  if (!map) return;
+  
   const p = map.project([property.lng, property.lat]);
-  // centrar card (ancho aprox 310)
-  const x = Math.max(10, Math.min(p.x - 155, windowWidth.value - 320));
-  const y = Math.max(10, Math.min(p.y - 360, windowHeight.value - 360));
+  const cardWidth = 320;
+  const cardHeight = 360;
+  
+  // Calcular posición centrada del card
+  const x = Math.max(10, Math.min(p.x - (cardWidth / 2), windowWidth.value - cardWidth - 10));
+  const y = Math.max(10, Math.min(p.y - cardHeight - 20, windowHeight.value - cardHeight - 10));
+  
   cardPosition.value = { x, y };
-  cardPlacement.value = p.y < 360 ? 'top' : 'bottom';
-  console.log('Card posicionada en:', { x, y, placement: cardPlacement.value });
+  cardPlacement.value = p.y < cardHeight + 40 ? 'top' : 'bottom';
+  
+  console.log('Card posicionado en:', { x, y, placement: cardPlacement.value });
 };
 
 const openModalFromSlide = (property) => {
