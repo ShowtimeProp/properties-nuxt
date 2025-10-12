@@ -45,5 +45,22 @@ export default defineNuxtConfig({
   build: {
     transpile: ['lucide-vue-next', 'vue-toastification']
   },
+  
+  vite: {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Separar librerías grandes en chunks independientes
+            'maplibre': ['maplibre-gl'],
+            'swiper': ['swiper'],
+            'supabase': ['@supabase/supabase-js'],
+            'vue-vendor': ['vue', '@vue/runtime-core'],
+          }
+        },
+        chunkSizeWarningLimit: 1000 // Aumentar límite a 1MB
+      }
+    }
+  },
   ssr: false
 })

@@ -10,8 +10,9 @@
     <!-- Botón Ver Listado -->
     <button 
       ref="toggleButton"
-      @click="togglePropertyList"
-      class="absolute top-24 right-24 z-20 flex items-center gap-2 px-4 py-2 animated-gradient-bg text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors"
+      @click.prevent="togglePropertyList"
+      type="button"
+      class="absolute top-20 right-4 md:top-24 md:right-24 z-20 flex items-center gap-2 px-3 py-2 md:px-4 animated-gradient-bg text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors text-sm md:text-base"
     >
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -29,7 +30,7 @@
     <!-- Panel de Listado de Propiedades -->
     <div 
       ref="propertyListPanel"
-      class="fixed top-0 right-0 bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col pt-[110px] w-full md:w-[450px] lg:w-[40%] max-w-[750px]"
+      class="fixed top-0 right-0 bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col pt-[80px] md:pt-[110px] w-full md:w-[450px] lg:w-[40%] max-w-[750px]"
       style="height: 100vh; box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1)"
       :class="{ 'translate-x-0': showPropertyList, 'translate-x-full': !showPropertyList }"
       @click.stop
@@ -374,10 +375,30 @@ onMounted(async () => {
     pending.value = true;
     error.value = null;
     try {
-      const raw = await $fetch(propertiesApiUrl.value, { cache: 'no-store' });
+      // Optimizar carga con timeout más corto y retry
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
+      
+      const raw = await $fetch(propertiesApiUrl.value, { 
+        cache: 'no-store',
+        signal: controller.signal,
+        timeout: 10000
+      });
+      clearTimeout(timeoutId);
+      
       let data = [];
       if (Array.isArray(raw)) {
-        const normalized = raw.map((property) => {
+        // Procesar propiedades en chunks para mejor performance
+        const chunks = [];
+        const chunkSize = 50; // Procesar de 50 en 50
+        
+        for (let i = 0; i < raw.length; i += chunkSize) {
+          chunks.push(raw.slice(i, i + chunkSize));
+        }
+        
+        // Procesar primer chunk inmediatamente, luego los demás
+        const firstChunk = chunks[0] || [];
+        const normalized = firstChunk.map((property) => {
           let latRaw = property?.lat ?? property?.latitude ?? property?.latitud;
           let lngRaw = property?.lng ?? property?.longitude ?? property?.longitud ?? property?.lon;
           let lat = latRaw != null ? parseFloat(String(latRaw)) : NaN;
@@ -396,10 +417,41 @@ onMounted(async () => {
             images: property?.images_array || property?.images || [],
           };
         });
-        data = normalized.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+        
+        properties.value = normalized;
+        pending.value = false;
+        
+        // Procesar chunks restantes de forma asíncrona
+        if (chunks.length > 1) {
+          setTimeout(() => {
+            const remainingData = [];
+            chunks.slice(1).forEach(chunk => {
+              const chunkData = chunk.map((property) => {
+                let latRaw = property?.lat ?? property?.latitude ?? property?.latitud;
+                let lngRaw = property?.lng ?? property?.longitude ?? property?.longitud ?? property?.lon;
+                let lat = latRaw != null ? parseFloat(String(latRaw)) : NaN;
+                let lng = lngRaw != null ? parseFloat(String(lngRaw)) : NaN;
+                if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && typeof property?.location === 'string') {
+                  const match = property.location.match(/POINT\s*\(\s*(-?[0-9]*\.?[0-9]+)\s+(-?[0-9]*\.?[0-9]+)\s*\)/i);
+                  if (match) {
+                    lng = parseFloat(match[1]);
+                    lat = parseFloat(match[2]);
+                  }
+                }
+                return {
+                  ...property,
+                  lat,
+                  lng,
+                  images: property?.images_array || property?.images || [],
+                };
+              });
+              remainingData.push(...chunkData);
+            });
+            properties.value = [...properties.value, ...remainingData];
+          }, 100);
+        }
       }
-      console.log('Resultado de la API (fetch directo):', { count: data.length });
-      properties.value = data;
+      console.log('Resultado de la API (fetch directo):', { count: properties.value.length });
     } catch (e) {
       console.error('Error obteniendo propiedades:', e);
       error.value = e;
@@ -428,8 +480,8 @@ onMounted(async () => {
       map.on('click', (e) => {
         // Solo cerrar si no hay panel lateral abierto
         if (selectedProperty.value && !showPropertyList.value) {
-          selectedProperty.value = null;
-        }
+    selectedProperty.value = null;
+  }
       });
     });
   }
