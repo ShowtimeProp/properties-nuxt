@@ -10,9 +10,11 @@
     <!-- Botón Ver Listado -->
     <button 
       ref="toggleButton"
-      @click.prevent="togglePropertyList"
+      @click.stop.prevent="togglePropertyList"
+      @touchstart.stop.prevent="togglePropertyList"
       type="button"
       class="absolute top-20 right-4 md:top-24 md:right-24 z-20 flex items-center gap-2 px-3 py-2 md:px-4 animated-gradient-bg text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors text-sm md:text-base"
+      style="pointer-events: auto;"
     >
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -307,8 +309,18 @@ const updateMarkersVisibility = () => {
   });
 };
 
-const togglePropertyList = () => {
+const togglePropertyList = (event) => {
+  console.log('togglePropertyList llamado', { event, currentState: showPropertyList.value });
+  
+  // Prevenir cualquier comportamiento por defecto
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  
   showPropertyList.value = !showPropertyList.value;
+  console.log('Estado del panel después del toggle:', showPropertyList.value);
+  
   if (showPropertyList.value) {
     // Cerrar el card de propiedad cuando se abre el panel
     selectedProperty.value = null;
