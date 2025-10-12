@@ -94,12 +94,6 @@
     </div>
   </div>
 
-  <!-- Overlay invisible para capturar clicks fuera del card -->
-  <div 
-    v-if="selectedProperty && (!isModalOpen || !openedFromSlide)"
-    @click="selectedProperty = null"
-    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 25; background: transparent;"
-  ></div>
 
   <Transition name="property-card">
     <div v-if="selectedProperty && (!isModalOpen || !openedFromSlide)"
@@ -324,6 +318,12 @@ const togglePropertyList = () => {
 const showFloatingCard = (property) => {
   if (!map) return;
   console.log('showFloatingCard llamado con:', property);
+  
+  // Si ya hay una propiedad seleccionada, cerrar el panel lateral primero
+  if (selectedProperty.value) {
+    showPropertyList.value = false;
+  }
+  
   selectedProperty.value = property;
   openedFromSlide.value = false;
   isModalOpen.value = false;
@@ -424,6 +424,13 @@ onMounted(async () => {
       if (properties.value.length > 0) addMarkersToMap();
       map.on('moveend', updateFilteredProperties);
       map.on('zoom', updateMarkersVisibility);
+      // Cerrar card al hacer click en el mapa (no en marcadores)
+      map.on('click', (e) => {
+        // Solo cerrar si no hay panel lateral abierto
+        if (selectedProperty.value && !showPropertyList.value) {
+          selectedProperty.value = null;
+        }
+      });
     });
   }
 });
