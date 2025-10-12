@@ -1,11 +1,16 @@
 <template>
   <div class="relative min-h-screen bg-gray-50">
-    <TopNavBar />
     <ClientOnly>
-      <PropertyMap />
+      <div v-if="isDashboardSubdomain">
+        <DashboardRedirect />
+      </div>
+      <div v-else>
+        <TopNavBar />
+        <PropertyMap />
+        <LoginModal />
+        <ChatBot />
+      </div>
     </ClientOnly>
-    <LoginModal />
-    <ChatBot />
   </div>
 </template>
 
@@ -14,11 +19,15 @@ import TopNavBar from '~/components/TopNavBar.vue'
 import PropertyMap from '~/components/PropertyMap.vue'
 import LoginModal from '~/components/LoginModal.vue'
 import ChatBot from '~/components/ChatBot.vue'
+import DashboardRedirect from '~/components/DashboardRedirect.vue'
 
-// Define el layout si es necesario, o déjalo por defecto.
-// definePageMeta({
-//   layout: 'default' 
-// });
+// Check if we're on the dashboard subdomain
+const isDashboardSubdomain = computed(() => {
+  if (process.client) {
+    return window.location.hostname === 'dash.bnicolini.showtimeprop.com'
+  }
+  return false
+})
 </script>
 
 <style scoped>
