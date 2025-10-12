@@ -2,10 +2,6 @@
   <div ref="mapWrapper" class="w-full h-full">
     <div ref="mapContainer" class="w-full h-full"></div>
     
-    <!-- Tooltip flotante para modo dibujo -->
-    <div v-if="isDrawing" :style="{ left: `${Math.min(mouse.x + 18, windowWidth - 220)}px`, top: `${Math.min(mouse.y + 18, windowHeight - 48)}px` }" class="fixed z-50 pointer-events-none px-3 py-1 rounded-lg shadow-lg text-xs font-semibold bg-indigo-600 text-white border border-indigo-300 animate-pulse" style="user-select:none;">
-      🖱️ DOBLE CLICK = Terminar Dibujo
-    </div>
     
     <!-- Botón Ver Listado -->
     <button 
@@ -63,36 +59,16 @@
       </div>
     </div>
 
-    <!-- Controles de Dibujo -->
+    <!-- Controles de Búsqueda -->
     <div class="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex flex-row items-center gap-3">
-      <!-- Botón de Dibujo Principal -->
+      <!-- Botón de Búsqueda -->
       <div class="flex items-center gap-2">
-        <button v-if="!isTridentOpen && !shapeDrawn" @click="toggleTrident" class="flex items-center gap-2 px-4 py-2 animated-gradient-bg text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
+        <button @click="searchInCurrentArea" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <span>Dibujar área</span>
-        </button>
-        <button v-if="shapeDrawn" @click="deleteShape" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-500 text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          <span>Eliminar área</span>
-        </button>
-        <button class="flex items-center gap-2 px-4 py-2 animated-gradient-bg text-white font-bold rounded-lg shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors">
           <span>Buscar en esta zona</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M4 12a8 8 0 0114.24-5.236M20 20v-5h-5M20 12a8 8 0 01-14.24 5.236" />
-          </svg>
         </button>
-        <div v-if="isTridentOpen && !shapeDrawn" class="text-xs text-gray-600 bg-white/90 px-3 py-1 rounded-lg shadow">
-          <p class="flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Haz clic en el mapa para dibujar. Haz clic derecho para terminar.
-          </p>
-        </div>
       </div>
     </div>
   </div>
@@ -182,11 +158,8 @@ const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 0);
 const windowHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 0);
 const mouse = ref({ x: 0, y: 0 });
 
-// --- ESTADO DE UI PARA DIBUJO Y PANELES ---
-const isDrawing = ref(false);
+// --- ESTADO DE UI PARA PANELES ---
 const showPropertyList = ref(false);
-const isTridentOpen = ref(false);
-const shapeDrawn = ref(false);
 
 // --- ESTADO DEL MAPA Y UI ---
 const mapContainer = ref(null);
@@ -289,6 +262,11 @@ const updateFilteredProperties = () => {
     filteredProperties.value = properties.value.filter(p => 
         typeof p.lng === 'number' && typeof p.lat === 'number' && bounds.contains([p.lng, p.lat])
     );
+    
+    // Auto-activar búsqueda si no hay propiedades en el área visible
+    if (filteredProperties.value.length === 0 && properties.value.length > 0) {
+        showSearchHint();
+    }
 };
 
 const updateMarkersVisibility = () => {
@@ -326,6 +304,42 @@ const togglePropertyList = (event) => {
     selectedProperty.value = null;
     updateFilteredProperties();
   }
+};
+
+// Función para mostrar hint de búsqueda con efecto sonoro
+const showSearchHint = () => {
+    // Efecto sonoro (usando Web Audio API)
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.01);
+        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+    } catch (e) {
+        console.log('No se pudo reproducir sonido:', e);
+    }
+    
+    // Mostrar notificación visual
+    console.log('🔍 No hay propiedades en esta zona. Usa "Buscar en esta zona" para cargar más.');
+};
+
+// Función para buscar en el área actual
+const searchInCurrentArea = () => {
+    console.log('🔍 Buscando en zona actual...');
+    // Aquí podrías implementar lógica para cargar más propiedades del backend
+    // Por ahora, simplemente recargamos las propiedades
+    updateFilteredProperties();
 };
 
 const showFloatingCard = (property) => {
@@ -429,7 +443,7 @@ onMounted(async () => {
       container: mapContainer.value,
       style: `https://api.maptiler.com/maps/streets/style.json?key=RqptbBn3gxBTDHGJ4a3O`,
       center: [-57.5425, -38.0179],
-      zoom: 13
+      zoom: 15 // Zoom más cercano para cargar menos propiedades inicialmente
     });
     map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
     map.on('load', () => {
