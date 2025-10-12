@@ -86,9 +86,17 @@
     </div>
   </div>
 
+  <!-- Overlay invisible para capturar clicks fuera del card -->
+  <div 
+    v-if="selectedProperty && (!isModalOpen || !openedFromSlide)"
+    @click="selectedProperty = null"
+    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 25; background: transparent;"
+  ></div>
+  
   <Transition name="property-card">
     <div v-if="selectedProperty && (!isModalOpen || !openedFromSlide)"
       :style="{ position: 'absolute', left: `${cardPosition.x}px`, top: `${cardPosition.y}px`, zIndex: 30, width: '310px' }"
+      @click.stop
     >
       <!-- Card con flecha -->
       <div style="position: relative;">
