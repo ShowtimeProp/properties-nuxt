@@ -265,9 +265,11 @@ const updateFilteredProperties = () => {
         typeof p.lng === 'number' && typeof p.lat === 'number' && bounds.contains([p.lng, p.lat])
     );
     
-    // Mostrar botón de búsqueda si no hay propiedades en el área visible
-    // Y hay propiedades cargadas en total (significa que el usuario ya se movió)
-    if (filteredProperties.value.length === 0 && properties.value.length > 0) {
+    // Mostrar botón de búsqueda SOLO si:
+    // 1. No hay propiedades en el área visible actual
+    // 2. Hay propiedades cargadas en total (allProperties)
+    // 3. El usuario se movió del área inicial
+    if (filteredProperties.value.length === 0 && allProperties.value.length > 0) {
         shouldShowSearchButton.value = true;
         showSearchHint();
     } else {
@@ -312,31 +314,8 @@ const togglePropertyList = (event) => {
   }
 };
 
-// Función para mostrar hint de búsqueda con efecto sonoro
+// Función para mostrar hint de búsqueda (SIN sonido)
 const showSearchHint = () => {
-    // Efecto sonoro (usando Web Audio API) - Sonido más suave y profesional
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Sonido más suave: Do-Mi (523Hz - 659Hz)
-        oscillator.frequency.setValueAtTime(523, audioContext.currentTime);
-        oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 0.15);
-        
-        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.05, audioContext.currentTime + 0.02); // Volumen más bajo
-        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.3);
-    } catch (e) {
-        console.log('No se pudo reproducir sonido:', e);
-    }
-    
     // Mostrar notificación visual
     console.log('🔍 No hay propiedades en esta zona. Usa "Buscar en esta zona" para cargar más.');
 };
@@ -345,45 +324,15 @@ const showSearchHint = () => {
 const allProperties = ref([]);
 
 // Función para buscar en el área actual
-const searchInCurrentArea = async () => {
+const searchInCurrentArea = () => {
     console.log('🔍 Buscando en zona actual...');
     
-    if (allProperties.value.length === 0) {
-        // Primera vez: cargar todas las propiedades
-        try {
-            const raw = await $fetch(propertiesApiUrl.value, { cache: 'no-store' });
-            if (Array.isArray(raw)) {
-                const normalized = raw.map((property) => {
-                    let latRaw = property?.lat ?? property?.latitude ?? property?.latitud;
-                    let lngRaw = property?.lng ?? property?.longitude ?? property?.longitud ?? property?.lon;
-                    let lat = latRaw != null ? parseFloat(String(latRaw)) : NaN;
-                    let lng = lngRaw != null ? parseFloat(String(lngRaw)) : NaN;
-                    if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && typeof property?.location === 'string') {
-                        const match = property.location.match(/POINT\s*\(\s*(-?[0-9]*\.?[0-9]+)\s+(-?[0-9]*\.?[0-9]+)\s*\)/i);
-                        if (match) {
-                            lng = parseFloat(match[1]);
-                            lat = parseFloat(match[2]);
-                        }
-                    }
-                    return {
-                        ...property,
-                        lat,
-                        lng,
-                        images: property?.images_array || property?.images || [],
-                    };
-                });
-                allProperties.value = normalized.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-                console.log('Todas las propiedades cargadas:', allProperties.value.length);
-            }
-        } catch (e) {
-            console.error('Error cargando propiedades:', e);
-            return;
-        }
-    }
-    
-    // Ahora filtrar y mostrar solo las del área actual
-    properties.value = allProperties.value;
+    // Usar todas las propiedades disponibles y filtrar por el área actual
+    if (allProperties.value.length > 0) {
+        properties.value = allProperties.value;
     updateFilteredProperties();
+        console.log(`Mostrando propiedades del área actual: ${filteredProperties.value.length}`);
+    }
 };
 
 const showFloatingCard = (property) => {
@@ -470,8 +419,20 @@ onMounted(async () => {
         data = normalized.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
       }
       console.log('Resultado de la API (fetch directo):', { count: data.length });
-      // NO cargar todas las propiedades inicialmente - solo las del área visible
-      properties.value = [];
+      // Cargar todas las propiedades pero filtrar por el área inicial de Mar del Plata
+      allProperties.value = data;
+      
+      // Filtrar solo las propiedades del área inicial (Mar del Plata/Plaza San Martín)
+      if (map) {
+        const bounds = map.getBounds();
+        properties.value = data.filter(p => 
+          typeof p.lng === 'number' && typeof p.lat === 'number' && bounds.contains([p.lng, p.lat])
+        );
+        console.log(`Propiedades cargadas en área inicial: ${properties.value.length} de ${data.length} totales`);
+  } else {
+        // Si el mapa no está listo, cargar todas temporalmente
+        properties.value = data;
+      }
     } catch (e) {
       console.error('Error obteniendo propiedades:', e);
       error.value = e;
