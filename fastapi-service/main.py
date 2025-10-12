@@ -83,9 +83,13 @@ async def tenant_middleware(request: Request, call_next):
     api_host = f"fapi.{prod_base_domain}"
 
     # Don't try to resolve a tenant for Vercel preview URLs, localhost, or the API's own host
-    if request_hostname.endswith('.vercel.app') or request_hostname == 'localhost' or request_hostname == api_host:
+    if request_hostname.endswith('.vercel.app') or request_hostname == 'localhost':
         print(f"Request from special source '{request_hostname}'. No tenant filter will be applied.")
         tenant_id = None
+    elif request_hostname == api_host:
+        # For API host, set a default tenant_id for dashboard endpoints
+        tenant_id = "76aa777e-fe6b-4219-b255-349e5356dcdb"  # bnicolini tenant
+        print(f"Request from API host '{request_hostname}'. Using default tenant for dashboard.")
     # For production domains, extract the subdomain
     elif request_hostname.endswith(f".{prod_base_domain}"):
         # Extracts "bnicolini" from "bnicolini.showtimeprop.com"
