@@ -67,8 +67,7 @@
       :style="{ position: 'absolute', left: `${cardPosition.x}px`, top: `${cardPosition.y}px`, zIndex: 30, width: '310px' }"
       @click.stop
     >
-      <!-- Card con flecha -->
-      <div style="position: relative;">
+      <!-- Card sin flecha -->
         <PropertyCard 
           :property="selectedProperty" 
           @toggle-favorite="toggleFavorite(selectedProperty)"
@@ -76,18 +75,6 @@
           @open-modal="isModalOpen = true"
           @login-request="showLoginModal = true"
         />
-        <!-- Flecha tipo tooltip -->
-        <div v-if="cardPlacement === 'top'" style="position: absolute; left: 50%; top: 100%; transform: translateX(-50%); width: 0; height: 0; z-index: 40;">
-          <svg width="32" height="18" viewBox="0 0 32 18">
-            <polygon points="16,18 0,0 32,0" fill="#fff" stroke="#e5e7eb" stroke-width="1" />
-          </svg>
-        </div>
-        <div v-else style="position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%) rotate(180deg); width: 0; height: 0; z-index: 40;">
-          <svg width="32" height="18" viewBox="0 0 32 18">
-            <polygon points="16,18 0,0 32,0" fill="#fff" stroke="#e5e7eb" stroke-width="1" />
-          </svg>
-        </div>
-      </div>
     </div>
   </Transition>
 
