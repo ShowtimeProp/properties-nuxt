@@ -59,18 +59,6 @@
       </div>
     </div>
 
-    <!-- Controles de Búsqueda -->
-    <div class="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex flex-row items-center gap-3">
-      <!-- Botón de Búsqueda - Solo aparece cuando es necesario -->
-      <div v-if="shouldShowSearchButton" class="flex items-center gap-2">
-        <button @click="searchInCurrentArea" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg transition-all duration-300 animate-pulse">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <span>Buscar en esta zona</span>
-        </button>
-      </div>
-    </div>
   </div>
 
 
@@ -160,7 +148,6 @@ const mouse = ref({ x: 0, y: 0 });
 
 // --- ESTADO DE UI PARA PANELES ---
 const showPropertyList = ref(false);
-const shouldShowSearchButton = ref(false);
 
 // --- ESTADO DEL MAPA Y UI ---
 const mapContainer = ref(null);
@@ -260,24 +247,12 @@ const addMarkersToMap = () => {
 const updateFilteredProperties = () => {
     if (!map || !properties.value) {
         filteredProperties.value = [];
-        shouldShowSearchButton.value = false;
         return;
     }
     const bounds = map.getBounds();
     filteredProperties.value = properties.value.filter(p => 
         typeof p.lng === 'number' && typeof p.lat === 'number' && bounds.contains([p.lng, p.lat])
     );
-    
-    // Mostrar botón de búsqueda SOLO si:
-    // 1. No hay propiedades en el área visible actual
-    // 2. Hay propiedades cargadas en total (allProperties)
-    // 3. El usuario se movió del área inicial
-    if (filteredProperties.value.length === 0 && allProperties.value.length > 0) {
-        shouldShowSearchButton.value = true;
-        showSearchHint();
-    } else {
-        shouldShowSearchButton.value = false;
-    }
 };
 
 const updateMarkersVisibility = () => {
@@ -317,26 +292,8 @@ const togglePropertyList = (event) => {
   }
 };
 
-// Función para mostrar hint de búsqueda (SIN sonido)
-const showSearchHint = () => {
-    // Mostrar notificación visual
-    console.log('🔍 No hay propiedades en esta zona. Usa "Buscar en esta zona" para cargar más.');
-};
-
 // Variable para almacenar todas las propiedades disponibles
 const allProperties = ref([]);
-
-// Función para buscar en el área actual
-const searchInCurrentArea = () => {
-    console.log('🔍 Buscando en zona actual...');
-    
-    // Usar todas las propiedades disponibles y filtrar por el área actual
-    if (allProperties.value.length > 0) {
-        properties.value = allProperties.value;
-    updateFilteredProperties();
-        console.log(`Mostrando propiedades del área actual: ${filteredProperties.value.length}`);
-    }
-};
 
 const showFloatingCard = (property) => {
   if (!map) return;
@@ -541,7 +498,7 @@ onMounted(async () => {
       container: mapContainer.value,
       style: `https://api.maptiler.com/maps/streets/style.json?key=RqptbBn3gxBTDHGJ4a3O`,
       center: [-57.5425, -38.0179], // Mar del Plata centro
-      zoom: 15 // Zoom más cercano para cargar menos propiedades inicialmente
+      zoom: 13 // Zoom más amplio para ver más área
     });
     map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
     map.on('load', () => {
@@ -704,18 +661,7 @@ html, body {
   line-height: 1.1;
 }
 
-.price-bubble-container::after {
-  content: '';
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 8px solid #c00;
-}
+/* Punta blanca removida - ya no es necesaria */
 
 .bubble-badge-internal {
   font-size: 9px;
@@ -755,9 +701,7 @@ html, body {
 .marker-container.selected .marker-dot {
   background-color: #333;
 }
-.marker-container.selected .price-bubble-container::after {
-  border-top-color: #333;
-}
+/* Referencia a punta removida */
 
 .marker-container.selected::after {
   content: '';
@@ -813,9 +757,7 @@ html, body {
 .price-bubble.sonar-active .price-bubble-container {
   background-color: #333;
 }
-.price-bubble.sonar-active .price-bubble-container::after {
-  border-top-color: #333;
-}
+/* Referencia a punta removida */
 
 /* Ocultar controles flotantes de MapLibre */
 .maplibregl-ctrl-bottom-right,
