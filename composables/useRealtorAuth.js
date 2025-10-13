@@ -28,7 +28,7 @@ export const useRealtorAuth = () => {
           tenant_id
         `)
         .eq('email', user.value.email)
-        .single()
+        .maybeSingle()
 
       if (realtorError) {
         console.error('Error checking realtor status:', realtorError)
