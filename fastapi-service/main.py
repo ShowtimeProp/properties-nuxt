@@ -1015,4 +1015,128 @@ async def list_livekit_rooms(request: Request):
         
     except Exception as e:
         print(f"Error listing LiveKit rooms: {e}")
-        raise HTTPException(status_code=500, detail="Could not list rooms.") 
+        raise HTTPException(status_code=500, detail="Could not list rooms.")
+
+# =====================================================
+# IMAGE PROXY ENDPOINTS
+# =====================================================
+
+@app.get("/properties/images/{property_id}/{image_index}")
+async def serve_property_image(property_id: str, image_index: int, request: Request):
+    """Proxy endpoint to serve property images from external sources."""
+    try:
+        import httpx
+        from urllib.parse import urlencode
+        
+        # Get Supabase client
+        supabase_client = create_client(settings["supabase_url"], settings["supabase_key"])
+        
+        # Get property data to find the original image URL
+        # First, let's try to get the property from Qdrant
+        try:
+            # Search for the property in Qdrant
+            results = qdrant_cli.scroll(
+                collection_name=settings["collection_name"],
+                limit=1,
+                with_payload=True,
+                with_vectors=False,
+                scroll_filter=models.Filter(
+                    must=[models.FieldCondition(key="id", match=models.MatchValue(value=property_id))]
+                )
+            )[0]
+            
+            if not results:
+                raise HTTPException(status_code=404, detail="Property not found.")
+            
+            property_data = results[0].payload
+            images = property_data.get("images", [])
+            
+            if not images or image_index >= len(images):
+                raise HTTPException(status_code=404, detail="Image not found.")
+            
+            image_url = images[image_index]
+            
+        except Exception as e:
+            print(f"Error getting property from Qdrant: {e}")
+            raise HTTPException(status_code=404, detail="Property not found.")
+        
+        # Download the image from the external source
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(image_url, timeout=30.0)
+                response.raise_for_status()
+                
+                # Get content type
+                content_type = response.headers.get("content-type", "image/jpeg")
+                
+                # Return the image with proper headers
+                return Response(
+                    content=response.content,
+                    media_type=content_type,
+                    headers={
+                        "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "GET",
+                        "Access-Control-Allow-Headers": "*",
+                    }
+                )
+                
+            except httpx.TimeoutException:
+                raise HTTPException(status_code=504, detail="Image request timeout.")
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 403:
+                    raise HTTPException(status_code=403, detail="External server blocked access to image.")
+                elif e.response.status_code == 404:
+                    raise HTTPException(status_code=404, detail="Image not found on external server.")
+                else:
+                    raise HTTPException(status_code=502, detail=f"External server error: {e.response.status_code}")
+            except Exception as e:
+                print(f"Error downloading image: {e}")
+                raise HTTPException(status_code=500, detail="Could not download image.")
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in image proxy: {e}")
+        raise HTTPException(status_code=500, detail="Could not serve image.")
+
+@app.get("/properties/images/{property_id}/all")
+async def get_property_images_urls(property_id: str, request: Request):
+    """Get all image URLs for a property with proxy endpoints."""
+    try:
+        # Search for the property in Qdrant
+        results = qdrant_cli.scroll(
+            collection_name=settings["collection_name"],
+            limit=1,
+            with_payload=True,
+            with_vectors=False,
+            scroll_filter=models.Filter(
+                must=[models.FieldCondition(key="id", match=models.MatchValue(value=property_id))]
+            )
+        )[0]
+        
+        if not results:
+            raise HTTPException(status_code=404, detail="Property not found.")
+        
+        property_data = results[0].payload
+        images = property_data.get("images", [])
+        
+        # Generate proxy URLs for all images
+        proxy_urls = []
+        for i, original_url in enumerate(images):
+            proxy_url = f"https://fapi.showtimeprop.com/properties/images/{property_id}/{i}"
+            proxy_urls.append({
+                "index": i,
+                "original_url": original_url,
+                "proxy_url": proxy_url
+            })
+        
+        return {
+            "property_id": property_id,
+            "images": proxy_urls,
+            "total_images": len(images)
+        }
+        
+    except Exception as e:
+        print(f"Error getting property images: {e}")
+        raise HTTPException(status_code=500, detail="Could not get property images.") 
