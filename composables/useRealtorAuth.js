@@ -25,7 +25,7 @@ export const useRealtorAuth = () => {
           name,
           email,
           phone,
-          tenants!inner(id, name, subdomain)
+          tenant_id
         `)
         .eq('email', user.value.email)
         .single()
