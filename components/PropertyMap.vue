@@ -494,12 +494,37 @@ onMounted(async () => {
     
     console.log('MapLibre cargado dinámicamente:', typeof maplibregl);
     
+    // Verificar que el contenedor tiene dimensiones
+    const container = mapContainer.value;
+    console.log('Dimensiones del contenedor:', {
+      width: container.offsetWidth,
+      height: container.offsetHeight,
+      clientWidth: container.clientWidth,
+      clientHeight: container.clientHeight
+    });
+    
+    // Asegurar que el contenedor tiene dimensiones
+    if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+      console.warn('Contenedor sin dimensiones, esperando...');
+      await nextTick();
+      // Forzar dimensiones si es necesario
+      container.style.width = '100%';
+      container.style.height = '100%';
+    }
+    
     map = new maplibregl.Map({
-      container: mapContainer.value,
+      container: container,
       style: `https://api.maptiler.com/maps/streets/style.json?key=RqptbBn3gxBTDHGJ4a3O`,
       center: [-57.5425, -38.0179], // Mar del Plata centro
       zoom: 13 // Zoom más amplio para ver más área
     });
+    
+    // Forzar recálculo de dimensiones después de crear el mapa
+    map.on('load', () => {
+      console.log('Mapa cargado, invalidando tamaño...');
+      map.resize();
+    });
+    
     map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
     map.on('load', () => {
     updateFilteredProperties();
