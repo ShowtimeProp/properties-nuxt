@@ -98,10 +98,6 @@
 
 <script setup>
 import { onMounted, onUnmounted, ref, watch, nextTick, computed } from 'vue';
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
-import MapboxDraw from '@mapbox/mapbox-gl-draw';
-import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 
 import PropertyCard from './PropertyCard.vue';
 import PropertyModal from './PropertyModal.vue';
@@ -189,7 +185,7 @@ const formatPriceForBubble = (priceString) => {
     if (isNaN(num)) return 'Consultar Precio';
     if (num >= 1000000) return (num / 1000000).toFixed(1).replace('.0', '') + 'M';
     if (num >= 1000) return `${Math.round(num / 1000)}K`;
-    return num.toString();
+  return num.toString();
 };
 
 const addMarkersToMap = () => {
@@ -476,7 +472,7 @@ onMounted(async () => {
           typeof p.lng === 'number' && typeof p.lat === 'number' && bounds.contains([p.lng, p.lat])
         );
         console.log(`Propiedades cargadas en área inicial: ${properties.value.length} de ${allProperties.value.length} totales`);
-      } else {
+  } else {
         // Si el mapa no está listo, cargar todas temporalmente
         properties.value = data;
       }
@@ -492,6 +488,12 @@ onMounted(async () => {
   }
 
   if (mapContainer.value) {
+    // Importación dinámica de MapLibre
+    const { default: maplibregl } = await import('maplibre-gl');
+    await import('maplibre-gl/dist/maplibre-gl.css');
+    
+    console.log('MapLibre cargado dinámicamente:', typeof maplibregl);
+    
     map = new maplibregl.Map({
       container: mapContainer.value,
       style: `https://api.maptiler.com/maps/streets/style.json?key=RqptbBn3gxBTDHGJ4a3O`,
