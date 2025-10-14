@@ -171,6 +171,125 @@ def get_all_properties(request: Request):
         raise HTTPException(status_code=500, detail="Could not retrieve properties from the database.")
 
 
+@app.get("/properties/geojson", summary="Get Properties by Viewport (BBOX)")
+def get_properties_geojson(
+    request: Request,
+    bbox: str = Query(..., description="Bounding box: minLon,minLat,maxLon,maxLat"),
+    zoom: int = Query(12, description="Current map zoom level"),
+    limit: int = Query(1000, description="Max properties to return")
+):
+    """
+    Endpoint optimizado para cargar propiedades solo en el viewport visible.
+    Retorna GeoJSON con las propiedades dentro del bounding box especificado.
+    """
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    try:
+        # Parsear bbox
+        minx, miny, maxx, maxy = map(float, bbox.split(","))
+        
+        # Ajustar límite según zoom (menos propiedades en zooms bajos)
+        if zoom < 10:
+            limit = min(limit, 300)
+        elif zoom < 12:
+            limit = min(limit, 700)
+        
+        print(f"Fetching properties in BBOX: [{minx}, {miny}, {maxx}, {maxy}] at zoom {zoom} for tenant {tenant_id}")
+        
+        # Obtener propiedades de Qdrant
+        results, _ = qdrant_cli.scroll(
+            collection_name=settings["collection_name"],
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+            scroll_filter=None
+        )
+        
+        # Filtrar propiedades dentro del bbox
+        features = []
+        for record in results:
+            payload = record.payload
+            
+            # Obtener coordenadas (soportar múltiples formatos)
+            lat = payload.get('lat') or payload.get('latitude') or payload.get('latitud')
+            lng = payload.get('lng') or payload.get('longitude') or payload.get('longitud') or payload.get('lon')
+            
+            # Si no hay coordenadas directas, intentar parsear location
+            if not lat or not lng:
+                location = payload.get('location', '')
+                if 'POINT' in location:
+                    import re
+                    match = re.search(r'POINT\s*\(\s*(-?[0-9.]+)\s+(-?[0-9.]+)\s*\)', location)
+                    if match:
+                        lng = float(match.group(1))
+                        lat = float(match.group(2))
+            
+            # Convertir a float si es necesario
+            try:
+                lat = float(lat) if lat else None
+                lng = float(lng) if lng else None
+            except (ValueError, TypeError):
+                continue
+            
+            # Verificar que esté dentro del bbox
+            if lat and lng and minx <= lng <= maxx and miny <= lat <= maxy:
+                feature = {
+                    "type": "Feature",
+                    "id": payload.get('id'),
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [lng, lat]
+                    },
+                    "properties": {
+                        "id": payload.get('id'),
+                        "title": payload.get('title', ''),
+                        "price": payload.get('price'),
+                        "address": payload.get('address', ''),
+                        "property_type": payload.get('property_type', ''),
+                        "tipo_operacion": payload.get('tipo_operacion', ''),
+                        "bedrooms": payload.get('bedrooms'),
+                        "bathrooms": payload.get('bathrooms'),
+                        "area_m2": payload.get('area_m2'),
+                        "total_surface": payload.get('total_surface'),
+                        "garage_count": payload.get('garage_count'),
+                        "expenses": payload.get('expenses'),
+                        "zone": payload.get('zone', ''),
+                        "localidad": payload.get('localidad', ''),
+                        "realty": payload.get('realty', ''),
+                        "price_per_m2": payload.get('price_per_m2'),
+                        "images": payload.get('images_array', []) or payload.get('images', []),
+                        "images_array": payload.get('images_array', []),
+                        "badge": payload.get('badge'),
+                        "hasVirtualTour": payload.get('hasVirtualTour', False),
+                        "isNew": payload.get('isNew', False)
+                    }
+                }
+                features.append(feature)
+        
+        # Construir GeoJSON
+        geojson = {
+            "type": "FeatureCollection",
+            "features": features
+        }
+        
+        print(f"Returning {len(features)} properties in viewport")
+        
+        return Response(
+            content=json.dumps(geojson),
+            media_type="application/geo+json",
+            headers={
+                "Cache-Control": "public, max-age=30",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid bbox format: {str(e)}")
+    except Exception as e:
+        print(f"Error in geojson endpoint: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve properties.")
+
+
 @app.post("/search", summary="Semantic Property Search")
 def search(request: Request, search_request: SearchRequestModel):
     tenant_id = getattr(request.state, "tenant_id", None)
@@ -1149,16 +1268,91 @@ async def check_proxy_health():
         test_url = "https://via.placeholder.com/150x150.jpg"
         async with httpx.AsyncClient() as client:
             response = await client.head(test_url, timeout=10.0)
-            
+
             return {
                 "status": "healthy" if response.status_code == 200 else "unhealthy",
                 "status_code": response.status_code,
                 "timestamp": datetime.now().isoformat()
             }
-            
+
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
             "timestamp": datetime.now().isoformat()
-        } 
+        }
+
+@app.get("/debug/image-formats")
+async def check_image_formats():
+    """Endpoint temporal para verificar formatos de imagen en la base de datos."""
+    try:
+        # Obtener algunas propiedades de ejemplo
+        results = qdrant_client.scroll(
+            collection_name=QDRANT_COLLECTION_NAME,
+            limit=50,  # Solo las primeras 50 para no sobrecargar
+            with_payload=True,
+            with_vectors=False,
+        )[0]
+
+        image_formats = {
+            "jpg": 0,
+            "jpeg": 0,
+            "png": 0,
+            "avif": 0,
+            "webp": 0,
+            "other": 0
+        }
+        
+        total_images = 0
+        properties_with_images = 0
+        sample_urls = []
+        problematic_urls = []
+
+        for result in results:
+            property_data = result.payload
+            images = property_data.get("images", []) or property_data.get("images_array", [])
+            
+            if images and len(images) > 0:
+                properties_with_images += 1
+                
+                for image_url in images:
+                    total_images += 1
+                    
+                    # Guardar algunas URLs de ejemplo
+                    if len(sample_urls) < 10:
+                        sample_urls.append(image_url)
+                    
+                    # Analizar extensión
+                    extension = image_url.split('.')[-1].lower() if '.' in image_url else 'unknown'
+                    
+                    if 'jpg' in extension:
+                        image_formats["jpg"] += 1
+                        # Verificar si es una URL problemática (.jpg pero no .avif)
+                        if not extension.endswith('avif'):
+                            problematic_urls.append(image_url)
+                    elif 'jpeg' in extension:
+                        image_formats["jpeg"] += 1
+                    elif 'png' in extension:
+                        image_formats["png"] += 1
+                    elif 'avif' in extension:
+                        image_formats["avif"] += 1
+                    elif 'webp' in extension:
+                        image_formats["webp"] += 1
+                    else:
+                        image_formats["other"] += 1
+
+        return {
+            "total_properties_checked": len(results),
+            "properties_with_images": properties_with_images,
+            "total_images": total_images,
+            "formats": image_formats,
+            "sample_urls": sample_urls[:5],  # Primeras 5 URLs de ejemplo
+            "problematic_urls": problematic_urls[:10],  # Primeras 10 URLs problemáticas
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        return {
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }

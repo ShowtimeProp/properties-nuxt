@@ -141,6 +141,11 @@ const isSidePanelOpen = ref(false);
 // const showLoginModal = ref(false); // Ya no se usa, se usa el store
 let draw = null;
 
+// --- ESTADO PARA CARGA OPTIMIZADA ---
+let fetchController = null; // Para cancelar requests anteriores
+let fetchTimer = null; // Para debounce
+const isLoadingProperties = ref(false);
+
 // --- COMPUTED PROPS ---
 const sortedProperties = computed(() => {
   // Aquí puedes añadir la lógica de ordenamiento que tenías antes si la necesitas.
@@ -172,9 +177,8 @@ const propertiesApiUrl = computed(() => {
     console.log('❌ apiBaseUrl.value es vacío');
     return '';
   }
-  const url = new URL('/properties/all', apiBaseUrl.value);
-  url.searchParams.set('t', new Date().getTime());
-  console.log('🔗 propertiesApiUrl generada:', url.href);
+  const url = new URL('/properties/geojson', apiBaseUrl.value);
+  console.log('🔗 propertiesApiUrl base generada:', url.href);
   return url.href;
 });
 
@@ -284,6 +288,91 @@ const allProperties = ref([]);
 
 // Variable global para MapLibre
 let maplibreglInstance = null;
+
+// --- FUNCIÓN PARA CARGAR PROPIEDADES POR VIEWPORT ---
+const fetchViewportProperties = async () => {
+  if (!map || !propertiesApiUrl.value) {
+    console.log('⏸️ fetchViewportProperties: mapa o URL no disponible');
+    return;
+  }
+  
+  // Cancelar request anterior si existe
+  if (fetchController) {
+    fetchController.abort();
+  }
+  
+  fetchController = new AbortController();
+  
+  try {
+    isLoadingProperties.value = true;
+    
+    // Obtener bounds del viewport actual
+    const bounds = map.getBounds();
+    const bbox = [
+      bounds.getWest(),
+      bounds.getSouth(),
+      bounds.getEast(),
+      bounds.getNorth()
+    ].join(',');
+    
+    const zoom = Math.round(map.getZoom());
+    
+    console.log(`📍 Cargando propiedades en viewport (zoom ${zoom}):`, bbox);
+    
+    // Construir URL con parámetros
+    const url = `${propertiesApiUrl.value}?bbox=${bbox}&zoom=${zoom}&limit=1000`;
+    
+    // Fetch con cancelación
+    const response = await fetch(url, { 
+      signal: fetchController.signal,
+      cache: 'no-store'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const geojson = await response.json();
+    
+    // Convertir GeoJSON a formato de propiedades
+    if (geojson.features && Array.isArray(geojson.features)) {
+      const newProperties = geojson.features.map(feature => ({
+        ...feature.properties,
+        lat: feature.geometry.coordinates[1],
+        lng: feature.geometry.coordinates[0]
+      }));
+      
+      console.log(`✅ Cargadas ${newProperties.length} propiedades en viewport`);
+      
+      // Actualizar propiedades
+      properties.value = newProperties;
+      filteredProperties.value = newProperties;
+      
+      // Actualizar marcadores
+      if (map.isStyleLoaded()) {
+        addMarkersToMap();
+      }
+    }
+    
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      console.log('⏹️ Request cancelado (nuevo movimiento del mapa)');
+    } else {
+      console.error('❌ Error cargando propiedades:', e);
+      error.value = e;
+    }
+  } finally {
+    isLoadingProperties.value = false;
+  }
+};
+
+// Función con debounce para evitar demasiados requests
+const debouncedFetchViewport = () => {
+  clearTimeout(fetchTimer);
+  fetchTimer = setTimeout(() => {
+    fetchViewportProperties();
+  }, 300); // 300ms de debounce
+};
 
 const showFloatingCard = (property) => {
   if (!map) return;
@@ -439,61 +528,6 @@ onMounted(async () => {
     });
   }
 
-  if (propertiesApiUrl.value) {
-    console.log('API URL para propiedades:', propertiesApiUrl.value); // LOG PARA DEBUG
-    pending.value = true;
-    error.value = null;
-    try {
-      const raw = await $fetch(propertiesApiUrl.value, { cache: 'no-store' });
-      let data = [];
-      if (Array.isArray(raw)) {
-        const normalized = raw.map((property) => {
-          let latRaw = property?.lat ?? property?.latitude ?? property?.latitud;
-          let lngRaw = property?.lng ?? property?.longitude ?? property?.longitud ?? property?.lon;
-          let lat = latRaw != null ? parseFloat(String(latRaw)) : NaN;
-          let lng = lngRaw != null ? parseFloat(String(lngRaw)) : NaN;
-          if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && typeof property?.location === 'string') {
-            const match = property.location.match(/POINT\s*\(\s*(-?[0-9]*\.?[0-9]+)\s+(-?[0-9]*\.?[0-9]+)\s*\)/i);
-            if (match) {
-              lng = parseFloat(match[1]);
-              lat = parseFloat(match[2]);
-            }
-          }
-          return {
-            ...property,
-            lat,
-            lng,
-            images: property?.images_array || property?.images || [],
-          };
-        });
-        data = normalized.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-      }
-      console.log('Resultado de la API (fetch directo):', { count: data.length });
-      // Cargar todas las propiedades pero mostrar solo las del área inicial
-      allProperties.value = data;
-      
-      // Filtrar propiedades del área inicial de Mar del Plata
-      if (map) {
-        const bounds = map.getBounds();
-        properties.value = data.filter(p => 
-          typeof p.lng === 'number' && typeof p.lat === 'number' && bounds.contains([p.lng, p.lat])
-        );
-        console.log(`Propiedades cargadas en área inicial: ${properties.value.length} de ${allProperties.value.length} totales`);
-  } else {
-        // Si el mapa no está listo, cargar todas temporalmente
-        properties.value = data;
-      }
-    } catch (e) {
-      console.error('Error obteniendo propiedades:', e);
-      error.value = e;
-    } finally {
-      pending.value = false;
-    }
-  } else {
-    console.error('La URL de la API de propiedades no está configurada.'); // LOG PARA DEBUG
-    pending.value = false;
-  }
-
   if (mapContainer.value) {
     // Importación dinámica de MapLibre
     const { default: maplibregl } = await import('maplibre-gl');
@@ -502,51 +536,50 @@ onMounted(async () => {
     // Guardar la instancia globalmente
     maplibreglInstance = maplibregl;
     
-    console.log('MapLibre cargado dinámicamente:', typeof maplibregl);
+    console.log('🗺️ MapLibre cargado dinámicamente');
     
     // Verificar que el contenedor tiene dimensiones
     const container = mapContainer.value;
-    console.log('Dimensiones del contenedor:', {
-      width: container.offsetWidth,
-      height: container.offsetHeight,
-      clientWidth: container.clientWidth,
-      clientHeight: container.clientHeight
-    });
     
     // Asegurar que el contenedor tiene dimensiones
     if (container.offsetWidth === 0 || container.offsetHeight === 0) {
       console.warn('Contenedor sin dimensiones, esperando...');
       await nextTick();
-      // Forzar dimensiones si es necesario
       container.style.width = '100%';
       container.style.height = '100%';
     }
     
+    // Crear mapa
     map = new maplibregl.Map({
       container: container,
       style: `https://api.maptiler.com/maps/streets/style.json?key=RqptbBn3gxBTDHGJ4a3O`,
       center: [-57.5425, -38.0179], // Mar del Plata centro
-      zoom: 13 // Zoom más amplio para ver más área
-    });
-    
-    // Forzar recálculo de dimensiones después de crear el mapa
-    map.on('load', () => {
-      console.log('Mapa cargado, invalidando tamaño...');
-      map.resize();
+      zoom: 13
     });
     
     map.addControl(new maplibreglInstance.NavigationControl(), 'bottom-right');
+    
+    // Cuando el mapa esté listo
     map.on('load', () => {
-    updateFilteredProperties();
-      if (properties.value.length > 0) addMarkersToMap();
-      map.on('moveend', updateFilteredProperties);
+      console.log('🗺️ Mapa cargado y listo');
+      map.resize();
+      
+      // Cargar propiedades del viewport inicial
+      fetchViewportProperties();
+      
+      // Eventos del mapa
+      map.on('moveend', () => {
+        debouncedFetchViewport(); // Cargar propiedades cuando se mueve el mapa
+        updateFilteredProperties();
+      });
+      
       map.on('zoom', updateMarkersVisibility);
-      // Cerrar card al hacer click en el mapa (no en marcadores)
+      
+      // Cerrar card al hacer click en el mapa
       map.on('click', (e) => {
-        // Solo cerrar si no hay panel lateral abierto
         if (selectedProperty.value && !showPropertyList.value) {
-    selectedProperty.value = null;
-  }
+          selectedProperty.value = null;
+        }
       });
     });
   }
