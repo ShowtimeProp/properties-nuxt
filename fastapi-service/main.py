@@ -1,7 +1,9 @@
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response, Query
 from pydantic import BaseModel
 from qdrant_client import QdrantClient, models
 import os
+import json
+from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 from functools import lru_cache
@@ -1287,8 +1289,8 @@ async def check_image_formats():
     """Endpoint temporal para verificar formatos de imagen en la base de datos."""
     try:
         # Obtener algunas propiedades de ejemplo
-        results = qdrant_client.scroll(
-            collection_name=QDRANT_COLLECTION_NAME,
+        results = qdrant_cli.scroll(
+            collection_name=settings["collection_name"],
             limit=50,  # Solo las primeras 50 para no sobrecargar
             with_payload=True,
             with_vectors=False,
