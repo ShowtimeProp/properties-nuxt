@@ -577,8 +577,15 @@ html, body {
   right: 0;
   bottom: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+}
+
+/* Estilos específicos para nuestros contenedores */
+#mapWrapper, #mapContainer {
+  width: 100% !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  position: relative !important;
+  display: block !important;
 }
 
 .marker-container {
