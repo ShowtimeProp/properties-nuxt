@@ -209,6 +209,8 @@ def get_properties_geojson(
         
         # Filtrar propiedades dentro del bbox
         features = []
+        print(f"Processing {len(results)} properties from Qdrant...")
+        
         for record in results:
             payload = record.payload
             
@@ -218,8 +220,8 @@ def get_properties_geojson(
             
             # Si no hay coordenadas directas, intentar parsear location
             if not lat or not lng:
-                location = payload.get('location', '')
-                if 'POINT' in location:
+                location = payload.get('location', '') or ''
+                if location and 'POINT' in location:
                     import re
                     match = re.search(r'POINT\s*\(\s*(-?[0-9.]+)\s+(-?[0-9.]+)\s*\)', location)
                     if match:
