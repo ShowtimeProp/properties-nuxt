@@ -147,6 +147,10 @@ def test_tenant_resolution(request: Request):
         raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
     return {"message": f"Request received successfully for tenant ID: {tenant_id}"}
 
+@app.get("/test-update", summary="Test Container Update")
+def test_update():
+    return {"message": "Container updated successfully - v2.0", "timestamp": datetime.now().isoformat()}
+
 
 @app.get("/properties/all", summary="Get All Properties")
 def get_all_properties(request: Request):
@@ -212,21 +216,25 @@ def get_properties_geojson(
         print(f"Processing {len(results)} properties from Qdrant...")
         
         for record in results:
-            payload = record.payload
-            
-            # Obtener coordenadas (soportar múltiples formatos)
-            lat = payload.get('lat') or payload.get('latitude') or payload.get('latitud')
-            lng = payload.get('lng') or payload.get('longitude') or payload.get('longitud') or payload.get('lon')
-            
-            # Si no hay coordenadas directas, intentar parsear location
-            if not lat or not lng:
-                location = payload.get('location', '') or ''
-                if location and 'POINT' in location:
-                    import re
-                    match = re.search(r'POINT\s*\(\s*(-?[0-9.]+)\s+(-?[0-9.]+)\s*\)', location)
-                    if match:
-                        lng = float(match.group(1))
-                        lat = float(match.group(2))
+            try:
+                payload = record.payload
+                
+                # Obtener coordenadas (soportar múltiples formatos)
+                lat = payload.get('lat') or payload.get('latitude') or payload.get('latitud')
+                lng = payload.get('lng') or payload.get('longitude') or payload.get('longitud') or payload.get('lon')
+                
+                # Si no hay coordenadas directas, intentar parsear location
+                if not lat or not lng:
+                    location = payload.get('location')
+                    if location and isinstance(location, str) and 'POINT' in location:
+                        import re
+                        match = re.search(r'POINT\s*\(\s*(-?[0-9.]+)\s+(-?[0-9.]+)\s*\)', location)
+                        if match:
+                            lng = float(match.group(1))
+                            lat = float(match.group(2))
+            except Exception as e:
+                print(f"Error processing property: {e}")
+                continue
             
             # Convertir a float si es necesario
             try:
