@@ -1139,4 +1139,26 @@ async def get_property_images_urls(property_id: str, request: Request):
         
     except Exception as e:
         print(f"Error getting property images: {e}")
-        raise HTTPException(status_code=500, detail="Could not get property images.") 
+        raise HTTPException(status_code=500, detail="Could not get property images.")
+
+@app.get("/proxy/health")
+async def check_proxy_health():
+    """Endpoint para verificar la salud del proxy."""
+    try:
+        # Hacer una petición de prueba a una imagen conocida
+        test_url = "https://via.placeholder.com/150x150.jpg"
+        async with httpx.AsyncClient() as client:
+            response = await client.head(test_url, timeout=10.0)
+            
+            return {
+                "status": "healthy" if response.status_code == 200 else "unhealthy",
+                "status_code": response.status_code,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        } 

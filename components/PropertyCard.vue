@@ -177,12 +177,14 @@ import { useFavoritesStore } from '~/stores/favorites';
 import { useLoginModalStore } from '~/stores/loginModal';
 import { storeToRefs } from 'pinia';
 import { useSupabaseUser } from '#imports';
+import { useImageProxy } from '~/composables/useImageProxy';
 // import Toast from 'vue-toastification';
 
 // const { useToast } = Toast;
 const user = useSupabaseUser();
 const favoritesStore = useFavoritesStore();
 const loginModal = useLoginModalStore();
+const { getImageUrl, handleImageError: proxyHandleImageError } = useImageProxy();
 // const toast = useToast();
 
 const props = defineProps({
@@ -205,16 +207,20 @@ const flipKey = ref(0)
 const whatsapp = ref("")
 const emit = defineEmits(['toggle-favorite', 'open-modal', 'login-request'])
 
-// Función para generar URLs del proxy de imágenes
+// Función para generar URLs del proxy de imágenes (ahora usando el composable)
 function getProxyImageUrl(propertyId, imageIndex) {
-  return `https://fapi.showtimeprop.com/properties/images/${propertyId}/${imageIndex}`;
+  return getImageUrl(propertyId, imageIndex);
 }
 
-// Función para manejar errores de imagen (fallback)
-function handleImageError(event, imageIndex) {
+// Función para manejar errores de imagen (ahora con sistema anti-bloqueo)
+async function handleImageError(event, imageIndex) {
   console.warn(`Error cargando imagen ${imageIndex} para propiedad ${props.property.id}`);
-  // Aquí podrías implementar un fallback, como mostrar una imagen placeholder
-  // Por ahora solo logueamos el error
+  
+  // Usar el sistema anti-bloqueo
+  await proxyHandleImageError(props.property.id, imageIndex);
+  
+  // Recargar la imagen con el nuevo proxy
+  event.target.src = getProxyImageUrl(props.property.id, imageIndex);
 }
 
 function onSwiper(swiper) {
