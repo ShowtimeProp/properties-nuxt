@@ -222,7 +222,11 @@ const addMarkersToMap = () => {
           showFloatingCard(property);
         });
         markerElements.value[property.id] = el;
-        new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([property.lng, property.lat]).addTo(map);
+        if (maplibreglInstance) {
+          new maplibreglInstance.Marker({ element: el, anchor: 'bottom' }).setLngLat([property.lng, property.lat]).addTo(map);
+    } else {
+          console.error('MapLibre instance not available for creating marker');
+        }
     });
     updateMarkersVisibility();
 };
@@ -277,6 +281,9 @@ const togglePropertyList = (event) => {
 
 // Variable para almacenar todas las propiedades disponibles
 const allProperties = ref([]);
+
+// Variable global para MapLibre
+let maplibreglInstance = null;
 
 const showFloatingCard = (property) => {
   if (!map) return;
@@ -492,6 +499,9 @@ onMounted(async () => {
     const { default: maplibregl } = await import('maplibre-gl');
     await import('maplibre-gl/dist/maplibre-gl.css');
     
+    // Guardar la instancia globalmente
+    maplibreglInstance = maplibregl;
+    
     console.log('MapLibre cargado dinámicamente:', typeof maplibregl);
     
     // Verificar que el contenedor tiene dimensiones
@@ -525,7 +535,7 @@ onMounted(async () => {
       map.resize();
     });
     
-    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+    map.addControl(new maplibreglInstance.NavigationControl(), 'bottom-right');
     map.on('load', () => {
     updateFilteredProperties();
       if (properties.value.length > 0) addMarkersToMap();
