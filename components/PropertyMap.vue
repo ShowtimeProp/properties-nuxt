@@ -26,8 +26,8 @@
     ></div>
     
     <!-- Panel de Listado de Propiedades -->
-          <div 
-            ref="propertyListPanel"
+    <div 
+      ref="propertyListPanel"
             class="fixed top-0 right-0 bg-white shadow-xl z-30 transform transition-transform duration-300 ease-in-out flex flex-col pt-[20px] md:pt-[110px] w-full md:w-[450px] lg:w-[40%] max-w-[750px]"
       style="height: 100vh; box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1)"
       :class="{ 'translate-x-0': showPropertyList, 'translate-x-full': !showPropertyList }"
@@ -425,6 +425,17 @@ const handleCloseModal = () => {
 
 // --- CICLO DE VIDA ---
 onMounted(async () => {
+  // Inicializar eventos de ventana
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', () => {
+      windowWidth.value = window.innerWidth;
+      windowHeight.value = window.innerHeight;
+    });
+    window.addEventListener('mousemove', (e) => {
+      mouse.value = { x: e.clientX, y: e.clientY };
+    });
+  }
+
   if (propertiesApiUrl.value) {
     console.log('API URL para propiedades:', propertiesApiUrl.value); // LOG PARA DEBUG
     pending.value = true;
@@ -511,17 +522,7 @@ watch(properties, (newProperties) => {
   }
 }, { deep: true });
 
-onMounted(() => {
-  if (typeof window !== 'undefined') {
-    window.addEventListener('resize', () => {
-      windowWidth.value = window.innerWidth;
-      windowHeight.value = window.innerHeight;
-    });
-    window.addEventListener('mousemove', (e) => {
-  mouse.value = { x: e.clientX, y: e.clientY };
-    });
-  }
-});
+// Eventos de ventana movidos al onMounted principal
 
 </script>
 
