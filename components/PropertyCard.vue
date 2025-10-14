@@ -20,10 +20,11 @@
             >
               <SwiperSlide v-for="(img, idx) in property.images" :key="idx">
                 <img
-                  :src="img"
+                  :src="getProxyImageUrl(property.id, idx)"
                   :alt="`Foto de la propiedad ${idx + 1}`"
                   class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105 cursor-pointer"
                   @click="$emit('open-modal', property)"
+                  @error="handleImageError($event, idx)"
                 />
               </SwiperSlide>
               <!-- Flechas personalizadas dentro del Swiper -->
@@ -203,6 +204,18 @@ const isFlipped = ref(false)
 const flipKey = ref(0)
 const whatsapp = ref("")
 const emit = defineEmits(['toggle-favorite', 'open-modal', 'login-request'])
+
+// Función para generar URLs del proxy de imágenes
+function getProxyImageUrl(propertyId, imageIndex) {
+  return `https://fapi.showtimeprop.com/properties/images/${propertyId}/${imageIndex}`;
+}
+
+// Función para manejar errores de imagen (fallback)
+function handleImageError(event, imageIndex) {
+  console.warn(`Error cargando imagen ${imageIndex} para propiedad ${props.property.id}`);
+  // Aquí podrías implementar un fallback, como mostrar una imagen placeholder
+  // Por ahora solo logueamos el error
+}
 
 function onSwiper(swiper) {
   swiperInstance.value = swiper
