@@ -2,7 +2,7 @@
 export const useImageProxy = () => {
   const { $config } = useNuxtApp()
   
-  // Lista de proxies disponibles (puedes agregar más)
+  // Lista de proxies disponibles (solo el principal por ahora)
   const proxyServers = ref([
     {
       id: 'primary',
@@ -10,21 +10,22 @@ export const useImageProxy = () => {
       status: 'active', // active, blocked, error
       lastCheck: null,
       errorCount: 0
-    },
-    {
-      id: 'backup1',
-      url: 'https://backup-proxy1.showtimeprop.com/properties/images',
-      status: 'inactive',
-      lastCheck: null,
-      errorCount: 0
-    },
-    {
-      id: 'backup2', 
-      url: 'https://backup-proxy2.showtimeprop.com/properties/images',
-      status: 'inactive',
-      lastCheck: null,
-      errorCount: 0
     }
+    // Proxies de respaldo deshabilitados temporalmente
+    // {
+    //   id: 'backup1',
+    //   url: 'https://backup-proxy1.showtimeprop.com/properties/images',
+    //   status: 'inactive',
+    //   lastCheck: null,
+    //   errorCount: 0
+    // },
+    // {
+    //   id: 'backup2', 
+    //   url: 'https://backup-proxy2.showtimeprop.com/properties/images',
+    //   status: 'inactive',
+    //   lastCheck: null,
+    //   errorCount: 0
+    // }
   ])
 
   // Proxy actual activo
@@ -38,7 +39,15 @@ export const useImageProxy = () => {
   // Función para verificar si un proxy está funcionando
   const checkProxyHealth = async (proxy) => {
     try {
-      // Hacer una petición de prueba a una imagen conocida
+      // Para el proxy principal, asumir que está funcionando
+      if (proxy.id === 'primary') {
+        proxy.status = 'active'
+        proxy.lastCheck = new Date()
+        proxy.errorCount = 0
+        return true
+      }
+      
+      // Para otros proxies, hacer verificación real
       const testUrl = `${proxy.url}/test-property/0`
       const response = await fetch(testUrl, { 
         method: 'HEAD',
