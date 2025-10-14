@@ -1,6 +1,6 @@
 <template>
-  <div ref="mapWrapper" class="w-full h-full">
-    <div ref="mapContainer" class="w-full h-full"></div>
+  <div ref="mapWrapper" id="mapWrapper" class="w-full h-full">
+    <div ref="mapContainer" id="mapContainer" class="w-full h-full"></div>
     
     
     <!-- Botón Ver Listado - Solo visible en desktop -->
