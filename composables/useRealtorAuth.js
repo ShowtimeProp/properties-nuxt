@@ -17,7 +17,7 @@ export const useRealtorAuth = () => {
       isLoading.value = true
       error.value = null
 
-      // Check if user exists in realtors table
+      // Check if user exists in realtors table using the user ID
       const { data: realtor, error: realtorError } = await supabase
         .from('realtors')
         .select(`
@@ -27,7 +27,7 @@ export const useRealtorAuth = () => {
           phone,
           tenant_id
         `)
-        .eq('email', user.value.email)
+        .eq('id', user.value.id)
         .maybeSingle()
 
       if (realtorError) {
