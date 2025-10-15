@@ -25,6 +25,7 @@
               autocomplete="email"
               required
               class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+              style="min-width: 100%; max-width: 100%; width: 100%;"
               placeholder="Email"
               :disabled="isLoading"
             />
@@ -39,6 +40,7 @@
               autocomplete="current-password"
               required
               class="appearance-none rounded-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+              style="min-width: 100%; max-width: 100%; width: 100%;"
               placeholder="Contraseña"
               :disabled="isLoading"
             />
@@ -183,3 +185,24 @@ const loginWithGoogle = async () => {
   }
 }
 </script>
+
+<style scoped>
+/* Fix para prevenir deformación de campos en carga inicial */
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  min-width: 100% !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Asegurar que el contenedor mantenga sus dimensiones */
+.space-y-6 > div {
+  width: 100%;
+}
+
+.rounded-md {
+  width: 100%;
+}
+</style>
