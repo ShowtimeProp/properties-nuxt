@@ -1165,22 +1165,26 @@ async def serve_property_image(property_id: str, image_index: int, request: Requ
         # Get property data to find the original image URL
         # First, let's try to get the property from Qdrant
         try:
-            # Search for the property in Qdrant
+            # Search for the property in Qdrant by multiple possible ID fields
+            search_filters = [
+                models.FieldCondition(key="id", match=models.MatchValue(value=property_id)),
+                models.FieldCondition(key="property_id", match=models.MatchValue(value=property_id)),
+                models.FieldCondition(key="uuid", match=models.MatchValue(value=property_id))
+            ]
+            
             results = qdrant_cli.scroll(
                 collection_name=settings["collection_name"],
                 limit=1,
                 with_payload=True,
                 with_vectors=False,
-                scroll_filter=models.Filter(
-                    must=[models.FieldCondition(key="id", match=models.MatchValue(value=property_id))]
-                )
+                scroll_filter=models.Filter(must=search_filters)
             )[0]
             
             if not results:
                 raise HTTPException(status_code=404, detail="Property not found.")
             
             property_data = results[0].payload
-            images = property_data.get("images", [])
+            images = property_data.get("images", []) or property_data.get("images_array", [])
             
             if not images or image_index >= len(images):
                 raise HTTPException(status_code=404, detail="Image not found.")
@@ -1235,22 +1239,26 @@ async def serve_property_image(property_id: str, image_index: int, request: Requ
 async def get_property_images_urls(property_id: str, request: Request):
     """Get all image URLs for a property with proxy endpoints."""
     try:
-        # Search for the property in Qdrant
+        # Search for the property in Qdrant by multiple possible ID fields
+        search_filters = [
+            models.FieldCondition(key="id", match=models.MatchValue(value=property_id)),
+            models.FieldCondition(key="property_id", match=models.MatchValue(value=property_id)),
+            models.FieldCondition(key="uuid", match=models.MatchValue(value=property_id))
+        ]
+        
         results = qdrant_cli.scroll(
             collection_name=settings["collection_name"],
             limit=1,
             with_payload=True,
             with_vectors=False,
-            scroll_filter=models.Filter(
-                must=[models.FieldCondition(key="id", match=models.MatchValue(value=property_id))]
-            )
+            scroll_filter=models.Filter(must=search_filters)
         )[0]
         
         if not results:
             raise HTTPException(status_code=404, detail="Property not found.")
         
         property_data = results[0].payload
-        images = property_data.get("images", [])
+        images = property_data.get("images", []) or property_data.get("images_array", [])
         
         # Generate proxy URLs for all images
         proxy_urls = []
