@@ -60,6 +60,8 @@ export const useRealtorAuth = () => {
       isLoading.value = true
       error.value = null
 
+      console.log('Iniciando login para:', email)
+
       // Sign in with Supabase
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
@@ -67,17 +69,26 @@ export const useRealtorAuth = () => {
       })
 
       if (authError) {
+        console.error('Error de autenticación:', authError)
         throw authError
       }
+
+      console.log('Usuario autenticado:', data.user?.email)
 
       // Check if user is a realtor
       const isRealtorUser = await checkRealtorStatus()
       
       if (!isRealtorUser) {
+        console.log('Usuario no es realtor, cerrando sesión')
         // Sign out if not a realtor
         await supabase.auth.signOut()
         throw new Error('Acceso denegado. Solo realtores pueden acceder al dashboard.')
       }
+
+      console.log('Login exitoso, redirigiendo al dashboard')
+      
+      // Redirect to dashboard after successful login
+      await navigateTo('/dashboard')
 
       return data
 

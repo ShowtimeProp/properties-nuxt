@@ -73,7 +73,7 @@
           </button>
         </div>
 
-        <div class="text-center">
+        <div class="text-center space-y-2">
           <button
             type="button"
             @click="goToMainSite"
@@ -81,6 +81,17 @@
           >
             ← Volver al sitio principal
           </button>
+          
+          <!-- Debug: Auto-fill test data -->
+          <div class="text-xs text-gray-500">
+            <button
+              type="button"
+              @click="fillTestData"
+              class="text-gray-400 hover:text-gray-600 underline"
+            >
+              Usar datos de prueba
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -99,15 +110,22 @@ const form = ref({
 
 const handleLogin = async () => {
   try {
+    console.log('Intentando login con:', form.value.email)
     await loginAsRealtor(form.value.email, form.value.password)
+    console.log('Login exitoso, navegando...')
     // Navigation will be handled by the composable
   } catch (err) {
     // Error is handled by the composable
-    console.error('Login error:', err)
+    console.error('Login error en componente:', err)
   }
 }
 
 const goToMainSite = () => {
   navigateTo('/')
+}
+
+const fillTestData = () => {
+  form.value.email = 'bruno@bnicolini.com'
+  form.value.password = 'test123456' // Contraseña de prueba
 }
 </script>
