@@ -1,78 +1,83 @@
 <template>
-  <div :class="['zillow-card group rounded shadow border border-gray-100 overflow-hidden flex flex-col', { 'flipped': isFlipped }]" style="height:282px; width:307px; font-family: 'Roboto', Arial, sans-serif; position:relative;">
+  <div 
+    :class="['zillow-card group rounded shadow border border-gray-100 overflow-hidden flex flex-col', { 'flipped': isFlipped }]" 
+    style="height:282px; width:307px; font-family: 'Roboto', Arial, sans-serif; position:relative;"
+    @mouseenter="$emit('hover-start', property)"
+    @mouseleave="$emit('hover-end', property)"
+  >
     <div class="card-inner">
-      <!-- Cara frontal -->
-      <div class="card-face card-front flex flex-col h-full w-full" style="background:#fff;">
-        <!-- Imagen principal -->
+    <!-- Cara frontal -->
+    <div class="card-face card-front flex flex-col h-full w-full" style="background:#fff;">
+      <!-- Imagen principal -->
         <div class="relative w-full" style="aspect-ratio:3/2; min-height:0;">
-          <ClientOnly>
-            <Swiper
-              v-if="property.images?.length"
-              :modules="[Pagination, Navigation]"
-              :pagination="{ clickable: true, dynamicBullets: true }"
-              :navigation="false"
-              :slides-per-view="1"
-              :space-between="0"
-              @swiper="onSwiper"
-              @slideChange="onSlideChange"
-              ref="swiperRef"
-              class="h-full w-full"
-            >
-              <SwiperSlide v-for="(img, idx) in property.images" :key="idx">
-                <img
+        <ClientOnly>
+          <Swiper
+            v-if="property.images?.length"
+            :modules="[Pagination, Navigation]"
+            :pagination="{ clickable: true, dynamicBullets: true }"
+            :navigation="false"
+            :slides-per-view="1"
+            :space-between="0"
+            @swiper="onSwiper"
+            @slideChange="onSlideChange"
+            ref="swiperRef"
+            class="h-full w-full"
+          >
+            <SwiperSlide v-for="(img, idx) in property.images" :key="idx">
+              <img
                   :src="getProxyImageUrl(property.id, idx)"
-                  :alt="`Foto de la propiedad ${idx + 1}`"
-                  class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105 cursor-pointer"
-                  @click="$emit('open-modal', property)"
+                :alt="`Foto de la propiedad ${idx + 1}`"
+                class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105 cursor-pointer"
+                @click="$emit('open-modal', property)"
                   @error="handleImageError($event, idx)"
-                />
-              </SwiperSlide>
-              <!-- Flechas personalizadas dentro del Swiper -->
-              <button v-if="showPrevButton && property.images.length > 1" class="swiper-button-prev-custom" @click.stop="slidePrev" aria-label="Anterior">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-              </button>
-              <button v-if="showNextButton && property.images.length > 1" class="swiper-button-next-custom" @click.stop="slideNext" aria-label="Siguiente">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-              </button>
-              <div v-else class="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100">
-                <div class="text-center">
-                  <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p class="text-sm">Sin imágenes</p>
-                </div>
-              </div>
-            </Swiper>
-            <!-- Botón de favorito SVG puro -->
-            <button @click="handleFavoriteClick" class="absolute top-3 right-3 z-20 favorite-btn flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 group/fav" :aria-pressed="isFavorite">
-              <svg :class="['h-10 w-10 transition-all duration-300 heart-outline', isFavorite ? 'fill-rose-600' : 'fill-black35', 'group-hover/fav:animate-fav-pulse']" viewBox="0 0 24 24" stroke-width="2" :stroke="'#fff'">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
+              />
+            </SwiperSlide>
+            <!-- Flechas personalizadas dentro del Swiper -->
+            <button v-if="showPrevButton && property.images.length > 1" class="swiper-button-prev-custom" @click.stop="slidePrev" aria-label="Anterior">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             </button>
-          </ClientOnly>
-          <!-- Badge dinámico -->
-          <div v-if="property.badge" class="absolute top-3 left-3 z-10 badge-zillow flex items-center gap-1">
-            <template v-if="property.badge === '3D TOUR'">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M21 7.5l-9-5.25-9 5.25M21 7.5v9l-9 5.25-9-5.25v-9"/><path d="M3.27 6.96l8.73 5.19 8.73-5.19"/></svg>
-            </template>
-            <span>{{ property.badge }}</span>
+            <button v-if="showNextButton && property.images.length > 1" class="swiper-button-next-custom" @click.stop="slideNext" aria-label="Siguiente">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+            <div v-else class="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100">
+              <div class="text-center">
+                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p class="text-sm">Sin imágenes</p>
+              </div>
+            </div>
+          </Swiper>
+          <!-- Botón de favorito SVG puro -->
+          <button @click="handleFavoriteClick" class="absolute top-3 right-3 z-20 favorite-btn flex items-center justify-center transition-transform duration-200 hover:scale-110 active:scale-95 group/fav" :aria-pressed="isFavorite">
+            <svg :class="['h-10 w-10 transition-all duration-300 heart-outline', isFavorite ? 'fill-rose-600' : 'fill-black35', 'group-hover/fav:animate-fav-pulse']" viewBox="0 0 24 24" stroke-width="2" :stroke="'#fff'">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </button>
+        </ClientOnly>
+        <!-- Badge dinámico -->
+        <div v-if="property.badge" class="absolute top-3 left-3 z-10 badge-zillow flex items-center gap-1">
+          <template v-if="property.badge === '3D TOUR'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M21 7.5l-9-5.25-9 5.25M21 7.5v9l-9 5.25-9-5.25v-9"/><path d="M3.27 6.96l8.73 5.19 8.73-5.19"/></svg>
+          </template>
+          <span>{{ property.badge }}</span>
+        </div>
+      </div>
+      <!-- Contenido -->
+      <div class="flex-1 flex flex-col justify-between px-4 py-2 gap-1 overflow-visible">
+        <!-- Precio y expensas (primer renglón) -->
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="zillow-price">{{ formatCurrency(property.price) }}</span>
+              <span v-if="property.expenses && property.expenses > 0" class="zillow-expenses">+ {{ formatCurrency(property.expenses) }} exp.</span>
           </div>
         </div>
-        <!-- Contenido -->
-        <div class="flex-1 flex flex-col justify-between px-4 py-2 gap-1 overflow-visible">
-          <!-- Precio y expensas (primer renglón) -->
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <span class="zillow-price">{{ formatCurrency(property.price) }}</span>
-              <span v-if="property.expenses && property.expenses > 0" class="zillow-expenses">+ {{ formatCurrency(property.expenses) }} exp.</span>
-            </div>
-          </div>
-          <!-- Dirección y zona/localidad (segundo renglón) -->
-          <div class="flex items-center gap-2 text-xs text-gray-700 mb-1">
+        <!-- Dirección y zona/localidad (segundo renglón) -->
+        <div class="flex items-center gap-2 text-xs text-gray-700 mb-1">
             <span class="truncate">{{ property.address || 'Dirección no disponible' }}</span>
-            <span v-if="property.zone || property.localidad" class="mx-1 text-gray-300">|</span>
-            <span class="truncate">{{ property.zone || property.localidad }}</span>
-          </div>
+          <span v-if="property.zone || property.localidad" class="mx-1 text-gray-300">|</span>
+          <span class="truncate">{{ property.zone || property.localidad }}</span>
+        </div>
           <!-- Características principales (tercer renglón) - REFACTORIZADO -->
           <div class="flex items-center flex-wrap text-sm text-gray-700 mb-1 zillow-features font-medium">
             <!-- Dormitorios -->
@@ -114,38 +119,38 @@
               >
                 {{ property.property_type }} en {{ property.tipo_operacion.toLowerCase() }}
               </span>
-            </div>
-          </div>
-          <!-- Inmobiliaria (cuarto renglón) -->
-          <div class="text-[10px] text-gray-400 mt-1 truncate">{{ property.realty || 'Inmobiliaria no especificada' }}</div>
-          <!-- Icono compartir -->
-          <div class="absolute bottom-3 right-3 z-20" @click.stop="isFlipped = true">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 opacity-80 transition-all duration-200 cursor-pointer share-icon">
-              <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.475l6.733-3.366A2.52 2.52 0 0 1 13 4.5Z" />
-            </svg>
           </div>
         </div>
-        <!-- Flecha centrada -->
-        <div class="card-arrow" />
+        <!-- Inmobiliaria (cuarto renglón) -->
+          <div class="text-[10px] text-gray-400 mt-1 truncate">{{ property.realty || 'Inmobiliaria no especificada' }}</div>
+        <!-- Icono compartir -->
+        <div class="absolute bottom-3 right-3 z-20" @click.stop="isFlipped = true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 opacity-80 transition-all duration-200 cursor-pointer share-icon">
+            <path d="M13 4.5a2.5 2.5 0 1 1 .702 1.737L6.97 9.604a2.518 2.518 0 0 1 0 .792l6.733 3.367a2.5 2.5 0 1 1-.671 1.341l-6.733-3.367a2.5 2.5 0 1 1 0-3.475l6.733-3.366A2.52 2.52 0 0 1 13 4.5Z" />
+          </svg>
+        </div>
       </div>
-      <!-- Cara trasera: título, input, botón y compartir -->
+      <!-- Flecha centrada -->
+      <div class="card-arrow" />
+    </div>
+    <!-- Cara trasera: título, input, botón y compartir -->
       <div class="card-face card-back flex flex-col items-center justify-center w-full bg-white text-gray-800 p-6">
         <div class="text-lg font-semibold text-gray-800 mb-6">¡Enterate si baja de precio!</div>
-        <div class="w-full max-w-xs flex flex-col items-center">
-          <input
-            v-model="whatsapp"
-            type="text"
-            placeholder="+549 223 353-3333 <-Tu WhatsApp"
+      <div class="w-full max-w-xs flex flex-col items-center">
+        <input
+          v-model="whatsapp"
+          type="text"
+          placeholder="+549 223 353-3333 <-Tu WhatsApp"
             class="rounded px-3 py-2 w-full bg-gray-200 text-gray-800 placeholder-gray-400 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 mb-4"
-            style="box-sizing: border-box;"
-          />
-          <button
-            v-if="whatsapp"
+          style="box-sizing: border-box;"
+        />
+        <button
+          v-if="whatsapp"
             @click="setPriceDropAlert"
-            class="w-full py-2 rounded bg-gradient-to-r from-cyan-400 via-indigo-500 to-cyan-500 text-white font-semibold shadow-md transition-all duration-200 hover:shadow-lg hover:from-cyan-300 hover:to-indigo-400 focus:outline-none mb-4"
-          >Enviar Alerta de Precio</button>
+          class="w-full py-2 rounded bg-gradient-to-r from-cyan-400 via-indigo-500 to-cyan-500 text-white font-semibold shadow-md transition-all duration-200 hover:shadow-lg hover:from-cyan-300 hover:to-indigo-400 focus:outline-none mb-4"
+        >Enviar Alerta de Precio</button>
           <!-- Botón de compartir -->
-          <button
+        <button
             @click.stop="setPriceDropAlert"
             class="w-full py-2 rounded bg-green-500 text-white font-semibold shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:bg-green-600 focus:outline-none flex items-center justify-center gap-2"
           >
@@ -205,7 +210,7 @@ const showNextButton = ref(false)
 const isFlipped = ref(false)
 const flipKey = ref(0)
 const whatsapp = ref("")
-const emit = defineEmits(['toggle-favorite', 'open-modal', 'login-request'])
+const emit = defineEmits(['toggle-favorite', 'open-modal', 'login-request', 'hover-start', 'hover-end'])
 
 // Función para generar URLs del proxy de imágenes (ahora usando el composable)
 function getProxyImageUrl(propertyId, imageIndex) {

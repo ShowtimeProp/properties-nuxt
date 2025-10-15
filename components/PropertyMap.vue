@@ -51,6 +51,8 @@
             @toggle-favorite="toggleFavorite(property)"
             @open-modal="openModalFromSlide(property)"
             @login-request="showLoginModal = true"
+            @hover-start="highlightMarker(property)"
+            @hover-end="unhighlightMarker(property)"
           />
         </div>
         <div v-else class="h-full flex items-center justify-center p-8 text-gray-500">
@@ -262,6 +264,53 @@ const updateMarkersVisibility = () => {
       bubble.style.pointerEvents = showBubbles ? 'auto' : 'none';
     }
   });
+};
+
+// Funciones para highlight de marcadores en hover
+const highlightMarker = (property) => {
+  if (!property || !markerElements.value[property.id]) return;
+  
+  const markerEl = markerElements.value[property.id];
+  markerEl.classList.add('marker-highlighted');
+  
+  // Agregar efecto de pulso
+  const dot = markerEl.querySelector('.marker-dot');
+  const bubble = markerEl.querySelector('.price-bubble');
+  
+  if (dot) {
+    dot.style.transform = 'scale(1.3)';
+    dot.style.transition = 'transform 0.3s ease';
+    dot.style.zIndex = '10';
+  }
+  
+  if (bubble) {
+    bubble.style.transform = 'scale(1.1)';
+    bubble.style.transition = 'transform 0.3s ease';
+    bubble.style.zIndex = '10';
+  }
+};
+
+const unhighlightMarker = (property) => {
+  if (!property || !markerElements.value[property.id]) return;
+  
+  const markerEl = markerElements.value[property.id];
+  markerEl.classList.remove('marker-highlighted');
+  
+  // Restaurar estado normal
+  const dot = markerEl.querySelector('.marker-dot');
+  const bubble = markerEl.querySelector('.price-bubble');
+  
+  if (dot) {
+    dot.style.transform = 'scale(1)';
+    dot.style.transition = 'transform 0.3s ease';
+    dot.style.zIndex = '5';
+  }
+  
+  if (bubble) {
+    bubble.style.transform = 'scale(1)';
+    bubble.style.transition = 'transform 0.3s ease';
+    bubble.style.zIndex = '5';
+  }
 };
 
 const togglePropertyList = (event) => {
@@ -570,7 +619,7 @@ onMounted(async () => {
       // Eventos del mapa
       map.on('moveend', () => {
         debouncedFetchViewport(); // Cargar propiedades cuando se mueve el mapa
-        updateFilteredProperties();
+    updateFilteredProperties();
       });
       
       map.on('zoom', updateMarkersVisibility);
@@ -578,8 +627,8 @@ onMounted(async () => {
       // Cerrar card al hacer click en el mapa
       map.on('click', (e) => {
         if (selectedProperty.value && !showPropertyList.value) {
-          selectedProperty.value = null;
-        }
+    selectedProperty.value = null;
+  }
       });
     });
   }
@@ -847,5 +896,32 @@ html, body {
   background: linear-gradient(270deg, #6366f1, #22d3ee, #6366f1, #0ea5e9, #6366f1);
   background-size: 400% 400%;
   animation: animatedGradient 6s ease-in-out infinite;
+}
+
+/* Estilos para highlight de marcadores en hover */
+.marker-highlighted .marker-dot {
+  background-color: #fbbf24 !important; /* Amarillo dorado */
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.3), 0 0 20px rgba(251, 191, 36, 0.6) !important;
+  animation: markerPulse 1.5s infinite;
+}
+
+.marker-highlighted .price-bubble-container {
+  background-color: #fbbf24 !important; /* Amarillo dorado */
+  color: #1f2937 !important; /* Gris oscuro para contraste */
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.4), 0 4px 20px rgba(251, 191, 36, 0.5) !important;
+  border: 2px solid #f59e0b !important; /* Borde más oscuro */
+}
+
+/* Animación de pulso para el marcador destacado */
+@keyframes markerPulse {
+  0% {
+    box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.3), 0 0 20px rgba(251, 191, 36, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(251, 191, 36, 0.2), 0 0 30px rgba(251, 191, 36, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.3), 0 0 20px rgba(251, 191, 36, 0.6);
+  }
 }
 </style>
