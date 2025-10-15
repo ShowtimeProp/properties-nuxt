@@ -101,6 +101,38 @@ export const useRealtorAuth = () => {
     }
   }
 
+  const loginWithGoogle = async () => {
+    try {
+      isLoading.value = true
+      error.value = null
+
+      console.log('Iniciando login con Google...')
+
+      // Sign in with Google
+      const { data, error: authError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      })
+
+      if (authError) {
+        console.error('Error de autenticación con Google:', authError)
+        throw authError
+      }
+
+      console.log('Redirigiendo a Google...')
+      return data
+
+    } catch (err) {
+      console.error('Error in loginWithGoogle:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   const logoutRealtor = async () => {
     try {
       await supabase.auth.signOut()
@@ -125,6 +157,7 @@ export const useRealtorAuth = () => {
     error: readonly(error),
     checkRealtorStatus,
     loginAsRealtor,
+    loginWithGoogle,
     logoutRealtor
   }
 }
