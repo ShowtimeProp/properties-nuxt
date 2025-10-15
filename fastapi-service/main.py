@@ -1165,20 +1165,52 @@ async def serve_property_image(property_id: str, image_index: int, request: Requ
         # Get property data to find the original image URL
         # First, let's try to get the property from Qdrant
         try:
-            # Search for the property in Qdrant by multiple possible ID fields
-            search_filters = [
-                models.FieldCondition(key="id", match=models.MatchValue(value=property_id)),
-                models.FieldCondition(key="property_id", match=models.MatchValue(value=property_id)),
-                models.FieldCondition(key="uuid", match=models.MatchValue(value=property_id))
-            ]
+            # Search for the property in Qdrant - try different ID field names
+            results = None
             
-            results = qdrant_cli.scroll(
-                collection_name=settings["collection_name"],
-                limit=1,
-                with_payload=True,
-                with_vectors=False,
-                scroll_filter=models.Filter(must=search_filters)
-            )[0]
+            # Try searching by 'id' field first
+            try:
+                results = qdrant_cli.scroll(
+                    collection_name=settings["collection_name"],
+                    limit=1,
+                    with_payload=True,
+                    with_vectors=False,
+                    scroll_filter=models.Filter(
+                        must=[models.FieldCondition(key="id", match=models.MatchValue(value=property_id))]
+                    )
+                )[0]
+            except:
+                pass
+            
+            # If not found, try searching by 'property_id' field
+            if not results:
+                try:
+                    results = qdrant_cli.scroll(
+                        collection_name=settings["collection_name"],
+                        limit=1,
+                        with_payload=True,
+                        with_vectors=False,
+                        scroll_filter=models.Filter(
+                            must=[models.FieldCondition(key="property_id", match=models.MatchValue(value=property_id))]
+                        )
+                    )[0]
+                except:
+                    pass
+            
+            # If still not found, try searching by 'uuid' field
+            if not results:
+                try:
+                    results = qdrant_cli.scroll(
+                        collection_name=settings["collection_name"],
+                        limit=1,
+                        with_payload=True,
+                        with_vectors=False,
+                        scroll_filter=models.Filter(
+                            must=[models.FieldCondition(key="uuid", match=models.MatchValue(value=property_id))]
+                        )
+                    )[0]
+                except:
+                    pass
             
             if not results:
                 raise HTTPException(status_code=404, detail="Property not found.")
@@ -1239,20 +1271,52 @@ async def serve_property_image(property_id: str, image_index: int, request: Requ
 async def get_property_images_urls(property_id: str, request: Request):
     """Get all image URLs for a property with proxy endpoints."""
     try:
-        # Search for the property in Qdrant by multiple possible ID fields
-        search_filters = [
-            models.FieldCondition(key="id", match=models.MatchValue(value=property_id)),
-            models.FieldCondition(key="property_id", match=models.MatchValue(value=property_id)),
-            models.FieldCondition(key="uuid", match=models.MatchValue(value=property_id))
-        ]
+        # Search for the property in Qdrant - try different ID field names
+        results = None
         
-        results = qdrant_cli.scroll(
-            collection_name=settings["collection_name"],
-            limit=1,
-            with_payload=True,
-            with_vectors=False,
-            scroll_filter=models.Filter(must=search_filters)
-        )[0]
+        # Try searching by 'id' field first
+        try:
+            results = qdrant_cli.scroll(
+                collection_name=settings["collection_name"],
+                limit=1,
+                with_payload=True,
+                with_vectors=False,
+                scroll_filter=models.Filter(
+                    must=[models.FieldCondition(key="id", match=models.MatchValue(value=property_id))]
+                )
+            )[0]
+        except:
+            pass
+        
+        # If not found, try searching by 'property_id' field
+        if not results:
+            try:
+                results = qdrant_cli.scroll(
+                    collection_name=settings["collection_name"],
+                    limit=1,
+                    with_payload=True,
+                    with_vectors=False,
+                    scroll_filter=models.Filter(
+                        must=[models.FieldCondition(key="property_id", match=models.MatchValue(value=property_id))]
+                    )
+                )[0]
+            except:
+                pass
+        
+        # If still not found, try searching by 'uuid' field
+        if not results:
+            try:
+                results = qdrant_cli.scroll(
+                    collection_name=settings["collection_name"],
+                    limit=1,
+                    with_payload=True,
+                    with_vectors=False,
+                    scroll_filter=models.Filter(
+                        must=[models.FieldCondition(key="uuid", match=models.MatchValue(value=property_id))]
+                    )
+                )[0]
+            except:
+                pass
         
         if not results:
             raise HTTPException(status_code=404, detail="Property not found.")
