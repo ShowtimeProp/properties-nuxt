@@ -195,14 +195,36 @@ input[type="text"] {
   max-width: 100% !important;
   width: 100% !important;
   box-sizing: border-box !important;
+  flex-shrink: 0 !important;
 }
 
 /* Asegurar que el contenedor mantenga sus dimensiones */
 .space-y-6 > div {
   width: 100%;
+  flex-shrink: 0;
 }
 
 .rounded-md {
   width: 100%;
+  flex-shrink: 0;
+}
+
+/* Forzar dimensiones en el contenedor del formulario */
+.space-y-8 {
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+/* Forzar dimensiones en los campos específicos */
+.rounded-md.shadow-sm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.rounded-md.shadow-sm > div {
+  width: 100%;
+  flex-shrink: 0;
 }
 </style>
