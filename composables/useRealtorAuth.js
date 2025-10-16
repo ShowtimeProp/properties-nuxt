@@ -112,7 +112,11 @@ export const useRealtorAuth = () => {
       const { data, error: authError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: `${window.location.origin}/dashboard`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       })
 
@@ -130,6 +134,41 @@ export const useRealtorAuth = () => {
       throw err
     } finally {
       isLoading.value = false
+    }
+  }
+
+  // Función para manejar el callback de Google Auth
+  const handleGoogleAuthCallback = async () => {
+    try {
+      console.log('Manejando callback de Google Auth...')
+      
+      // Obtener la sesión actual
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('Error obteniendo sesión:', sessionError)
+        throw sessionError
+      }
+
+      if (session?.user) {
+        console.log('Usuario autenticado:', session.user.email)
+        
+        // Verificar si es realtor
+        const isRealtorUser = await checkRealtorStatus()
+        
+        if (isRealtorUser) {
+          console.log('Usuario es realtor, redirigiendo al dashboard')
+          await navigateTo('/dashboard')
+        } else {
+          console.log('Usuario no es realtor, cerrando sesión')
+          await supabase.auth.signOut()
+          throw new Error('Acceso denegado. Solo realtores pueden acceder al dashboard.')
+        }
+      }
+    } catch (err) {
+      console.error('Error en callback de Google Auth:', err)
+      error.value = err.message
+      throw err
     }
   }
 
@@ -158,6 +197,7 @@ export const useRealtorAuth = () => {
     checkRealtorStatus,
     loginAsRealtor,
     loginWithGoogle,
+    handleGoogleAuthCallback,
     logoutRealtor
   }
 }
