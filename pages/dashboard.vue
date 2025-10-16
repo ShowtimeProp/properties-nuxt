@@ -41,7 +41,7 @@
                       Total Clientes
                     </dt>
                     <dd class="text-lg font-medium text-gray-900">
-                      0
+                      {{ isLoading ? '...' : metrics.totalClients }}
                     </dd>
                   </dl>
                 </div>
@@ -63,7 +63,7 @@
                       Propiedades
                     </dt>
                     <dd class="text-lg font-medium text-gray-900">
-                      0
+                      {{ isLoading ? '...' : metrics.totalProperties }}
                     </dd>
                   </dl>
                 </div>
@@ -85,7 +85,7 @@
                       Visitas Programadas
                     </dt>
                     <dd class="text-lg font-medium text-gray-900">
-                      0
+                      {{ isLoading ? '...' : metrics.scheduledVisits }}
                     </dd>
                   </dl>
                 </div>
@@ -107,7 +107,7 @@
                       Ventas del Mes
                     </dt>
                     <dd class="text-lg font-medium text-gray-900">
-                      0
+                      {{ isLoading ? '...' : metrics.monthlySales }}
                     </dd>
                   </dl>
                 </div>
@@ -147,13 +147,99 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 
 const { realtorProfile, logoutRealtor } = useRealtorAuth()
+
+// Estado reactivo para las métricas
+const metrics = ref({
+  totalClients: 0,
+  totalProperties: 0,
+  scheduledVisits: 0,
+  monthlySales: 0
+})
+
+const isLoading = ref(true)
 
 const logout = async () => {
   await logoutRealtor()
 }
+
+// Función para obtener métricas del backend
+const fetchMetrics = async () => {
+  try {
+    isLoading.value = true
+    
+    if (!realtorProfile.value?.id) {
+      console.log('No hay realtor profile disponible')
+      return
+    }
+
+    const realtorId = realtorProfile.value.id
+    const backendUrl = 'https://api.bnicolini.showtimeprop.com'
+    
+    console.log('Obteniendo métricas para realtor:', realtorId)
+    
+    // Obtener métricas del dashboard
+    const metricsResponse = await fetch(`${backendUrl}/dashboard/metrics/${realtorId}`)
+    if (metricsResponse.ok) {
+      const metricsData = await metricsResponse.json()
+      console.log('Métricas recibidas:', metricsData)
+      
+      // Mapear métricas del backend al formato del dashboard
+      metrics.value = {
+        totalClients: metricsData.metrics?.total_leads || 0,
+        totalProperties: 0, // Esto necesitaría un endpoint específico
+        scheduledVisits: 0, // Esto necesitaría un endpoint específico  
+        monthlySales: metricsData.metrics?.revenue || 0
+      }
+    } else {
+      console.error('Error obteniendo métricas:', metricsResponse.status)
+    }
+    
+    // Obtener datos adicionales
+    await fetchAdditionalData(realtorId)
+    
+  } catch (error) {
+    console.error('Error fetching metrics:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Función para obtener datos adicionales
+const fetchAdditionalData = async (realtorId) => {
+  try {
+    const backendUrl = 'https://api.bnicolini.showtimeprop.com'
+    
+    // Obtener clientes del tenant
+    const clientsResponse = await fetch(`${backendUrl}/favorites/tenant/${realtorProfile.value.tenant_id}/clients`)
+    if (clientsResponse.ok) {
+      const clientsData = await clientsResponse.json()
+      metrics.value.totalClients = clientsData.clients?.length || 0
+      console.log('Clientes encontrados:', metrics.value.totalClients)
+    }
+    
+    // Obtener visitas programadas
+    const visitsResponse = await fetch(`${backendUrl}/visits/tenant/${realtorProfile.value.tenant_id}/upcoming`)
+    if (visitsResponse.ok) {
+      const visitsData = await visitsResponse.json()
+      metrics.value.scheduledVisits = visitsData.visits?.length || 0
+      console.log('Visitas programadas:', metrics.value.scheduledVisits)
+    }
+    
+  } catch (error) {
+    console.error('Error fetching additional data:', error)
+  }
+}
+
+// Cargar métricas al montar el componente
+onMounted(async () => {
+  // Esperar un poco para que realtorProfile se cargue
+  setTimeout(() => {
+    fetchMetrics()
+  }, 1000)
+})
 
 // Meta para evitar indexación
 definePageMeta({
