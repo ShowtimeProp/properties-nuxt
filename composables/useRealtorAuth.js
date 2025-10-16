@@ -155,16 +155,36 @@ export const useRealtorAuth = () => {
 
       if (session?.user) {
         console.log('Usuario autenticado:', session.user.email)
+        console.log('User ID:', session.user.id)
         console.log('Session data:', session)
         
-        // Verificar si es realtor
-        await checkRealtorStatus()
-        
-        if (isRealtor.value) {
-          console.log('Usuario es realtor, redirigiendo al dashboard')
+        // Verificar manualmente si es realtor en lugar de usar checkRealtorStatus
+        console.log('Verificando si es realtor...')
+        const { data: realtor, error: realtorError } = await supabase
+          .from('realtors')
+          .select(`
+            id,
+            name,
+            email,
+            phone,
+            tenant_id
+          `)
+          .eq('id', session.user.id)
+          .maybeSingle()
+
+        console.log('Resultado de consulta realtor:', realtor)
+        console.log('Error de consulta realtor:', realtorError)
+
+        if (realtor && !realtorError) {
+          console.log('Usuario ES realtor, configurando sesión...')
+          isRealtor.value = true
+          realtorProfile.value = realtor
+          console.log('Redirigiendo al dashboard...')
           await navigateTo('/dashboard')
         } else {
-          console.log('Usuario no es realtor, cerrando sesión')
+          console.log('Usuario NO es realtor, cerrando sesión')
+          console.log('Realtor data:', realtor)
+          console.log('Realtor error:', realtorError)
           await supabase.auth.signOut()
           throw new Error('Acceso denegado. Solo realtores pueden acceder al dashboard.')
         }
