@@ -160,6 +160,9 @@ export const useRealtorAuth = () => {
         
         // Verificar manualmente si es realtor en lugar de usar checkRealtorStatus
         console.log('Verificando si es realtor...')
+        console.log('Buscando en realtors con ID:', session.user.id)
+        
+        // Primero intentar por ID
         const { data: realtor, error: realtorError } = await supabase
           .from('realtors')
           .select(`
@@ -171,6 +174,44 @@ export const useRealtorAuth = () => {
           `)
           .eq('id', session.user.id)
           .maybeSingle()
+
+        console.log('Consulta por ID - Resultado:', realtor)
+        console.log('Consulta por ID - Error:', realtorError)
+
+        // Si no se encuentra por ID, intentar por email
+        if (!realtor && !realtorError) {
+          console.log('No encontrado por ID, intentando por email...')
+          const { data: realtorByEmail, error: emailError } = await supabase
+            .from('realtors')
+            .select(`
+              id,
+              name,
+              email,
+              phone,
+              tenant_id
+            `)
+            .eq('email', session.user.email)
+            .maybeSingle()
+          
+          console.log('Consulta por email - Resultado:', realtorByEmail)
+          console.log('Consulta por email - Error:', emailError)
+          
+          if (realtorByEmail) {
+            console.log('¡ENCONTRADO POR EMAIL! Actualizando ID...')
+            // Actualizar el ID en realtors para que coincida
+            const { error: updateError } = await supabase
+              .from('realtors')
+              .update({ id: session.user.id })
+              .eq('email', session.user.email)
+            
+            if (updateError) {
+              console.error('Error actualizando ID:', updateError)
+            } else {
+              console.log('ID actualizado exitosamente')
+              realtor = { ...realtorByEmail, id: session.user.id }
+            }
+          }
+        }
 
         console.log('Resultado de consulta realtor:', realtor)
         console.log('Error de consulta realtor:', realtorError)
