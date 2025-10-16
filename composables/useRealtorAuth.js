@@ -140,10 +140,10 @@ export const useRealtorAuth = () => {
   // Función para manejar el callback de Google Auth
   const handleGoogleAuthCallback = async () => {
     try {
-      console.log('Manejando callback de Google Auth...')
+      console.log('Callback de Google Auth iniciado...')
       
-      // Esperar un poco para que Supabase procese el callback
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Esperar más tiempo para que Supabase procese completamente el callback
+      await new Promise(resolve => setTimeout(resolve, 2000))
       
       // Obtener la sesión actual
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -156,76 +156,15 @@ export const useRealtorAuth = () => {
       if (session?.user) {
         console.log('Usuario autenticado:', session.user.email)
         console.log('User ID:', session.user.id)
-        console.log('Session data:', session)
         
-        // Verificar manualmente si es realtor en lugar de usar checkRealtorStatus
-        console.log('Verificando si es realtor...')
-        console.log('Buscando en realtors con ID:', session.user.id)
+        // Usar la función checkRealtorStatus que ya existe
+        const isRealtorUser = await checkRealtorStatus()
         
-        // Primero intentar por ID
-        const { data: realtor, error: realtorError } = await supabase
-          .from('realtors')
-          .select(`
-            id,
-            name,
-            email,
-            phone,
-            tenant_id
-          `)
-          .eq('id', session.user.id)
-          .maybeSingle()
-
-        console.log('Consulta por ID - Resultado:', realtor)
-        console.log('Consulta por ID - Error:', realtorError)
-
-        // Si no se encuentra por ID, intentar por email
-        if (!realtor && !realtorError) {
-          console.log('No encontrado por ID, intentando por email...')
-          const { data: realtorByEmail, error: emailError } = await supabase
-            .from('realtors')
-            .select(`
-              id,
-              name,
-              email,
-              phone,
-              tenant_id
-            `)
-            .eq('email', session.user.email)
-            .maybeSingle()
-          
-          console.log('Consulta por email - Resultado:', realtorByEmail)
-          console.log('Consulta por email - Error:', emailError)
-          
-          if (realtorByEmail) {
-            console.log('¡ENCONTRADO POR EMAIL! Actualizando ID...')
-            // Actualizar el ID en realtors para que coincida
-            const { error: updateError } = await supabase
-              .from('realtors')
-              .update({ id: session.user.id })
-              .eq('email', session.user.email)
-            
-            if (updateError) {
-              console.error('Error actualizando ID:', updateError)
-            } else {
-              console.log('ID actualizado exitosamente')
-              realtor = { ...realtorByEmail, id: session.user.id }
-            }
-          }
-        }
-
-        console.log('Resultado de consulta realtor:', realtor)
-        console.log('Error de consulta realtor:', realtorError)
-
-        if (realtor && !realtorError) {
-          console.log('Usuario ES realtor, configurando sesión...')
-          isRealtor.value = true
-          realtorProfile.value = realtor
-          console.log('Redirigiendo al dashboard...')
+        if (isRealtorUser) {
+          console.log('Usuario ES realtor, redirigiendo al dashboard...')
           await navigateTo('/dashboard')
         } else {
           console.log('Usuario NO es realtor, cerrando sesión')
-          console.log('Realtor data:', realtor)
-          console.log('Realtor error:', realtorError)
           await supabase.auth.signOut()
           throw new Error('Acceso denegado. Solo realtores pueden acceder al dashboard.')
         }
