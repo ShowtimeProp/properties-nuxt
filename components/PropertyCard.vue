@@ -202,6 +202,12 @@ const props = defineProps({
 const isFavorite = computed(() => {
   return favoritesStore.isFavorite(props.property?.id);
 });
+// Cargar favoritos del backend al montar si el usuario está logueado
+onMounted(() => {
+  if (user.value) {
+    favoritesStore.loadFavoritesFromBackend()
+  }
+})
 
 const swiperRef = ref(null)
 const swiperInstance = ref(null)
