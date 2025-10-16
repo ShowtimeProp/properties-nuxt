@@ -42,31 +42,13 @@ SELECT 'realtor_activities' AS tabla, COUNT(*) as registros
 FROM realtor_activities 
 WHERE realtor_id = '2d450e8d-0245-4368-a0aa-a6af8736f793';
 
--- 3. TRANSACCIÓN SEGURA: Crear nuevo realtor con ID correcto, actualizar referencias, eliminar el viejo
+-- 3. TRANSACCIÓN SEGURA: Deshabilitar temporalmente foreign key checks
 BEGIN;
 
--- Paso 1: Insertar un nuevo realtor con el ID correcto (temporal)
-INSERT INTO realtors (
-  id,
-  name,
-  email,
-  phone,
-  tenant_id,
-  created_at,
-  updated_at
-)
-SELECT 
-  '2d450e8d-0245-43b8-a0aa-a6af8736f793' as id,  -- ID correcto de auth.users
-  name,
-  email,
-  phone,
-  tenant_id,
-  created_at,
-  NOW() as updated_at
-FROM realtors 
-WHERE id = '2d450e8d-0245-4368-a0aa-a6af8736f793';  -- ID actual incorrecto
+-- Deshabilitar temporalmente la verificación de foreign keys
+SET session_replication_role = replica;
 
--- Paso 2: Actualizar todas las tablas hijas para que apunten al nuevo ID
+-- Actualizar todas las tablas hijas para que apunten al nuevo ID
 UPDATE email_templates 
 SET realtor_id = '2d450e8d-0245-43b8-a0aa-a6af8736f793'  -- ID correcto
 WHERE realtor_id = '2d450e8d-0245-4368-a0aa-a6af8736f793';  -- ID actual incorrecto
@@ -87,9 +69,13 @@ UPDATE realtor_activities
 SET realtor_id = '2d450e8d-0245-43b8-a0aa-a6af8736f793'
 WHERE realtor_id = '2d450e8d-0245-4368-a0aa-a6af8736f793';
 
--- Paso 3: Eliminar el realtor con el ID incorrecto
-DELETE FROM realtors 
+-- Actualizar el ID del realtor
+UPDATE realtors 
+SET id = '2d450e8d-0245-43b8-a0aa-a6af8736f793'  -- ID correcto de auth.users
 WHERE id = '2d450e8d-0245-4368-a0aa-a6af8736f793';  -- ID actual incorrecto
+
+-- Re-habilitar la verificación de foreign keys
+SET session_replication_role = DEFAULT;
 
 COMMIT;
 
