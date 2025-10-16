@@ -9,7 +9,6 @@ SELECT
   created_at,
   email_confirmed_at,
   last_sign_in_at,
-  provider,
   raw_user_meta_data
 FROM auth.users
 WHERE email = 'biancannicolini@gmail.com';
@@ -51,22 +50,22 @@ WHERE au.email = 'biancannicolini@gmail.com'
 */
 
 -- 4. Verificar resultado final
-SELECT 
-  'auth.users' as tabla,
+SELECT
+  'auth.users' AS tabla,
   id,
   email,
-  email_confirmed_at,
-  last_sign_in_at
+  email_confirmed_at::text,
+  last_sign_in_at::text
 FROM auth.users
 WHERE email = 'biancannicolini@gmail.com'
 
 UNION ALL
 
-SELECT 
-  'realtors' as tabla,
+SELECT
+  'realtors' AS tabla,
   id,
   email,
   created_at::text,
-  phone
+  phone::text
 FROM realtors
 WHERE email = 'biancannicolini@gmail.com';
