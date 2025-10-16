@@ -157,7 +157,6 @@ const logout = async () => {
 
 // Meta para evitar indexación
 definePageMeta({
-  layout: false,
-  middleware: 'auth'
+  layout: false
 })
 </script>
