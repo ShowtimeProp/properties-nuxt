@@ -112,7 +112,7 @@ export const useRealtorAuth = () => {
       const { data, error: authError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -142,6 +142,9 @@ export const useRealtorAuth = () => {
     try {
       console.log('Manejando callback de Google Auth...')
       
+      // Esperar un poco para que Supabase procese el callback
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
       // Obtener la sesión actual
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
@@ -152,11 +155,12 @@ export const useRealtorAuth = () => {
 
       if (session?.user) {
         console.log('Usuario autenticado:', session.user.email)
+        console.log('Session data:', session)
         
         // Verificar si es realtor
-        const isRealtorUser = await checkRealtorStatus()
+        await checkRealtorStatus()
         
-        if (isRealtorUser) {
+        if (isRealtor.value) {
           console.log('Usuario es realtor, redirigiendo al dashboard')
           await navigateTo('/dashboard')
         } else {
@@ -164,11 +168,14 @@ export const useRealtorAuth = () => {
           await supabase.auth.signOut()
           throw new Error('Acceso denegado. Solo realtores pueden acceder al dashboard.')
         }
+      } else {
+        console.log('No hay sesión activa, redirigiendo al login')
+        await navigateTo('/realtor-login')
       }
     } catch (err) {
       console.error('Error en callback de Google Auth:', err)
       error.value = err.message
-      throw err
+      await navigateTo('/realtor-login')
     }
   }
 
