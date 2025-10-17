@@ -95,11 +95,14 @@ async def tenant_middleware(request: Request, call_next):
         print(f"Request from API host '{request_hostname}'. Using default tenant for dashboard.")
     # For production domains, extract the subdomain
     elif request_hostname.endswith(f".{prod_base_domain}"):
-        # Extracts "bnicolini" from "bnicolini.showtimeprop.com"
+        # Extract subdomain part before the base domain
         temp_subdomain = request_hostname.split(f".{prod_base_domain}")[0]
+        # Normalize dashboard hosts like "dash.bnicolini" -> "bnicolini"
+        if temp_subdomain.startswith("dash."):
+            temp_subdomain = temp_subdomain.split(".", 1)[1]
         # Avoid treating "www" or the main domain as a tenant
         if temp_subdomain and temp_subdomain != "www":
-             subdomain = temp_subdomain
+            subdomain = temp_subdomain
 
     # If we found a valid subdomain, get its ID from Supabase
     if subdomain:
