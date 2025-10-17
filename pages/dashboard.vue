@@ -242,7 +242,7 @@ const fetchMetrics = async () => {
 
     const realtorId = realtorProfile.value.id
     const tenantId = realtorProfile.value.tenant_id
-    const backendUrl = 'https://fapi.bnicolini.showtimeprop.com'
+    const backendUrl = 'https://fapi.showtimeprop.com'
     
     console.log('✅ Datos del realtor:')
     console.log('- realtorId:', realtorId)
@@ -284,7 +284,7 @@ const fetchMetrics = async () => {
 // Función para obtener datos adicionales
 const fetchAdditionalData = async (realtorId) => {
   try {
-    const backendUrl = 'https://fapi.bnicolini.showtimeprop.com'
+    const backendUrl = 'https://fapi.showtimeprop.com'
     
     // Obtener clientes del tenant
     console.log('👥 Llamando a clientes del tenant...')
@@ -327,7 +327,7 @@ const fetchAdditionalData = async (realtorId) => {
 // Función para obtener todas las propiedades favoritas
 const fetchAllFavoriteProperties = async () => {
   try {
-    const backendUrl = 'https://fapi.bnicolini.showtimeprop.com'
+    const backendUrl = 'https://fapi.showtimeprop.com'
     const allProperties = []
     
     // Para cada cliente, obtener sus favoritos
