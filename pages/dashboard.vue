@@ -141,6 +141,66 @@
             </div>
           </div>
         </div>
+
+        <!-- Clientes Section -->
+        <div class="bg-white shadow rounded-lg p-6 mb-8">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">👥 Clientes Activos</h3>
+          <div v-if="isLoading" class="text-gray-500">Cargando clientes...</div>
+          <div v-else-if="clients.length === 0" class="text-gray-500">No hay clientes registrados aún.</div>
+          <div v-else class="space-y-4">
+            <div 
+              v-for="client in clients" 
+              :key="client.client_id"
+              class="border border-gray-200 rounded-lg p-4"
+            >
+              <div class="flex justify-between items-start">
+                <div>
+                  <h4 class="font-medium text-gray-900">Cliente ID: {{ client.client_id.slice(0, 8) }}...</h4>
+                  <p class="text-sm text-gray-500">
+                    Primera actividad: {{ new Date(client.first_activity).toLocaleDateString() }}
+                  </p>
+                </div>
+                <div class="text-right">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {{ client.favorites_count }} favoritos
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Propiedades Favoritas Section -->
+        <div class="bg-white shadow rounded-lg p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">🏠 Propiedades Favoritas</h3>
+          <div v-if="isLoading" class="text-gray-500">Cargando propiedades favoritas...</div>
+          <div v-else-if="favoriteProperties.length === 0" class="text-gray-500">No hay propiedades favoritas aún.</div>
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div 
+              v-for="favorite in favoriteProperties" 
+              :key="`${favorite.client_id}-${favorite.property_id}`"
+              class="border border-gray-200 rounded-lg p-4"
+            >
+              <div class="space-y-2">
+                <h4 class="font-medium text-gray-900">Propiedad ID: {{ favorite.property_id.slice(0, 8) }}...</h4>
+                <p class="text-sm text-gray-500">
+                  Cliente: {{ favorite.client_id.slice(0, 8) }}...
+                </p>
+                <p class="text-sm text-gray-500">
+                  Agregado: {{ new Date(favorite.created_at).toLocaleDateString() }}
+                </p>
+                <div class="flex justify-between items-center">
+                  <span class="text-xs text-gray-400">
+                    ID: {{ favorite.id.slice(0, 8) }}...
+                  </span>
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    ♥ Favorito
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -159,6 +219,8 @@ const metrics = ref({
   monthlySales: 0
 })
 
+const clients = ref([])
+const favoriteProperties = ref([])
 const isLoading = ref(true)
 
 const logout = async () => {
@@ -216,8 +278,12 @@ const fetchAdditionalData = async (realtorId) => {
     const clientsResponse = await fetch(`${backendUrl}/favorites/tenant/${realtorProfile.value.tenant_id}/clients`)
     if (clientsResponse.ok) {
       const clientsData = await clientsResponse.json()
-      metrics.value.totalClients = clientsData.clients?.length || 0
+      clients.value = clientsData.clients || []
+      metrics.value.totalClients = clients.value.length
       console.log('Clientes encontrados:', metrics.value.totalClients)
+      
+      // Obtener todas las propiedades favoritas
+      await fetchAllFavoriteProperties()
     }
     
     // Obtener visitas programadas
@@ -230,6 +296,40 @@ const fetchAdditionalData = async (realtorId) => {
     
   } catch (error) {
     console.error('Error fetching additional data:', error)
+  }
+}
+
+// Función para obtener todas las propiedades favoritas
+const fetchAllFavoriteProperties = async () => {
+  try {
+    const backendUrl = 'https://api.bnicolini.showtimeprop.com'
+    const allProperties = []
+    
+    // Para cada cliente, obtener sus favoritos
+    for (const client of clients.value) {
+      const favoritesResponse = await fetch(`${backendUrl}/favorites/${client.client_id}`)
+      if (favoritesResponse.ok) {
+        const favoritesData = await favoritesResponse.json()
+        const clientFavorites = favoritesData.favorites || []
+        
+        // Agregar información del cliente a cada favorito
+        const favoritesWithClient = clientFavorites.map(fav => ({
+          ...fav,
+          client_id: client.client_id,
+          client_first_activity: client.first_activity,
+          client_favorites_count: client.favorites_count
+        }))
+        
+        allProperties.push(...favoritesWithClient)
+      }
+    }
+    
+    favoriteProperties.value = allProperties
+    metrics.value.totalProperties = allProperties.length
+    console.log('Propiedades favoritas encontradas:', allProperties.length)
+    
+  } catch (error) {
+    console.error('Error fetching favorite properties:', error)
   }
 }
 
