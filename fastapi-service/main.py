@@ -45,7 +45,8 @@ allowed_origins = [
     "https://*.vercel.app",  # Permitir todos los subdominios de Vercel
     "https://properties-nuxt.vercel.app",  # URL de producción específica
     "https://www.showtimeprop.com",   # Your www production domain
-    "https://bnicolini.showtimeprop.com" # Your tenant subdomains
+    "https://bnicolini.showtimeprop.com", # Your tenant subdomains
+    "https://dash.bnicolini.showtimeprop.com" # Dashboard subdomain
     # Add other tenant subdomains here as they are created, or use a wildcard pattern
     # For wildcard subdomains, you might need allow_origin_regex in production
 ]
