@@ -232,21 +232,31 @@ const fetchMetrics = async () => {
   try {
     isLoading.value = true
     
+    console.log('🔍 Iniciando fetchMetrics...')
+    console.log('realtorProfile.value:', realtorProfile.value)
+    
     if (!realtorProfile.value?.id) {
-      console.log('No hay realtor profile disponible')
+      console.log('❌ No hay realtor profile disponible')
       return
     }
 
     const realtorId = realtorProfile.value.id
+    const tenantId = realtorProfile.value.tenant_id
     const backendUrl = 'https://api.bnicolini.showtimeprop.com'
     
-    console.log('Obteniendo métricas para realtor:', realtorId)
+    console.log('✅ Datos del realtor:')
+    console.log('- realtorId:', realtorId)
+    console.log('- tenantId:', tenantId)
+    console.log('- backendUrl:', backendUrl)
     
     // Obtener métricas del dashboard
+    console.log('📊 Llamando a métricas del dashboard...')
     const metricsResponse = await fetch(`${backendUrl}/dashboard/metrics/${realtorId}`)
+    console.log('📊 Respuesta métricas:', metricsResponse.status, metricsResponse.statusText)
+    
     if (metricsResponse.ok) {
       const metricsData = await metricsResponse.json()
-      console.log('Métricas recibidas:', metricsData)
+      console.log('✅ Métricas recibidas:', metricsData)
       
       // Mapear métricas del backend al formato del dashboard
       metrics.value = {
@@ -256,7 +266,9 @@ const fetchMetrics = async () => {
         monthlySales: metricsData.metrics?.revenue || 0
       }
     } else {
-      console.error('Error obteniendo métricas:', metricsResponse.status)
+      console.error('❌ Error obteniendo métricas:', metricsResponse.status, metricsResponse.statusText)
+      const errorText = await metricsResponse.text()
+      console.error('❌ Error details:', errorText)
     }
     
     // Obtener datos adicionales
@@ -275,15 +287,28 @@ const fetchAdditionalData = async (realtorId) => {
     const backendUrl = 'https://api.bnicolini.showtimeprop.com'
     
     // Obtener clientes del tenant
-    const clientsResponse = await fetch(`${backendUrl}/favorites/tenant/${realtorProfile.value.tenant_id}/clients`)
+    console.log('👥 Llamando a clientes del tenant...')
+    const clientsUrl = `${backendUrl}/favorites/tenant/${realtorProfile.value.tenant_id}/clients`
+    console.log('👥 URL clientes:', clientsUrl)
+    
+    const clientsResponse = await fetch(clientsUrl)
+    console.log('👥 Respuesta clientes:', clientsResponse.status, clientsResponse.statusText)
+    
     if (clientsResponse.ok) {
       const clientsData = await clientsResponse.json()
+      console.log('✅ Datos clientes recibidos:', clientsData)
+      
       clients.value = clientsData.clients || []
       metrics.value.totalClients = clients.value.length
-      console.log('Clientes encontrados:', metrics.value.totalClients)
+      console.log('✅ Clientes encontrados:', metrics.value.totalClients)
+      console.log('✅ Lista de clientes:', clients.value)
       
       // Obtener todas las propiedades favoritas
       await fetchAllFavoriteProperties()
+    } else {
+      console.error('❌ Error obteniendo clientes:', clientsResponse.status, clientsResponse.statusText)
+      const errorText = await clientsResponse.text()
+      console.error('❌ Error details clientes:', errorText)
     }
     
     // Obtener visitas programadas
@@ -335,10 +360,14 @@ const fetchAllFavoriteProperties = async () => {
 
 // Cargar métricas al montar el componente
 onMounted(async () => {
+  console.log('🚀 Dashboard montado, iniciando carga de datos...')
+  console.log('realtorProfile en onMounted:', realtorProfile.value)
+  
   // Esperar un poco para que realtorProfile se cargue
   setTimeout(() => {
+    console.log('⏰ Timeout completado, llamando fetchMetrics...')
     fetchMetrics()
-  }, 1000)
+  }, 2000) // Aumentar a 2 segundos para dar más tiempo
 })
 
 // Meta para evitar indexación
