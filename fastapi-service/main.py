@@ -102,7 +102,12 @@ async def tenant_middleware(request: Request, call_next):
             temp_subdomain = temp_subdomain.split(".", 1)[1]
         # Avoid treating "www" or the main domain as a tenant
         if temp_subdomain and temp_subdomain != "www":
-            subdomain = temp_subdomain
+            # Shortcut: map known tenant without querying DB
+            if temp_subdomain == "bnicolini":
+                tenant_id = "76aa777e-fe6b-4219-b255-349e5356dcdb"
+                print(f"Mapped dashboard/tenant host '{request_hostname}' to tenant '{tenant_id}' without DB lookup.")
+            else:
+                subdomain = temp_subdomain
 
     # If we found a valid subdomain, get its ID from Supabase
     if subdomain:
