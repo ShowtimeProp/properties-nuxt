@@ -186,6 +186,89 @@ def get_all_properties(request: Request):
         raise HTTPException(status_code=500, detail="Could not retrieve properties from the database.")
 
 
+@app.get("/properties/{property_id}", summary="Get Property Details")
+def get_property_details(property_id: str, request: Request):
+    """Get detailed information for a specific property by ID."""
+    try:
+        # Search for the property in Qdrant - try different ID field names
+        results = None
+        
+        # Try searching by 'id' field first
+        try:
+            results = qdrant_cli.scroll(
+                collection_name=settings["collection_name"],
+                limit=1,
+                with_payload=True,
+                with_vectors=False,
+                scroll_filter=models.Filter(
+                    must=[models.FieldCondition(key="id", match=models.MatchValue(value=property_id))]
+                )
+            )[0]
+        except:
+            pass
+        
+        # If not found, try searching by 'property_id' field
+        if not results:
+            try:
+                results = qdrant_cli.scroll(
+                    collection_name=settings["collection_name"],
+                    limit=1,
+                    with_payload=True,
+                    with_vectors=False,
+                    scroll_filter=models.Filter(
+                        must=[models.FieldCondition(key="property_id", match=models.MatchValue(value=property_id))]
+                    )
+                )[0]
+            except:
+                pass
+        
+        # If still not found, try searching by 'uuid' field
+        if not results:
+            try:
+                results = qdrant_cli.scroll(
+                    collection_name=settings["collection_name"],
+                    limit=1,
+                    with_payload=True,
+                    with_vectors=False,
+                    scroll_filter=models.Filter(
+                        must=[models.FieldCondition(key="uuid", match=models.MatchValue(value=property_id))]
+                    )
+                )[0]
+            except:
+                pass
+        
+        if not results:
+            raise HTTPException(status_code=404, detail="Property not found.")
+        
+        property_data = results[0].payload
+        
+        # Generate proxy URLs for images
+        images = property_data.get("images", []) or property_data.get("images_array", [])
+        proxy_images = []
+        for i, original_url in enumerate(images):
+            proxy_url = f"https://fapi.showtimeprop.com/properties/images/{property_id}/{i}"
+            proxy_images.append({
+                "index": i,
+                "original_url": original_url,
+                "proxy_url": proxy_url
+            })
+        
+        # Add proxy images to property data
+        property_data["images"] = proxy_images
+        property_data["images_array"] = proxy_images
+        
+        return {
+            "property": property_data,
+            "total_images": len(images)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting property details: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve property details.")
+
+
 @app.get("/properties/geojson", summary="Get Properties by Viewport (BBOX)")
 def get_properties_geojson(
     request: Request,
@@ -567,6 +650,42 @@ def update_user_login(request: Request, user_id: str):
     except Exception as e:
         print(f"Error updating user login: {e}")
         raise HTTPException(status_code=500, detail="Could not update user login.")
+
+
+@app.put("/users/{user_id}", summary="Update User Information")
+def update_user(request: Request, user_id: str, user_data: dict):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+    
+    try:
+        # Verificar que el usuario pertenece al tenant
+        user_check = supabase_cli.table("users").select("id").eq("id", user_id).eq("tenant_id", tenant_id).execute()
+        if not user_check.data:
+            raise HTTPException(status_code=404, detail="User not found or not assigned to this tenant.")
+        
+        # Actualizar datos del usuario
+        update_data = {}
+        if "full_name" in user_data:
+            update_data["full_name"] = user_data["full_name"]
+        if "email" in user_data:
+            update_data["email"] = user_data["email"]
+        if "phone" in user_data:
+            update_data["phone"] = user_data["phone"]
+        
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No valid fields to update.")
+        
+        response = supabase_cli.table("users").update(update_data).eq("id", user_id).eq("tenant_id", tenant_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="User not found.")
+        
+        return {"message": "User updated successfully", "user": response.data[0]}
+    except Exception as e:
+        print(f"Error updating user: {e}")
+        raise HTTPException(status_code=500, detail="Could not update user.")
 
 
 # --- ENDPOINTS DE VISITAS Y CALIFICACIONES ---

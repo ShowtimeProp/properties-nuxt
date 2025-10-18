@@ -117,7 +117,7 @@
         </div>
 
         <!-- Welcome Message -->
-        <div class="bg-white shadow rounded-lg p-6">
+        <div class="bg-white shadow rounded-lg p-6 mb-8">
           <h2 class="text-2xl font-bold text-gray-900 mb-4">
             ¡Bienvenida al Dashboard CRM!
           </h2>
@@ -142,7 +142,7 @@
           </div>
         </div>
 
-        <!-- Clientes Section -->
+        <!-- Clientes Section con desplegables -->
         <div class="bg-white shadow rounded-lg p-6 mb-8">
           <h3 class="text-lg font-medium text-gray-900 mb-4">👥 Clientes Activos</h3>
           <div v-if="isLoading" class="text-gray-500">Cargando clientes...</div>
@@ -151,51 +151,113 @@
             <div 
               v-for="client in clients" 
               :key="client.client_id"
-              class="border border-gray-200 rounded-lg p-4"
+              class="border border-gray-200 rounded-lg"
             >
-              <div class="flex justify-between items-start">
-                <div>
-                  <h4 class="font-medium text-gray-900">Cliente ID: {{ client.client_id.slice(0, 8) }}...</h4>
-                  <p class="text-sm text-gray-500">
-                    Primera actividad: {{ new Date(client.first_activity).toLocaleDateString() }}
-                  </p>
-                </div>
-                <div class="text-right">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {{ client.favorites_count }} favoritos
-                  </span>
+              <!-- Header del cliente -->
+              <div 
+                class="p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+                @click="toggleClientExpansion(client.client_id)"
+              >
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                      <h4 class="font-medium text-gray-900">
+                        {{ client.full_name || client.email || `Cliente ${client.client_id.slice(0, 8)}...` }}
+                      </h4>
+                      <button
+                        v-if="!client.isEditing"
+                        @click.stop="startEditClient(client)"
+                        class="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        ✏️ Editar
+                      </button>
+                    </div>
+                    <p class="text-sm text-gray-500">
+                      Email: {{ client.email || 'No disponible' }}
+                    </p>
+                    <p class="text-sm text-gray-500">
+                      Primera actividad: {{ new Date(client.first_activity).toLocaleDateString() }}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {{ client.favorites_count }} favoritos
+                    </span>
+                    <svg 
+                      :class="['w-5 h-5 text-gray-400 transition-transform duration-200', 
+                              client.isExpanded ? 'rotate-180' : '']"
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Propiedades Favoritas Section -->
-        <div class="bg-white shadow rounded-lg p-6">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">🏠 Propiedades Favoritas</h3>
-          <div v-if="isLoading" class="text-gray-500">Cargando propiedades favoritas...</div>
-          <div v-else-if="favoriteProperties.length === 0" class="text-gray-500">No hay propiedades favoritas aún.</div>
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div 
-              v-for="favorite in favoriteProperties" 
-              :key="`${favorite.client_id}-${favorite.property_id}`"
-              class="border border-gray-200 rounded-lg p-4"
-            >
-              <div class="space-y-2">
-                <h4 class="font-medium text-gray-900">Propiedad ID: {{ favorite.property_id.slice(0, 8) }}...</h4>
-                <p class="text-sm text-gray-500">
-                  Cliente: {{ favorite.client_id.slice(0, 8) }}...
-                </p>
-                <p class="text-sm text-gray-500">
-                  Agregado: {{ new Date(favorite.created_at).toLocaleDateString() }}
-                </p>
-                <div class="flex justify-between items-center">
-                  <span class="text-xs text-gray-400">
-                    ID: {{ favorite.id.slice(0, 8) }}...
-                  </span>
-                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    ♥ Favorito
-                  </span>
+              
+              <!-- Formulario de edición -->
+              <div v-if="client.isEditing" class="p-4 bg-gray-50 border-t border-gray-200">
+                <div class="space-y-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
+                    <input
+                      v-model="client.editData.full_name"
+                      type="text"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Nombre completo del cliente"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      v-model="client.editData.email"
+                      type="email"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Email del cliente"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                    <input
+                      v-model="client.editData.phone"
+                      type="tel"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Teléfono del cliente"
+                    />
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      @click="saveClientEdit(client)"
+                      class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                    >
+                      Guardar
+                    </button>
+                    <button
+                      @click="cancelClientEdit(client)"
+                      class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Favoritos del cliente (desplegable) -->
+              <div v-if="client.isExpanded" class="border-t border-gray-200 bg-gray-50">
+                <div class="p-4">
+                  <h5 class="text-sm font-medium text-gray-700 mb-3">Propiedades Favoritas</h5>
+                  <div v-if="client.favorites && client.favorites.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <DashboardPropertyCard
+                      v-for="favorite in client.favorites"
+                      :key="favorite.property_id"
+                      :property="favorite"
+                      :client-email="client.email"
+                    />
+                  </div>
+                  <div v-else class="text-gray-500 text-sm">
+                    Este cliente no tiene propiedades favoritas aún.
+                  </div>
                 </div>
               </div>
             </div>
@@ -208,6 +270,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import DashboardPropertyCard from '~/components/DashboardPropertyCard.vue'
 
 const { realtorProfile, logoutRealtor } = useRealtorAuth()
 
@@ -225,6 +288,99 @@ const isLoading = ref(true)
 
 const logout = async () => {
   await logoutRealtor()
+}
+
+// Funciones para manejar desplegables de clientes
+const toggleClientExpansion = (clientId) => {
+  const client = clients.value.find(c => c.client_id === clientId)
+  if (client) {
+    client.isExpanded = !client.isExpanded
+    
+    // Si se está expandiendo, cargar los favoritos del cliente
+    if (client.isExpanded && !client.favorites) {
+      loadClientFavorites(client)
+    }
+  }
+}
+
+// Función para cargar favoritos de un cliente específico
+const loadClientFavorites = async (client) => {
+  try {
+    const backendUrl = 'https://fapi.showtimeprop.com'
+    const favoritesResponse = await fetch(`${backendUrl}/favorites/${client.client_id}`)
+    
+    if (favoritesResponse.ok) {
+      const favoritesData = await favoritesResponse.json()
+      const clientFavorites = favoritesData.favorites || []
+      
+      // Obtener detalles de cada propiedad favorita
+      const detailedFavorites = []
+      for (const favorite of clientFavorites) {
+        try {
+          const propertyResponse = await fetch(`${backendUrl}/properties/${favorite.property_id}`)
+          if (propertyResponse.ok) {
+            const propertyData = await propertyResponse.json()
+            detailedFavorites.push({
+              ...favorite,
+              ...propertyData.property
+            })
+          }
+        } catch (error) {
+          console.error(`Error cargando detalles de propiedad ${favorite.property_id}:`, error)
+        }
+      }
+      
+      client.favorites = detailedFavorites
+    }
+  } catch (error) {
+    console.error('Error cargando favoritos del cliente:', error)
+    client.favorites = []
+  }
+}
+
+// Funciones para editar clientes
+const startEditClient = (client) => {
+  client.isEditing = true
+  client.editData = {
+    full_name: client.full_name || '',
+    email: client.email || '',
+    phone: client.phone || ''
+  }
+}
+
+const cancelClientEdit = (client) => {
+  client.isEditing = false
+  client.editData = null
+}
+
+const saveClientEdit = async (client) => {
+  try {
+    const backendUrl = 'https://fapi.showtimeprop.com'
+    
+    // Actualizar datos del cliente en el backend
+    const response = await fetch(`${backendUrl}/users/${client.client_id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(client.editData)
+    })
+    
+    if (response.ok) {
+      // Actualizar datos locales
+      client.full_name = client.editData.full_name
+      client.email = client.editData.email
+      client.phone = client.editData.phone
+      client.isEditing = false
+      client.editData = null
+      
+      console.log('Cliente actualizado exitosamente')
+    } else {
+      console.error('Error actualizando cliente:', await response.text())
+    }
+  } catch (error) {
+    console.error('Error guardando cambios del cliente:', error)
+  }
 }
 
 // Función para obtener métricas del backend
@@ -261,8 +417,8 @@ const fetchMetrics = async () => {
       // Mapear métricas del backend al formato del dashboard
       metrics.value = {
         totalClients: metricsData.metrics?.total_leads || 0,
-        totalProperties: 0, // Esto necesitaría un endpoint específico
-        scheduledVisits: 0, // Esto necesitaría un endpoint específico  
+        totalProperties: 0, // Se calculará en fetchAdditionalData
+        scheduledVisits: 0, // Se calculará en fetchAdditionalData  
         monthlySales: metricsData.metrics?.revenue || 0
       }
     } else {
@@ -298,13 +454,56 @@ const fetchAdditionalData = async (realtorId) => {
       const clientsData = await clientsResponse.json()
       console.log('✅ Datos clientes recibidos:', clientsData)
       
-      clients.value = clientsData.clients || []
+      // Obtener detalles de usuarios para cada cliente
+      const detailedClients = []
+      for (const client of clientsData.clients || []) {
+        try {
+          // Intentar obtener datos del usuario por email o ID
+          let userData = null
+          
+          // Buscar por ID del cliente
+          const userResponse = await fetch(`${backendUrl}/users/${client.client_id}`)
+          if (userResponse.ok) {
+            const userResult = await userResponse.json()
+            userData = userResult.user
+          }
+          
+          detailedClients.push({
+            ...client,
+            full_name: userData?.full_name || null,
+            email: userData?.email || null,
+            phone: userData?.phone || null,
+            isExpanded: false,
+            isEditing: false,
+            editData: null,
+            favorites: null
+          })
+        } catch (error) {
+          console.error(`Error obteniendo datos del usuario ${client.client_id}:`, error)
+          detailedClients.push({
+            ...client,
+            full_name: null,
+            email: null,
+            phone: null,
+            isExpanded: false,
+            isEditing: false,
+            editData: null,
+            favorites: null
+          })
+        }
+      }
+      
+      clients.value = detailedClients
       metrics.value.totalClients = clients.value.length
       console.log('✅ Clientes encontrados:', metrics.value.totalClients)
       console.log('✅ Lista de clientes:', clients.value)
       
-      // Obtener todas las propiedades favoritas
-      await fetchAllFavoriteProperties()
+      // Calcular total de propiedades favoritas
+      let totalFavorites = 0
+      for (const client of clients.value) {
+        totalFavorites += client.favorites_count || 0
+      }
+      metrics.value.totalProperties = totalFavorites
     } else {
       console.error('❌ Error obteniendo clientes:', clientsResponse.status, clientsResponse.statusText)
       const errorText = await clientsResponse.text()
@@ -324,39 +523,6 @@ const fetchAdditionalData = async (realtorId) => {
   }
 }
 
-// Función para obtener todas las propiedades favoritas
-const fetchAllFavoriteProperties = async () => {
-  try {
-    const backendUrl = 'https://fapi.showtimeprop.com'
-    const allProperties = []
-    
-    // Para cada cliente, obtener sus favoritos
-    for (const client of clients.value) {
-      const favoritesResponse = await fetch(`${backendUrl}/favorites/${client.client_id}`)
-      if (favoritesResponse.ok) {
-        const favoritesData = await favoritesResponse.json()
-        const clientFavorites = favoritesData.favorites || []
-        
-        // Agregar información del cliente a cada favorito
-        const favoritesWithClient = clientFavorites.map(fav => ({
-          ...fav,
-          client_id: client.client_id,
-          client_first_activity: client.first_activity,
-          client_favorites_count: client.favorites_count
-        }))
-        
-        allProperties.push(...favoritesWithClient)
-      }
-    }
-    
-    favoriteProperties.value = allProperties
-    metrics.value.totalProperties = allProperties.length
-    console.log('Propiedades favoritas encontradas:', allProperties.length)
-    
-  } catch (error) {
-    console.error('Error fetching favorite properties:', error)
-  }
-}
 
 // Cargar métricas al montar el componente
 onMounted(async () => {
