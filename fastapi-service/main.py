@@ -160,6 +160,15 @@ def test_tenant_resolution(request: Request):
 def test_update():
     return {"message": "Container updated successfully - v2.0", "timestamp": datetime.now().isoformat()}
 
+@app.get("/test-property-endpoint", summary="Test Property Endpoint")
+def test_property_endpoint():
+    """Test endpoint to verify property endpoint is working."""
+    return {
+        "message": "Property endpoint test - v2.0",
+        "timestamp": datetime.now().isoformat(),
+        "endpoint_available": True
+    }
+
 
 @app.get("/properties/all", summary="Get All Properties")
 def get_all_properties(request: Request):
