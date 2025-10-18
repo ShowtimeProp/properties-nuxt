@@ -306,24 +306,35 @@ const toggleClientExpansion = (clientId) => {
 // Función para cargar favoritos de un cliente específico
 const loadClientFavorites = async (client) => {
   try {
+    console.log('🔍 Cargando favoritos para cliente:', client.client_id)
     const backendUrl = 'https://fapi.showtimeprop.com'
-    const favoritesResponse = await fetch(`${backendUrl}/favorites/${client.client_id}`)
+    const favoritesUrl = `${backendUrl}/favorites/${client.client_id}`
+    console.log('🔍 URL favoritos:', favoritesUrl)
+    
+    const favoritesResponse = await fetch(favoritesUrl)
+    console.log('🔍 Respuesta favoritos:', favoritesResponse.status, favoritesResponse.statusText)
     
     if (favoritesResponse.ok) {
       const favoritesData = await favoritesResponse.json()
+      console.log('✅ Datos favoritos recibidos:', favoritesData)
       const clientFavorites = favoritesData.favorites || []
+      console.log('✅ Favoritos encontrados:', clientFavorites.length)
       
       // Obtener detalles de cada propiedad favorita
       const detailedFavorites = []
       for (const favorite of clientFavorites) {
         try {
+          console.log('🔍 Cargando detalles de propiedad:', favorite.property_id)
           const propertyResponse = await fetch(`${backendUrl}/properties/${favorite.property_id}`)
           if (propertyResponse.ok) {
             const propertyData = await propertyResponse.json()
+            console.log('✅ Detalles de propiedad cargados:', propertyData.property.id)
             detailedFavorites.push({
               ...favorite,
               ...propertyData.property
             })
+          } else {
+            console.error('❌ Error cargando detalles de propiedad:', propertyResponse.status, propertyResponse.statusText)
           }
         } catch (error) {
           console.error(`Error cargando detalles de propiedad ${favorite.property_id}:`, error)
@@ -331,6 +342,12 @@ const loadClientFavorites = async (client) => {
       }
       
       client.favorites = detailedFavorites
+      console.log('✅ Favoritos finales asignados:', client.favorites.length)
+    } else {
+      console.error('❌ Error obteniendo favoritos:', favoritesResponse.status, favoritesResponse.statusText)
+      const errorText = await favoritesResponse.text()
+      console.error('❌ Error details:', errorText)
+      client.favorites = []
     }
   } catch (error) {
     console.error('Error cargando favoritos del cliente:', error)
@@ -355,10 +372,15 @@ const cancelClientEdit = (client) => {
 
 const saveClientEdit = async (client) => {
   try {
+    console.log('💾 Guardando cambios del cliente:', client.client_id)
+    console.log('💾 Datos a guardar:', client.editData)
+    
     const backendUrl = 'https://fapi.showtimeprop.com'
+    const updateUrl = `${backendUrl}/users/${client.client_id}`
+    console.log('💾 URL actualización:', updateUrl)
     
     // Actualizar datos del cliente en el backend
-    const response = await fetch(`${backendUrl}/users/${client.client_id}`, {
+    const response = await fetch(updateUrl, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -366,7 +388,12 @@ const saveClientEdit = async (client) => {
       body: JSON.stringify(client.editData)
     })
     
+    console.log('💾 Respuesta actualización:', response.status, response.statusText)
+    
     if (response.ok) {
+      const responseData = await response.json()
+      console.log('✅ Cliente actualizado exitosamente:', responseData)
+      
       // Actualizar datos locales
       client.full_name = client.editData.full_name
       client.email = client.editData.email
@@ -374,12 +401,16 @@ const saveClientEdit = async (client) => {
       client.isEditing = false
       client.editData = null
       
-      console.log('Cliente actualizado exitosamente')
+      console.log('✅ Datos locales actualizados')
     } else {
-      console.error('Error actualizando cliente:', await response.text())
+      const errorText = await response.text()
+      console.error('❌ Error actualizando cliente:', response.status, response.statusText)
+      console.error('❌ Error details:', errorText)
+      alert(`Error actualizando cliente: ${response.status} - ${errorText}`)
     }
   } catch (error) {
-    console.error('Error guardando cambios del cliente:', error)
+    console.error('❌ Error guardando cambios del cliente:', error)
+    alert(`Error guardando cambios: ${error.message}`)
   }
 }
 
