@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- Header -->
-    <div class="bg-white shadow-sm border-b">
+    <div class="bg-white shadow-sm border-b sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-4">
@@ -48,61 +48,15 @@
 
     <!-- Property Details -->
     <div v-else-if="property" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Image Gallery -->
-      <div class="mb-8">
-        <div v-if="property.images && property.images.length > 0" class="relative">
-          <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden">
-            <img
-              :src="getImageUrl(0)"
-              :alt="property.title || 'Propiedad'"
-              class="w-full h-96 object-cover"
-            />
-          </div>
-          
-          <!-- Image Navigation -->
-          <div v-if="property.images.length > 1" class="absolute bottom-4 left-4 right-4">
-            <div class="flex space-x-2 overflow-x-auto">
-              <button
-                v-for="(image, index) in property.images.slice(0, 10)"
-                :key="index"
-                @click="currentImageIndex = index"
-                :class="[
-                  'flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2',
-                  currentImageIndex === index ? 'border-blue-500' : 'border-white'
-                ]"
-              >
-                <img
-                  :src="getImageUrl(index)"
-                  :alt="`Imagen ${index + 1}`"
-                  class="w-full h-full object-cover"
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        <!-- No Images Placeholder -->
-        <div v-else class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
-          <div class="text-center text-gray-400">
-            <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p class="text-lg">Sin imágenes disponibles</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Property Information -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Main Content -->
-        <div class="lg:col-span-2">
-          <!-- Title and Price -->
-          <div class="mb-6">
+      <!-- Title and Operation Type - Prominent at Top -->
+      <div class="mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex-1">
             <h1 class="text-3xl font-bold text-gray-900 mb-2">
               {{ property.title || 'Propiedad' }}
             </h1>
             <div class="flex items-center space-x-4 mb-4">
-              <span class="text-2xl font-bold text-blue-600">
+              <span class="text-3xl font-bold text-blue-600">
                 {{ formatCurrency(property.price) }}
               </span>
               <span v-if="property.expenses && property.expenses > 0" class="text-lg text-gray-600">
@@ -117,6 +71,82 @@
               <span>{{ property.address || 'Dirección no disponible' }}</span>
             </div>
           </div>
+          
+          <!-- Operation Type - Prominent and Visible -->
+          <div v-if="property.tipo_operacion" class="ml-6">
+            <span 
+              :class="[
+                'inline-block px-6 py-3 rounded-lg text-lg font-bold text-white shadow-lg',
+                { 
+                  'bg-green-500': property.tipo_operacion.toLowerCase().includes('venta'),
+                  'bg-orange-500': property.tipo_operacion.toLowerCase().includes('alquiler'),
+                  'bg-blue-500': !property.tipo_operacion.toLowerCase().includes('venta') && !property.tipo_operacion.toLowerCase().includes('alquiler')
+                }
+              ]"
+            >
+              {{ property.tipo_operacion }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image Gallery with Swiper -->
+      <div class="mb-8">
+        <div v-if="property.images && property.images.length > 0" class="relative">
+          <!-- Main Image Swiper -->
+          <div class="swiper-container rounded-lg overflow-hidden mb-4">
+            <div class="swiper-wrapper">
+              <div
+                v-for="(image, index) in property.images"
+                :key="index"
+                class="swiper-slide"
+              >
+                <img
+                  :src="getImageUrl(index)"
+                  :alt="property.title || 'Propiedad'"
+                  class="w-full h-96 object-cover"
+                />
+              </div>
+            </div>
+            
+            <!-- Navigation arrows -->
+            <div class="swiper-button-next"></div>
+            <div class="swiper-button-prev"></div>
+          </div>
+          
+          <!-- Thumbnail Swiper -->
+          <div v-if="property.images.length > 1" class="swiper-container-thumbs">
+            <div class="swiper-wrapper">
+              <div
+                v-for="(image, index) in property.images"
+                :key="index"
+                class="swiper-slide cursor-pointer"
+              >
+                <img
+                  :src="getImageUrl(index)"
+                  :alt="`Imagen ${index + 1}`"
+                  class="w-full h-16 object-cover rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- No Images Placeholder -->
+        <div v-else class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center h-96">
+          <div class="text-center text-gray-400">
+            <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p class="text-lg">Sin imágenes disponibles</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Property Information -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Main Content -->
+        <div class="lg:col-span-2">
 
           <!-- Property Features -->
           <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
@@ -296,9 +326,42 @@ const formatCurrency = (price) => {
   return `U$D ${formattedPrice}`
 }
 
+// Initialize Swiper
+const initializeSwiper = () => {
+  if (typeof window !== 'undefined' && window.Swiper) {
+    // Main swiper
+    const mainSwiper = new window.Swiper('.swiper-container', {
+      spaceBetween: 10,
+      navigation: {
+        nextEl: '.swiper-button-next',
+        prevEl: '.swiper-button-prev',
+      },
+      thumbs: {
+        swiper: '.swiper-container-thumbs'
+      }
+    })
+
+    // Thumbnail swiper
+    const thumbsSwiper = new window.Swiper('.swiper-container-thumbs', {
+      spaceBetween: 10,
+      slidesPerView: 6,
+      freeMode: true,
+      watchSlidesProgress: true,
+    })
+
+    // Connect them
+    mainSwiper.thumbs.swiper = thumbsSwiper
+  }
+}
+
 // Load property on mount
-onMounted(() => {
-  fetchProperty()
+onMounted(async () => {
+  await fetchProperty()
+  
+  // Initialize Swiper after property is loaded
+  if (property.value?.images?.length > 0) {
+    setTimeout(initializeSwiper, 100)
+  }
 })
 
 // Meta tags
@@ -324,5 +387,37 @@ useHead({
   right: 0;
   bottom: 0;
   left: 0;
+}
+
+/* Swiper Styles */
+.swiper-container {
+  position: relative;
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.swiper-button-next:after,
+.swiper-button-prev:after {
+  font-size: 18px;
+}
+
+.swiper-container-thumbs {
+  margin-top: 16px;
+}
+
+.swiper-container-thumbs .swiper-slide {
+  opacity: 0.6;
+  transition: opacity 0.3s;
+}
+
+.swiper-container-thumbs .swiper-slide-thumb-active {
+  opacity: 1;
 }
 </style>
