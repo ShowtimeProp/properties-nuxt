@@ -253,6 +253,7 @@
                       :key="favorite.property_id"
                       :property="favorite"
                       :client-email="client.email"
+                      @open-property="openPropertyModal"
                     />
                   </div>
                   <div v-else class="text-gray-500 text-sm">
@@ -265,12 +266,20 @@
         </div>
       </div>
     </main>
+    
+    <!-- Property Details Modal -->
+    <PropertyDetailsModal
+      :is-open="showPropertyModal"
+      :property-id="selectedPropertyId"
+      @close="closePropertyModal"
+    />
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
 import DashboardPropertyCard from '~/components/DashboardPropertyCard.vue'
+import PropertyDetailsModal from '~/components/PropertyDetailsModal.vue'
 
 const { realtorProfile, logoutRealtor } = useRealtorAuth()
 
@@ -286,8 +295,23 @@ const clients = ref([])
 const favoriteProperties = ref([])
 const isLoading = ref(true)
 
+// Estado del modal de detalles de propiedad
+const showPropertyModal = ref(false)
+const selectedPropertyId = ref('')
+
 const logout = async () => {
   await logoutRealtor()
+}
+
+// Funciones para manejar el modal de detalles de propiedad
+const openPropertyModal = (property) => {
+  selectedPropertyId.value = property.property_id
+  showPropertyModal.value = true
+}
+
+const closePropertyModal = () => {
+  showPropertyModal.value = false
+  selectedPropertyId.value = ''
 }
 
 // Funciones para manejar desplegables de clientes

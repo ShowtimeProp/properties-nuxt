@@ -328,30 +328,55 @@ const formatCurrency = (price) => {
 
 // Initialize Swiper
 const initializeSwiper = () => {
-  if (typeof window !== 'undefined' && window.Swiper) {
-    // Main swiper
-    const mainSwiper = new window.Swiper('.swiper-container', {
-      spaceBetween: 10,
-      navigation: {
-        nextEl: '.swiper-button-next',
-        prevEl: '.swiper-button-prev',
-      },
-      thumbs: {
-        swiper: '.swiper-container-thumbs'
-      }
-    })
+  // Wait for DOM to be ready
+  nextTick(() => {
+    // Import Swiper dynamically
+    import('swiper').then((SwiperModule) => {
+      const { Swiper, Navigation, Thumbs } = SwiperModule
+      
+      // Register Swiper modules
+      Swiper.use([Navigation, Thumbs])
+      
+      // Main swiper
+      const mainSwiper = new Swiper('.swiper-container', {
+        spaceBetween: 10,
+        navigation: {
+          nextEl: '.swiper-button-next',
+          prevEl: '.swiper-button-prev',
+        },
+        thumbs: {
+          swiper: '.swiper-container-thumbs'
+        }
+      })
 
-    // Thumbnail swiper
-    const thumbsSwiper = new window.Swiper('.swiper-container-thumbs', {
-      spaceBetween: 10,
-      slidesPerView: 6,
-      freeMode: true,
-      watchSlidesProgress: true,
-    })
+      // Thumbnail swiper
+      const thumbsSwiper = new Swiper('.swiper-container-thumbs', {
+        spaceBetween: 10,
+        slidesPerView: 'auto',
+        freeMode: true,
+        watchSlidesProgress: true,
+        breakpoints: {
+          320: {
+            slidesPerView: 4,
+            spaceBetween: 8
+          },
+          640: {
+            slidesPerView: 6,
+            spaceBetween: 10
+          },
+          1024: {
+            slidesPerView: 8,
+            spaceBetween: 12
+          }
+        }
+      })
 
-    // Connect them
-    mainSwiper.thumbs.swiper = thumbsSwiper
-  }
+      // Connect them
+      mainSwiper.thumbs.swiper = thumbsSwiper
+    }).catch(error => {
+      console.error('Error loading Swiper:', error)
+    })
+  })
 }
 
 // Load property on mount

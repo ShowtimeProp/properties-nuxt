@@ -188,10 +188,7 @@ function formatDate(dateString) {
 
 // Función para abrir detalles de la propiedad
 function openPropertyDetails() {
-  // Abrir en nueva pestaña para mantener el contexto del dashboard
-  window.open(`/property/${props.property.property_id}`, '_blank')
-  
-  // También emitir evento para el componente padre si es necesario
+  // Emitir evento para abrir modal en el componente padre
   emit('open-property', props.property)
 }
 </script>
