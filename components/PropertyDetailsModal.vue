@@ -125,7 +125,7 @@
                       <img
                         :src="getImageUrl(index)"
                         :alt="property.title || 'Propiedad'"
-                        class="w-full h-64 object-cover"
+                        class="w-full h-80 object-cover"
                       />
                     </div>
                   </div>

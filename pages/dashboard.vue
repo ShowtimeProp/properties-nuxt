@@ -407,7 +407,8 @@ const saveClientEdit = async (client) => {
     const response = await fetch(updateUrl, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Tenant-ID': realtorProfile.value.tenant_id
       },
       body: JSON.stringify(client.editData)
     })
@@ -517,7 +518,11 @@ const fetchAdditionalData = async (realtorId) => {
           let userData = null
           
           // Buscar por ID del cliente
-          const userResponse = await fetch(`${backendUrl}/users/${client.client_id}`)
+          const userResponse = await fetch(`${backendUrl}/users/${client.client_id}`, {
+            headers: {
+              'X-Tenant-ID': realtorProfile.value.tenant_id
+            }
+          })
           if (userResponse.ok) {
             const userResult = await userResponse.json()
             userData = userResult.user

@@ -583,10 +583,11 @@ def register_client(request: Request, user_data: dict):
 
 @app.get("/users/{user_id}", summary="Get User by ID")
 def get_user(request: Request, user_id: str):
-    tenant_id = getattr(request.state, "tenant_id", None)
+    # Try to get tenant_id from header first, then from request state
+    tenant_id = request.headers.get("X-Tenant-ID") or getattr(request.state, "tenant_id", None)
     
     if not tenant_id:
-        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state or headers.")
     
     try:
         response = supabase_cli.table("users").select("*").eq("id", user_id).eq("tenant_id", tenant_id).execute()
@@ -663,10 +664,11 @@ def update_user_login(request: Request, user_id: str):
 
 @app.put("/users/{user_id}", summary="Update User Information")
 def update_user(request: Request, user_id: str, user_data: dict):
-    tenant_id = getattr(request.state, "tenant_id", None)
+    # Try to get tenant_id from header first, then from request state
+    tenant_id = request.headers.get("X-Tenant-ID") or getattr(request.state, "tenant_id", None)
     
     if not tenant_id:
-        raise HTTPException(status_code=400, detail="Tenant ID not found in request state.")
+        raise HTTPException(status_code=400, detail="Tenant ID not found in request state or headers.")
     
     try:
         # Verificar que el usuario pertenece al tenant
