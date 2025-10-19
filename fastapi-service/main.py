@@ -315,6 +315,7 @@ def get_properties_geojson(
         # Filtrar propiedades dentro del bbox
         features = []
         print(f"Processing {len(results)} properties from Qdrant...")
+        print(f"BBOX: [{minx}, {miny}, {maxx}, {maxy}]")
         
         for record in results:
             try:
@@ -344,8 +345,12 @@ def get_properties_geojson(
             except (ValueError, TypeError):
                 continue
             
+            # Debug: mostrar coordenadas de cada propiedad
+            print(f"Property {payload.get('id')}: lat={lat}, lng={lng}")
+            
             # Verificar que esté dentro del bbox
             if lat and lng and minx <= lng <= maxx and miny <= lat <= maxy:
+                print(f"Property {payload.get('id')} is INSIDE bbox")
                 feature = {
                     "type": "Feature",
                     "id": payload.get('id'),
