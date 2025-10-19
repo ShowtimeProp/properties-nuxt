@@ -188,9 +188,8 @@ function formatDate(dateString) {
 
 // Función para abrir detalles de la propiedad
 function openPropertyDetails() {
-  // Abrir en nueva pestaña el endpoint de detalles
-  const propertyUrl = `https://fapi.showtimeprop.com/properties/${props.property.property_id}`
-  window.open(propertyUrl, '_blank')
+  // Navegar a la página de detalles del frontend
+  navigateTo(`/property/${props.property.property_id}`)
   
   // También emitir evento para el componente padre si es necesario
   emit('open-property', props.property)
