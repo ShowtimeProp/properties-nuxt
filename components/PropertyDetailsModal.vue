@@ -378,59 +378,85 @@ const initializeSwiper = () => {
         return
       }
 
-      import('swiper').then((SwiperModule) => {
-        const { Swiper, Navigation, Thumbs } = SwiperModule
+      // Try to load Swiper from CDN as fallback
+      if (typeof window !== 'undefined' && !window.Swiper) {
+        // Load Swiper CSS first
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css'
+        document.head.appendChild(link)
         
-        // Initialize thumbnail swiper first
-        const thumbsSwiper = new Swiper(thumbsContainer, {
-          spaceBetween: 8,
-          slidesPerView: 'auto',
-          freeMode: true,
-          watchSlidesProgress: true,
-          breakpoints: {
-            320: {
-              slidesPerView: 4,
-              spaceBetween: 6
-            },
-            640: {
-              slidesPerView: 6,
-              spaceBetween: 8
-            },
-          1024: {
-              slidesPerView: 8,
-              spaceBetween: 10
-            }
-          }
-        })
-
-        // Then initialize main swiper
-        const mainSwiper = new Swiper(mainContainer, {
-          spaceBetween: 10,
-          modules: [Navigation, Thumbs],
-          navigation: {
-            nextEl: '.swiper-button-next',
-            prevEl: '.swiper-button-prev',
-          },
-          thumbs: {
-            swiper: thumbsSwiper
-          }
-        })
-
-        console.log('Swiper initialized successfully', { mainSwiper, thumbsSwiper })
-        
-        // Test if swiper is working
-        if (mainSwiper && mainSwiper.slides && mainSwiper.slides.length > 0) {
-          console.log('Main swiper has', mainSwiper.slides.length, 'slides')
+        // Load Swiper from CDN
+        const script = document.createElement('script')
+        script.src = 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js'
+        script.onload = () => {
+          console.log('Swiper loaded from CDN')
+          initializeSwiperInstances()
         }
-        if (thumbsSwiper && thumbsSwiper.slides && thumbsSwiper.slides.length > 0) {
-          console.log('Thumbs swiper has', thumbsSwiper.slides.length, 'slides')
+        script.onerror = () => {
+          console.error('Failed to load Swiper from CDN')
         }
-        
-      }).catch(error => {
-        console.error('Error loading Swiper:', error)
-      })
+        document.head.appendChild(script)
+      } else {
+        initializeSwiperInstances()
+      }
     }, 500)
   })
+}
+
+// Initialize Swiper instances
+const initializeSwiperInstances = () => {
+  const mainContainer = document.querySelector('.swiper-container')
+  const thumbsContainer = document.querySelector('.swiper-container-thumbs')
+  
+  try {
+    // Initialize thumbnail swiper first
+    const thumbsSwiper = new window.Swiper(thumbsContainer, {
+      spaceBetween: 8,
+      slidesPerView: 'auto',
+      freeMode: true,
+      watchSlidesProgress: true,
+      breakpoints: {
+        320: {
+          slidesPerView: 4,
+          spaceBetween: 6
+        },
+        640: {
+          slidesPerView: 6,
+          spaceBetween: 8
+        },
+        1024: {
+          slidesPerView: 8,
+          spaceBetween: 10
+        }
+      }
+    })
+
+    // Then initialize main swiper
+    const mainSwiper = new window.Swiper(mainContainer, {
+      spaceBetween: 10,
+      navigation: {
+        nextEl: '.swiper-button-next',
+        prevEl: '.swiper-button-prev',
+      },
+      thumbs: {
+        swiper: thumbsSwiper
+      }
+    })
+
+    console.log('Swiper initialized successfully', { mainSwiper, thumbsSwiper })
+    
+    // Test if swiper is working
+    if (mainSwiper && mainSwiper.slides && mainSwiper.slides.length > 0) {
+      console.log('Main swiper has', mainSwiper.slides.length, 'slides')
+    }
+    if (thumbsSwiper && thumbsSwiper.slides && thumbsSwiper.slides.length > 0) {
+      console.log('Thumbs swiper has', thumbsSwiper.slides.length, 'slides')
+    }
+    
+  } catch (error) {
+    console.error('Error initializing Swiper instances:', error)
+  }
 }
 
 // Close modal
