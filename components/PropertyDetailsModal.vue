@@ -79,8 +79,8 @@
                   </div>
                 </div>
                 
-                <!-- Operation Type -->
-                <div v-if="property.tipo_operacion" class="ml-6">
+                <!-- Operation Type and Status -->
+                <div v-if="property.tipo_operacion" class="ml-6 flex items-center space-x-3">
                   <span 
                     :class="[
                       'inline-block px-4 py-2 rounded-lg text-lg font-bold text-white shadow-lg',
@@ -92,6 +92,20 @@
                     ]"
                   >
                     {{ property.tipo_operacion }}
+                  </span>
+                  <span 
+                    v-if="property.estado"
+                    :class="[
+                      'inline-block px-4 py-2 rounded-lg text-lg font-bold text-white shadow-lg',
+                      { 
+                        'bg-green-600': property.estado.toLowerCase().includes('disponible'),
+                        'bg-yellow-500': property.estado.toLowerCase().includes('oportunidad'),
+                        'bg-red-500': property.estado.toLowerCase().includes('reservado'),
+                        'bg-gray-500': !property.estado.toLowerCase().includes('disponible') && !property.estado.toLowerCase().includes('oportunidad') && !property.estado.toLowerCase().includes('reservado')
+                      }
+                    ]"
+                  >
+                    {{ property.estado }}
                   </span>
                 </div>
               </div>
@@ -353,49 +367,53 @@ const formatCurrency = (price) => {
 // Initialize Swiper
 const initializeSwiper = () => {
   nextTick(() => {
-    import('swiper').then((SwiperModule) => {
-      const { Swiper, Navigation, Thumbs } = SwiperModule
-      
-      Swiper.use([Navigation, Thumbs])
-      
-      // Main swiper
-      const mainSwiper = new Swiper('.swiper-container', {
-        spaceBetween: 10,
-        navigation: {
-          nextEl: '.swiper-button-next',
-          prevEl: '.swiper-button-prev',
-        },
-        thumbs: {
-          swiper: '.swiper-container-thumbs'
-        }
-      })
-
-      // Thumbnail swiper
-      const thumbsSwiper = new Swiper('.swiper-container-thumbs', {
-        spaceBetween: 8,
-        slidesPerView: 'auto',
-        freeMode: true,
-        watchSlidesProgress: true,
-        breakpoints: {
-          320: {
-            slidesPerView: 4,
-            spaceBetween: 6
-          },
-          640: {
-            slidesPerView: 6,
-            spaceBetween: 8
-          },
-          1024: {
-            slidesPerView: 8,
-            spaceBetween: 10
+    // Wait a bit more for DOM to be fully ready
+    setTimeout(() => {
+      import('swiper').then((SwiperModule) => {
+        const { Swiper, Navigation, Thumbs } = SwiperModule
+        
+        // Register Swiper modules
+        Swiper.use([Navigation, Thumbs])
+        
+        // Initialize thumbnail swiper first
+        const thumbsSwiper = new Swiper('.swiper-container-thumbs', {
+          spaceBetween: 8,
+          slidesPerView: 'auto',
+          freeMode: true,
+          watchSlidesProgress: true,
+          breakpoints: {
+            320: {
+              slidesPerView: 4,
+              spaceBetween: 6
+            },
+            640: {
+              slidesPerView: 6,
+              spaceBetween: 8
+            },
+            1024: {
+              slidesPerView: 8,
+              spaceBetween: 10
+            }
           }
-        }
-      })
+        })
 
-      mainSwiper.thumbs.swiper = thumbsSwiper
-    }).catch(error => {
-      console.error('Error loading Swiper:', error)
-    })
+        // Then initialize main swiper
+        const mainSwiper = new Swiper('.swiper-container', {
+          spaceBetween: 10,
+          navigation: {
+            nextEl: '.swiper-button-next',
+            prevEl: '.swiper-button-prev',
+          },
+          thumbs: {
+            swiper: thumbsSwiper
+          }
+        })
+
+        console.log('Swiper initialized successfully')
+      }).catch(error => {
+        console.error('Error loading Swiper:', error)
+      })
+    }, 200)
   })
 }
 
@@ -443,10 +461,20 @@ watch(() => props.isOpen, (isOpen) => {
   margin-top: 12px;
 }
 
+.swiper-container-thumbs {
+  overflow: hidden;
+}
+
+.swiper-container-thumbs .swiper-wrapper {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
 .swiper-container-thumbs .swiper-slide {
   opacity: 0.6;
   transition: opacity 0.3s;
   width: auto;
+  flex-shrink: 0;
 }
 
 .swiper-container-thumbs .swiper-slide-thumb-active {
