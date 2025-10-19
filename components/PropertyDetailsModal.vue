@@ -323,7 +323,7 @@ const fetchProperty = async () => {
     
     // Initialize Swiper after data is loaded
     if (property.value?.images?.length > 0) {
-      setTimeout(initializeSwiper, 100)
+      setTimeout(initializeSwiper, 500)
     }
     
   } catch (err) {
@@ -369,14 +369,20 @@ const initializeSwiper = () => {
   nextTick(() => {
     // Wait a bit more for DOM to be fully ready
     setTimeout(() => {
+      // Check if elements exist
+      const mainContainer = document.querySelector('.swiper-container')
+      const thumbsContainer = document.querySelector('.swiper-container-thumbs')
+      
+      if (!mainContainer || !thumbsContainer) {
+        console.error('Swiper containers not found')
+        return
+      }
+
       import('swiper').then((SwiperModule) => {
         const { Swiper, Navigation, Thumbs } = SwiperModule
         
-        // Register Swiper modules
-        Swiper.use([Navigation, Thumbs])
-        
         // Initialize thumbnail swiper first
-        const thumbsSwiper = new Swiper('.swiper-container-thumbs', {
+        const thumbsSwiper = new Swiper(thumbsContainer, {
           spaceBetween: 8,
           slidesPerView: 'auto',
           freeMode: true,
@@ -390,7 +396,7 @@ const initializeSwiper = () => {
               slidesPerView: 6,
               spaceBetween: 8
             },
-            1024: {
+          1024: {
               slidesPerView: 8,
               spaceBetween: 10
             }
@@ -398,8 +404,9 @@ const initializeSwiper = () => {
         })
 
         // Then initialize main swiper
-        const mainSwiper = new Swiper('.swiper-container', {
+        const mainSwiper = new Swiper(mainContainer, {
           spaceBetween: 10,
+          modules: [Navigation, Thumbs],
           navigation: {
             nextEl: '.swiper-button-next',
             prevEl: '.swiper-button-prev',
@@ -409,11 +416,20 @@ const initializeSwiper = () => {
           }
         })
 
-        console.log('Swiper initialized successfully')
+        console.log('Swiper initialized successfully', { mainSwiper, thumbsSwiper })
+        
+        // Test if swiper is working
+        if (mainSwiper && mainSwiper.slides && mainSwiper.slides.length > 0) {
+          console.log('Main swiper has', mainSwiper.slides.length, 'slides')
+        }
+        if (thumbsSwiper && thumbsSwiper.slides && thumbsSwiper.slides.length > 0) {
+          console.log('Thumbs swiper has', thumbsSwiper.slides.length, 'slides')
+        }
+        
       }).catch(error => {
         console.error('Error loading Swiper:', error)
       })
-    }, 200)
+    }, 500)
   })
 }
 
@@ -433,6 +449,10 @@ watch(() => props.propertyId, (newId) => {
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen && props.propertyId) {
     fetchProperty()
+  } else if (!isOpen) {
+    // Reset data when modal closes
+    property.value = null
+    error.value = null
   }
 })
 </script>
