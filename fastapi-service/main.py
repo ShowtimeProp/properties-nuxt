@@ -395,6 +395,7 @@ def get_properties_geojson(
         # Si no hay propiedades, devolver GeoJSON vacío en lugar de error
         if len(features) == 0:
             print("No properties found in bbox, returning empty GeoJSON")
+            print("DEBUG: This should return empty GeoJSON, not error")
         
         return Response(
             content=json.dumps(geojson),
