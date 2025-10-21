@@ -155,10 +155,10 @@ const sortedProperties = computed(() => {
 });
 
 const apiBaseUrl = computed(() => {
-  // Forzar el uso de la IP del backend
-  const backendUrl = 'https://212.85.20.219:8000';
+  // Usar proxy interno para evitar Mixed Content
+  const backendUrl = '/api/proxy';
   console.log('🔍 Debug apiBaseUrl:', { backendUrl, configValue: config.public.apiBaseUrl });
-  console.log('✅ Usando backend URL:', backendUrl);
+  console.log('✅ Usando proxy URL:', backendUrl);
   return backendUrl;
 });
 

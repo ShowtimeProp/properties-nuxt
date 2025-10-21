@@ -279,7 +279,7 @@ const fetchProperty = async () => {
     loading.value = true
     error.value = null
     
-    const backendUrl = 'https://212.85.20.219:8000'
+    const backendUrl = '/api/proxy'
     const response = await fetch(`${backendUrl}/properties/${propertyId}`)
     
     if (!response.ok) {
