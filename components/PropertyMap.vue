@@ -156,7 +156,7 @@ const sortedProperties = computed(() => {
 
 const apiBaseUrl = computed(() => {
   // Forzar el uso de la IP del backend
-  const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000';
+  const backendUrl = 'http://212.85.20.219:8000';
   console.log('🔍 Debug apiBaseUrl:', { backendUrl, configValue: config.public.apiBaseUrl });
   console.log('✅ Usando backend URL:', backendUrl);
   return backendUrl;

@@ -312,8 +312,7 @@ const fetchProperty = async () => {
     loading.value = true
     error.value = null
     
-    const config = useRuntimeConfig()
-    const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000'
+    const backendUrl = 'http://212.85.20.219:8000'
     const response = await fetch(`${backendUrl}/properties/${props.propertyId}`)
     
     if (!response.ok) {
