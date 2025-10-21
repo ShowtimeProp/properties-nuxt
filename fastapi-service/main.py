@@ -17,15 +17,19 @@ def get_settings():
     """Loads settings from environment variables. Uses lru_cache for performance."""
     load_dotenv()
     settings = {
-        "qdrant_host": os.getenv("QDRANT_URL"),
-        "qdrant_api_key": os.getenv("QDRANT_API_KEY"),
-        "openai_api_key": os.getenv("OPENAI_API_KEY"),
-        "collection_name": "propertiesV3",
+        "qdrant_host": os.getenv("QDRANT_HOST") or os.getenv("QDRANT_URL"),
+        # Optional: allow empty if Qdrant instance doesn't require auth
+        "qdrant_api_key": os.getenv("QDRANT_API_KEY", ""),
+        # Optional for non-AI paths
+        "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
+        "collection_name": os.getenv("COLLECTION_NAME", "propertiesV3"),
         "supabase_url": os.getenv("SUPABASE_URL"),
         "supabase_key": os.getenv("SUPABASE_KEY")
     }
-    for key, value in settings.items():
-        if not value:
+    # Only enforce required keys
+    required_keys = ["qdrant_host", "collection_name", "supabase_url", "supabase_key"]
+    for key in required_keys:
+        if not settings.get(key):
             raise RuntimeError(f"{key.upper()} is not set in environment variables.")
     return settings
 
@@ -132,7 +136,11 @@ async def tenant_middleware(request: Request, call_next):
 
 # Initialize clients
 try:
-    qdrant_cli = QdrantClient(url=settings["qdrant_host"], api_key=settings["qdrant_api_key"])
+    # Pass api_key only if present
+    qdrant_cli = QdrantClient(
+        url=settings["qdrant_host"],
+        api_key=(settings["qdrant_api_key"] or None)
+    )
     openai_cli = OpenAI(api_key=settings["openai_api_key"])
     supabase_cli: Client = create_client(settings["supabase_url"], settings["supabase_key"])
     
@@ -302,6 +310,7 @@ def get_properties_geojson(
             limit = min(limit, 700)
         
         print(f"Fetching properties in BBOX: [{minx}, {miny}, {maxx}, {maxy}] at zoom {zoom} for tenant {tenant_id}")
+        print(f"Collection name: {settings['collection_name']}")
         
         # Obtener propiedades de Qdrant
         results, _ = qdrant_cli.scroll(
@@ -311,6 +320,8 @@ def get_properties_geojson(
             with_vectors=False,
             scroll_filter=None
         )
+        
+        print(f"Qdrant returned {len(results)} properties")
         
         # Filtrar propiedades dentro del bbox
         features = []

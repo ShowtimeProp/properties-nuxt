@@ -155,23 +155,11 @@ const sortedProperties = computed(() => {
 });
 
 const apiBaseUrl = computed(() => {
-  if (typeof window === 'undefined') return config.public.apiBaseUrl;
-  const hostname = window.location.hostname;
-  console.log('🔍 Debug apiBaseUrl:', { hostname, configValue: config.public.apiBaseUrl });
-  
-  if (hostname.endsWith('.vercel.app') || hostname === 'localhost' || hostname === '127.0.0.1') {
-    console.log('✅ Usando config.public.apiBaseUrl:', config.public.apiBaseUrl);
-    return config.public.apiBaseUrl;
-  }
-  const parts = hostname.split('.');
-  if (parts.length > 2) {
-    const customUrl = `https://fapi.${parts.slice(-2).join('.')}`;
-    console.log('🌐 Usando URL personalizada:', customUrl);
-    return customUrl;
-  }
-  const customUrl = `https://fapi.${hostname}`;
-  console.log('🌐 Usando URL personalizada:', customUrl);
-  return customUrl;
+  // Forzar el uso de la IP del backend
+  const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000';
+  console.log('🔍 Debug apiBaseUrl:', { backendUrl, configValue: config.public.apiBaseUrl });
+  console.log('✅ Usando backend URL:', backendUrl);
+  return backendUrl;
 });
 
 const propertiesApiUrl = computed(() => {

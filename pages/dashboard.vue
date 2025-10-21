@@ -331,7 +331,8 @@ const toggleClientExpansion = (clientId) => {
 const loadClientFavorites = async (client) => {
   try {
     console.log('🔍 Cargando favoritos para cliente:', client.client_id)
-    const backendUrl = 'https://fapi.showtimeprop.com'
+    const config = useRuntimeConfig()
+    const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000'
     const favoritesUrl = `${backendUrl}/favorites/${client.client_id}`
     console.log('🔍 URL favoritos:', favoritesUrl)
     
@@ -399,7 +400,8 @@ const saveClientEdit = async (client) => {
     console.log('💾 Guardando cambios del cliente:', client.client_id)
     console.log('💾 Datos a guardar:', client.editData)
     
-    const backendUrl = 'https://fapi.showtimeprop.com'
+    const config = useRuntimeConfig()
+    const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000'
     const updateUrl = `${backendUrl}/users/${client.client_id}`
     console.log('💾 URL actualización:', updateUrl)
     
@@ -454,7 +456,8 @@ const fetchMetrics = async () => {
 
     const realtorId = realtorProfile.value.id
     const tenantId = realtorProfile.value.tenant_id
-    const backendUrl = 'https://fapi.showtimeprop.com'
+    const config = useRuntimeConfig()
+    const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000'
     
     console.log('✅ Datos del realtor:')
     console.log('- realtorId:', realtorId)
@@ -496,7 +499,8 @@ const fetchMetrics = async () => {
 // Función para obtener datos adicionales
 const fetchAdditionalData = async (realtorId) => {
   try {
-    const backendUrl = 'https://fapi.showtimeprop.com'
+    const config = useRuntimeConfig()
+    const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000'
     
     // Obtener clientes del tenant
     console.log('👥 Llamando a clientes del tenant...')

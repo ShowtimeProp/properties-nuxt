@@ -141,7 +141,9 @@ const emit = defineEmits(['open-property'])
 
 // Función para generar URLs del proxy de imágenes
 function getProxyImageUrl(propertyId, imageIndex) {
-  return `https://fapi.showtimeprop.com/properties/images/${propertyId}/${imageIndex}`
+  const config = useRuntimeConfig()
+  const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000'
+  return `${backendUrl}/properties/images/${propertyId}/${imageIndex}`
 }
 
 // Función para manejar errores de imagen

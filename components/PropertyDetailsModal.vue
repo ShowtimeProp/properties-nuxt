@@ -312,7 +312,9 @@ const fetchProperty = async () => {
     loading.value = true
     error.value = null
     
-    const response = await fetch(`https://fapi.showtimeprop.com/properties/${props.propertyId}`)
+    const config = useRuntimeConfig()
+    const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000'
+    const response = await fetch(`${backendUrl}/properties/${props.propertyId}`)
     
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`)
@@ -337,7 +339,9 @@ const fetchProperty = async () => {
 // Get image URL
 const getImageUrl = (index) => {
   if (!property.value?.images || !property.value.images[index]) return ''
-  return `https://fapi.showtimeprop.com/properties/images/${props.propertyId}/${index}`
+  const config = useRuntimeConfig()
+  const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000'
+  return `${backendUrl}/properties/images/${props.propertyId}/${index}`
 }
 
 // Format currency

@@ -6,7 +6,7 @@ export const useImageProxy = () => {
   const proxyServers = ref([
     {
       id: 'primary',
-      url: 'https://fapi.showtimeprop.com/properties/images',
+      url: 'http://212.85.20.219:8000/properties/images',
       status: 'active', // active, blocked, error
       lastCheck: null,
       errorCount: 0
