@@ -6,7 +6,7 @@ export const useImageProxy = () => {
   const proxyServers = ref([
     {
       id: 'primary',
-      url: 'http://212.85.20.219:8000/properties/images',
+      url: 'https://212.85.20.219:8000/properties/images',
       status: 'active', // active, blocked, error
       lastCheck: null,
       errorCount: 0

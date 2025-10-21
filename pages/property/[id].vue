@@ -279,7 +279,7 @@ const fetchProperty = async () => {
     loading.value = true
     error.value = null
     
-    const backendUrl = 'http://212.85.20.219:8000'
+    const backendUrl = 'https://212.85.20.219:8000'
     const response = await fetch(`${backendUrl}/properties/${propertyId}`)
     
     if (!response.ok) {

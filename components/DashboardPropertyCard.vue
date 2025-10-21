@@ -141,7 +141,7 @@ const emit = defineEmits(['open-property'])
 
 // Función para generar URLs del proxy de imágenes
 function getProxyImageUrl(propertyId, imageIndex) {
-  const backendUrl = 'http://212.85.20.219:8000'
+  const backendUrl = 'https://212.85.20.219:8000'
   return `${backendUrl}/properties/images/${propertyId}/${imageIndex}`
 }
 
