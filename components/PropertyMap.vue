@@ -155,10 +155,10 @@ const sortedProperties = computed(() => {
 });
 
 const apiBaseUrl = computed(() => {
-  // Usar proxy interno para evitar CORS
-  const backendUrl = '/api/proxy';
+  // Usar endpoints mock temporalmente hasta que el backend funcione
+  const backendUrl = '/api/mock';
   console.log('🔍 Debug apiBaseUrl:', { backendUrl, configValue: config.public.apiBaseUrl });
-  console.log('✅ Usando proxy interno:', backendUrl);
+  console.log('✅ Usando endpoints mock:', backendUrl);
   return backendUrl;
 });
 
