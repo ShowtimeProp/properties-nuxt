@@ -141,7 +141,7 @@ const emit = defineEmits(['open-property'])
 
 // Función para generar URLs del proxy de imágenes
 function getProxyImageUrl(propertyId, imageIndex) {
-  const backendUrl = '/api/proxy'
+  const backendUrl = 'https://fapi.showtimeprop.com'
   return `${backendUrl}/properties/images/${propertyId}/${imageIndex}`
 }
 

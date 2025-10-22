@@ -312,7 +312,7 @@ const fetchProperty = async () => {
     loading.value = true
     error.value = null
     
-    const backendUrl = '/api/proxy'
+    const backendUrl = 'https://fapi.showtimeprop.com'
     const response = await fetch(`${backendUrl}/properties/${props.propertyId}`)
     
     if (!response.ok) {

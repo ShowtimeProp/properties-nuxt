@@ -155,10 +155,10 @@ const sortedProperties = computed(() => {
 });
 
 const apiBaseUrl = computed(() => {
-  // Usar proxy interno para evitar Mixed Content
-  const backendUrl = '/api/proxy';
+  // Usar la URL original que funcionaba
+  const backendUrl = 'https://fapi.showtimeprop.com';
   console.log('🔍 Debug apiBaseUrl:', { backendUrl, configValue: config.public.apiBaseUrl });
-  console.log('✅ Usando proxy URL:', backendUrl);
+  console.log('✅ Usando URL original:', backendUrl);
   return backendUrl;
 });
 
