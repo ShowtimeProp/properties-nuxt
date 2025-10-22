@@ -1,7 +1,7 @@
 export default defineEventHandler(async (event) => {
   const tenantId = getRouterParam(event, 'tenantId')
   
-  console.log('🔍 Mock clients endpoint called for tenant:', tenantId)
+  console.log('🔍 Mock favorites clients endpoint called for tenant:', tenantId)
   
   // Datos mock para clientes
   const mockClients = [
@@ -28,6 +28,6 @@ export default defineEventHandler(async (event) => {
     }
   ]
   
-  console.log('✅ Returning mock clients:', mockClients.length)
+  console.log('✅ Returning mock favorites clients:', mockClients.length)
   return mockClients
 })
