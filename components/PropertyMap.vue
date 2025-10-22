@@ -155,10 +155,10 @@ const sortedProperties = computed(() => {
 });
 
 const apiBaseUrl = computed(() => {
-  // Usar endpoints mock temporalmente hasta que el backend funcione
-  const backendUrl = '/api/mock';
+  // Volver a la configuración original que funcionaba
+  const backendUrl = 'https://fapi.showtimeprop.com';
   console.log('🔍 Debug apiBaseUrl:', { backendUrl, configValue: config.public.apiBaseUrl });
-  console.log('✅ Usando endpoints mock:', backendUrl);
+  console.log('✅ Usando URL original:', backendUrl);
   return backendUrl;
 });
 
