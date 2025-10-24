@@ -356,9 +356,8 @@ const fetchViewportProperties = async () => {
     
     console.log(`📍 Cargando propiedades en viewport (zoom ${zoom}):`, bbox);
     
-    // Construir URL con parámetros incluyendo tenant_id
-    const tenantId = 'bnicolini'; // Hardcoded por ahora, debería venir del subdomain
-    const url = `${propertiesApiUrl.value}?bbox=${bbox}&zoom=${zoom}&limit=1000&tenant_id=${tenantId}`;
+    // Construir URL con parámetros - NO enviar tenant_id para ver todas las propiedades
+    const url = `${propertiesApiUrl.value}?bbox=${bbox}&zoom=${zoom}&limit=1000`;
     
     // Fetch con cancelación
     const response = await fetch(url, { 
