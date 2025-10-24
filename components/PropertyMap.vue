@@ -155,10 +155,10 @@ const sortedProperties = computed(() => {
 });
 
 const apiBaseUrl = computed(() => {
-  // Volver a la configuración original que funcionaba
-  const backendUrl = 'https://fapi.showtimeprop.com';
+  // Usar el proxy interno de Nuxt para evitar problemas de CORS
+  const backendUrl = '/api/proxy';
   console.log('🔍 Debug apiBaseUrl:', { backendUrl, configValue: config.public.apiBaseUrl });
-  console.log('✅ Usando URL original:', backendUrl);
+  console.log('✅ Usando proxy interno:', backendUrl);
   return backendUrl;
 });
 
