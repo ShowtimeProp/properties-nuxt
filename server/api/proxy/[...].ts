@@ -7,6 +7,7 @@ export default defineEventHandler(async (event) => {
   
   // Construir la URL del backend (usar la URL original que funciona)
   const backendUrl = `https://fapi.showtimeprop.com/${url}`
+  console.log('🔧 URL construida:', backendUrl)
   
   // Agregar query parameters si existen
   const queryString = new URLSearchParams(query as Record<string, string>).toString()
