@@ -183,6 +183,9 @@ const formatPriceForBubble = (priceString) => {
 };
 
 const addMarkersToMap = () => {
+    console.log('🎯 addMarkersToMap llamada');
+    console.log('🎯 Estado:', { hasMap: !!map, hasProperties: !!properties.value, count: properties.value?.length || 0 });
+    
     if (!map || !properties.value || properties.value.length === 0) {
         console.log('addMarkersToMap: sin mapa o sin propiedades', { hasMap: !!map, count: properties.value?.length || 0 });
         return;
@@ -328,6 +331,9 @@ let maplibreglInstance = null;
 
 // --- FUNCIÓN PARA CARGAR PROPIEDADES POR VIEWPORT ---
 const fetchViewportProperties = async () => {
+  console.log('🔍 fetchViewportProperties iniciada');
+  console.log('🔍 Estado:', { hasMap: !!map, hasApiUrl: !!propertiesApiUrl.value, apiUrl: propertiesApiUrl.value });
+  
   if (!map || !propertiesApiUrl.value) {
     console.log('⏸️ fetchViewportProperties: mapa o URL no disponible');
     return;
@@ -358,18 +364,26 @@ const fetchViewportProperties = async () => {
     
     // Construir URL con parámetros - NO enviar tenant_id para ver todas las propiedades
     const url = `${propertiesApiUrl.value}?bbox=${bbox}&zoom=${zoom}&limit=1000`;
+    console.log('🌐 URL completa:', url);
     
     // Fetch con cancelación
+    console.log('📡 Enviando request...');
     const response = await fetch(url, { 
       signal: fetchController.signal,
       cache: 'no-store'
     });
+    console.log('📡 Response status:', response.status, response.statusText);
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
     
     const geojson = await response.json();
+    console.log('📦 GeoJSON recibido:', { 
+      type: geojson.type, 
+      featuresCount: geojson.features?.length || 0,
+      sampleFeature: geojson.features?.[0] 
+    });
     
     // Convertir GeoJSON a formato de propiedades
     if (geojson.features && Array.isArray(geojson.features)) {
@@ -380,6 +394,7 @@ const fetchViewportProperties = async () => {
       }));
       
       console.log(`✅ Cargadas ${newProperties.length} propiedades en viewport`);
+      console.log('📋 Muestra de propiedades:', newProperties.slice(0, 2));
       
       // Actualizar propiedades
       properties.value = newProperties;
@@ -602,6 +617,7 @@ onMounted(async () => {
       map.resize();
       
       // Cargar propiedades del viewport inicial
+      console.log('🚀 Iniciando carga de propiedades...');
       fetchViewportProperties();
       
       // Eventos del mapa
