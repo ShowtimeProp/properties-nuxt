@@ -167,9 +167,14 @@ const propertiesApiUrl = computed(() => {
     console.log('❌ apiBaseUrl.value es vacío');
     return '';
   }
-  const url = new URL('/properties/geojson', apiBaseUrl.value);
-  console.log('🔗 propertiesApiUrl base generada:', url.href);
-  return url.href;
+  
+  // Construir URL manualmente para evitar problemas con new URL()
+  const baseUrl = apiBaseUrl.value;
+  const endpoint = '/properties/geojson';
+  const fullUrl = baseUrl.endsWith('/') ? `${baseUrl}${endpoint.slice(1)}` : `${baseUrl}${endpoint}`;
+  
+  console.log('🔗 propertiesApiUrl base generada:', fullUrl);
+  return fullUrl;
 });
 
 // --- FUNCIONES ---
