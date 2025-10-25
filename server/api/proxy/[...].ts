@@ -6,7 +6,9 @@ export default defineEventHandler(async (event) => {
   console.log('🔍 Proxy debug:', { url, query })
   
   // Construir la URL del backend (usar la URL original que funciona)
-  const backendUrl = `https://fapi.showtimeprop.com/${url}`
+  // Asegurar que la URL tenga el path completo
+  const fullPath = url.startsWith('/') ? url : `/${url}`
+  const backendUrl = `https://fapi.showtimeprop.com${fullPath}`
   console.log('🔧 URL construida:', backendUrl)
   
   // Agregar query parameters si existen
