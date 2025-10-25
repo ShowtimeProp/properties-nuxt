@@ -15,6 +15,7 @@ export default defineEventHandler(async (event) => {
   console.log('🔗 Proxying to:', fullUrl)
   
   try {
+    console.log('📡 Intentando conectar a:', fullUrl)
     const response = await $fetch(fullUrl, {
       method: getMethod(event),
       headers: {
@@ -24,10 +25,15 @@ export default defineEventHandler(async (event) => {
       body: getMethod(event) !== 'GET' ? await readBody(event) : undefined
     })
     
-    console.log('✅ Proxy success')
+    console.log('✅ Proxy success - Response received')
     return response
   } catch (error) {
-    console.error('❌ Proxy error:', error)
+    console.error('❌ Proxy error details:', {
+      message: (error as Error).message,
+      status: (error as any).status,
+      statusText: (error as any).statusText,
+      url: fullUrl
+    })
     throw createError({
       statusCode: 500,
       statusMessage: 'Proxy error: ' + (error as Error).message
