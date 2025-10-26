@@ -16,7 +16,7 @@
     "@nuxtjs/supabase": "^1.5.3",
     "@pinia-plugin-persistedstate/nuxt": "^1.2.1",
     "@pinia/nuxt": "^0.5.1",
-    "@qdrant/js-client-rest": "^1.14.1",
+    "@qdrant/js-client-rest": "^1.15.1",
     "@supabase/supabase-js": "^2.50.2",
     "@types/jsonwebtoken": "^9.0.10",
     "@vueuse/core": "^13.4.0",

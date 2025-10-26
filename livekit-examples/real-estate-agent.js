@@ -32,43 +32,28 @@ async function getTokenFromBackend(roomName, participantName) {
   }
 }
 
-// Función para buscar propiedades usando el backend
+// Función para buscar propiedades en Qdrant
 async function searchProperties(query) {
   try {
-    console.log('🔍 Buscando propiedades:', query);
+    console.log('🔍 Buscando propiedades en Qdrant:', query);
     
-    // Por ahora simulamos una búsqueda básica
-    // En el futuro esto se conectará con Qdrant
-    const mockProperties = [
-      {
-        id: 1,
-        title: "Departamento 2 ambientes cerca del mar",
-        price: 85000,
-        address: "Av. Colón 1234, Mar del Plata",
-        bedrooms: 2,
-        bathrooms: 1,
-        area_m2: 65,
-        tipo_operacion: "venta"
+    // Llamar al backend para buscar propiedades reales
+    const response = await fetch('/api/properties/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
-      {
-        id: 2,
-        title: "Casa 3 ambientes con jardín",
-        price: 120000,
-        address: "Calle San Martín 567, Mar del Plata",
-        bedrooms: 3,
-        bathrooms: 2,
-        area_m2: 95,
-        tipo_operacion: "venta"
-      }
-    ];
+      body: JSON.stringify({ query })
+    });
     
-    // Filtrar propiedades basado en la consulta
-    const filteredProperties = mockProperties.filter(prop => 
-      prop.title.toLowerCase().includes(query.toLowerCase()) ||
-      prop.address.toLowerCase().includes(query.toLowerCase())
-    );
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
     
-    return filteredProperties;
+    const data = await response.json();
+    console.log(`✅ Encontradas ${data.properties?.length || 0} propiedades`);
+    
+    return data.properties || [];
   } catch (error) {
     console.error('❌ Error buscando propiedades:', error);
     return [];
