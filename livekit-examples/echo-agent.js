@@ -5,15 +5,31 @@ const LIVEKIT_URL = 'https://lkit.showtimeprop.com';
 const LIVEKIT_API_KEY = 'z7KC/QRN0QxHLAmGKaJl26Cv';
 const LIVEKIT_API_SECRET = 'r4uo2upnbN64dr76bXI8P4ITcdxP8qdK';
 
-// Función para generar token (simplificada para testing)
-function generateToken(roomName, participantName) {
-  // En producción, esto debería hacerse en el backend
-  // Por ahora usamos un token básico para testing
-  return {
-    token: 'test-token', // Token temporal para testing
-    roomName: roomName,
-    participantName: participantName
-  };
+// Función para obtener token real del backend
+async function getTokenFromBackend(roomName, participantName) {
+  try {
+    const response = await fetch('/api/livekit/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        roomName: roomName,
+        participantName: participantName
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ Token obtenido del backend');
+    return data;
+  } catch (error) {
+    console.error('❌ Error obteniendo token:', error);
+    throw error;
+  }
 }
 
 // Echo Agent - Repite lo que escucha
@@ -78,11 +94,11 @@ class EchoAgent {
     try {
       console.log('🚀 Conectando Echo Agent...');
       
-      // Generar token (en producción esto se hace en el backend)
-      const tokenData = generateToken(roomName, participantName);
+      // Obtener token real del backend
+      const tokenData = await getTokenFromBackend(roomName, participantName);
       
       // Conectar al room
-      await this.room.connect(LIVEKIT_URL, tokenData.token, {
+      await this.room.connect(tokenData.url, tokenData.token, {
         participantName: participantName,
         roomName: roomName
       });
