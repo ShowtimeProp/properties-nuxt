@@ -187,9 +187,14 @@ onUnmounted(async () => {
 
 // Escuchar actualizaciones del room
 const handleRoomUpdate = (event) => {
-  const roomInfo = event.detail
-  roomInfo.value = roomInfo
-  addLog(`📊 Room actualizado: ${roomInfo.name} (${roomInfo.participants} participantes)`)
+  try {
+    const roomInfo = event.detail
+    roomInfo.value = roomInfo
+    addLog(`📊 Room actualizado: ${roomInfo.name} (${roomInfo.participants} participantes)`)
+  } catch (error) {
+    console.error('❌ Error manejando actualización del room:', error)
+    addLog(`❌ Error actualizando room: ${error.message}`)
+  }
 }
 
 // Log inicial

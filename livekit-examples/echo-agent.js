@@ -43,14 +43,22 @@ class EchoAgent {
     // Escuchar cuando se conecta al room
     this.room.on(RoomEvent.Connected, () => {
       console.log('🎯 Echo Agent conectado al room:', this.room.name);
-      console.log('📊 Información del room:', {
-        name: this.room.name,
-        participants: this.room.participants.size,
-        localParticipant: this.room.localParticipant.identity
-      });
       
-      // Emitir evento personalizado para actualizar la UI
-      this.emitRoomUpdate();
+      // Esperar un poco para que se inicialice completamente
+      setTimeout(() => {
+        try {
+          console.log('📊 Información del room:', {
+            name: this.room.name,
+            participants: this.room.participants?.size || 0,
+            localParticipant: this.room.localParticipant?.identity || 'N/A'
+          });
+          
+          // Emitir evento personalizado para actualizar la UI
+          this.emitRoomUpdate();
+        } catch (error) {
+          console.error('❌ Error en evento Connected:', error);
+        }
+      }, 100);
     });
 
     // Escuchar cuando se desconecta
@@ -62,7 +70,7 @@ class EchoAgent {
     // Escuchar cuando llega un participante
     this.room.on(RoomEvent.ParticipantConnected, (participant) => {
       console.log('👤 Participante conectado:', participant.identity);
-      console.log('📊 Total participantes:', this.room.participants.size);
+      console.log('📊 Total participantes:', this.room.participants?.size || 0);
       this.setupParticipantListeners(participant);
       this.emitRoomUpdate();
     });
@@ -70,7 +78,7 @@ class EchoAgent {
     // Escuchar cuando se va un participante
     this.room.on(RoomEvent.ParticipantDisconnected, (participant) => {
       console.log('👋 Participante desconectado:', participant.identity);
-      console.log('📊 Total participantes:', this.room.participants.size);
+      console.log('📊 Total participantes:', this.room.participants?.size || 0);
       this.emitRoomUpdate();
     });
 
@@ -161,30 +169,44 @@ class EchoAgent {
 
   // Emitir actualización del room para la UI
   emitRoomUpdate() {
-    const roomInfo = this.getRoomInfo();
-    
-    // Emitir evento personalizado
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('livekit-room-update', {
-        detail: roomInfo
-      }));
+    try {
+      const roomInfo = this.getRoomInfo();
+      
+      // Emitir evento personalizado
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('livekit-room-update', {
+          detail: roomInfo
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Error emitiendo actualización del room:', error);
     }
   }
 
   // Obtener información del room
   getRoomInfo() {
-    return {
-      name: this.room.name || 'N/A',
-      participants: this.room.participants ? this.room.participants.size : 0,
-      isConnected: this.room.state === 'connected',
-      localParticipant: this.room.localParticipant ? this.room.localParticipant.identity : 'N/A'
-    };
+    try {
+      return {
+        name: this.room?.name || 'N/A',
+        participants: this.room?.participants?.size || 0,
+        isConnected: this.room?.state === 'connected',
+        localParticipant: this.room?.localParticipant?.identity || 'N/A'
+      };
+    } catch (error) {
+      console.error('❌ Error obteniendo información del room:', error);
+      return {
+        name: 'N/A',
+        participants: 0,
+        isConnected: false,
+        localParticipant: 'N/A'
+      };
+    }
   }
 
   // Enviar mensaje de prueba
   async sendTestMessage(message = 'Hola desde Echo Agent!') {
     try {
-      if (this.room.state === 'connected') {
+      if (this.room?.state === 'connected' && this.room?.localParticipant) {
         await this.room.localParticipant.publishData(
           new TextEncoder().encode(message),
           { reliable: true }
@@ -192,7 +214,7 @@ class EchoAgent {
         console.log('📤 Mensaje enviado:', message);
         return true;
       } else {
-        console.log('❌ No conectado, no se puede enviar mensaje');
+        console.log('❌ No conectado o sin participante local, no se puede enviar mensaje');
         return false;
       }
     } catch (error) {
