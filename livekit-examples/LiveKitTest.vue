@@ -34,6 +34,14 @@
         >
           Desconectar
         </button>
+        
+        <button 
+          @click="sendTestMessage" 
+          :disabled="!isConnected"
+          class="btn btn-success"
+        >
+          Enviar Mensaje Test
+        </button>
       </div>
 
       <div class="info-panel">
@@ -150,6 +158,26 @@ const disconnectAgent = async () => {
   }
 }
 
+// Enviar mensaje de prueba
+const sendTestMessage = async () => {
+  try {
+    addLog('📤 Enviando mensaje de prueba...')
+    
+    if (echoAgent) {
+      const success = await echoAgent.sendTestMessage('Hola! Soy el Echo Agent de LiveKit 🎯')
+      
+      if (success) {
+        addLog('✅ Mensaje enviado exitosamente')
+      } else {
+        addLog('❌ Error enviando mensaje')
+      }
+    }
+  } catch (error) {
+    addLog(`❌ Error: ${error.message}`)
+    console.error('Error enviando mensaje:', error)
+  }
+}
+
 // Limpiar al desmontar el componente
 onUnmounted(async () => {
   if (echoAgent && isConnected.value) {
@@ -157,11 +185,30 @@ onUnmounted(async () => {
   }
 })
 
+// Escuchar actualizaciones del room
+const handleRoomUpdate = (event) => {
+  const roomInfo = event.detail
+  roomInfo.value = roomInfo
+  addLog(`📊 Room actualizado: ${roomInfo.name} (${roomInfo.participants} participantes)`)
+}
+
 // Log inicial
 onMounted(() => {
   addLog('🎯 LiveKit Echo Agent Test inicializado')
   addLog('📡 URL: https://lkit.showtimeprop.com')
   addLog('🔑 API Key configurada')
+  
+  // Escuchar eventos de actualización del room
+  window.addEventListener('livekit-room-update', handleRoomUpdate)
+})
+
+// Limpiar listeners
+onUnmounted(async () => {
+  window.removeEventListener('livekit-room-update', handleRoomUpdate)
+  
+  if (echoAgent && isConnected.value) {
+    await disconnectAgent()
+  }
 })
 </script>
 
@@ -264,6 +311,15 @@ h2 {
 
 .btn-secondary:hover:not(:disabled) {
   background: #4b5563;
+}
+
+.btn-success {
+  background: #10b981;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #059669;
 }
 
 .info-panel, .logs-panel {

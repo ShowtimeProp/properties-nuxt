@@ -43,22 +43,35 @@ class EchoAgent {
     // Escuchar cuando se conecta al room
     this.room.on(RoomEvent.Connected, () => {
       console.log('🎯 Echo Agent conectado al room:', this.room.name);
+      console.log('📊 Información del room:', {
+        name: this.room.name,
+        participants: this.room.participants.size,
+        localParticipant: this.room.localParticipant.identity
+      });
+      
+      // Emitir evento personalizado para actualizar la UI
+      this.emitRoomUpdate();
     });
 
     // Escuchar cuando se desconecta
     this.room.on(RoomEvent.Disconnected, (reason) => {
       console.log('❌ Echo Agent desconectado:', reason);
+      this.emitRoomUpdate();
     });
 
     // Escuchar cuando llega un participante
     this.room.on(RoomEvent.ParticipantConnected, (participant) => {
       console.log('👤 Participante conectado:', participant.identity);
+      console.log('📊 Total participantes:', this.room.participants.size);
       this.setupParticipantListeners(participant);
+      this.emitRoomUpdate();
     });
 
     // Escuchar cuando se va un participante
     this.room.on(RoomEvent.ParticipantDisconnected, (participant) => {
       console.log('👋 Participante desconectado:', participant.identity);
+      console.log('📊 Total participantes:', this.room.participants.size);
+      this.emitRoomUpdate();
     });
 
     // Escuchar cuando llega un track de audio
@@ -73,6 +86,31 @@ class EchoAgent {
         
         // Simular "echo" - en un agente real aquí procesarías el audio
         console.log('🔄 Echo: Reproduciendo audio de', participant.identity);
+      }
+    });
+
+    // Escuchar cuando llega un track de video
+    this.room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      if (track.kind === Track.Kind.Video) {
+        console.log('📹 Track de video recibido de:', participant.identity);
+        const videoElement = track.attach();
+        document.body.appendChild(videoElement);
+        videoElement.play();
+      }
+    });
+
+    // Escuchar mensajes de datos
+    this.room.on(RoomEvent.DataReceived, (payload, participant) => {
+      console.log('📨 Mensaje recibido de:', participant.identity, payload);
+      
+      // Responder con echo
+      if (participant && participant !== this.room.localParticipant) {
+        const echoMessage = `Echo: ${payload}`;
+        this.room.localParticipant.publishData(
+          new TextEncoder().encode(echoMessage),
+          { reliable: true }
+        );
+        console.log('🔄 Echo enviado:', echoMessage);
       }
     });
   }
@@ -121,13 +159,46 @@ class EchoAgent {
     }
   }
 
+  // Emitir actualización del room para la UI
+  emitRoomUpdate() {
+    const roomInfo = this.getRoomInfo();
+    
+    // Emitir evento personalizado
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('livekit-room-update', {
+        detail: roomInfo
+      }));
+    }
+  }
+
   // Obtener información del room
   getRoomInfo() {
     return {
-      name: this.room.name,
-      participants: this.room.participants.size,
-      isConnected: this.room.state === 'connected'
+      name: this.room.name || 'N/A',
+      participants: this.room.participants ? this.room.participants.size : 0,
+      isConnected: this.room.state === 'connected',
+      localParticipant: this.room.localParticipant ? this.room.localParticipant.identity : 'N/A'
     };
+  }
+
+  // Enviar mensaje de prueba
+  async sendTestMessage(message = 'Hola desde Echo Agent!') {
+    try {
+      if (this.room.state === 'connected') {
+        await this.room.localParticipant.publishData(
+          new TextEncoder().encode(message),
+          { reliable: true }
+        );
+        console.log('📤 Mensaje enviado:', message);
+        return true;
+      } else {
+        console.log('❌ No conectado, no se puede enviar mensaje');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error enviando mensaje:', error);
+      return false;
+    }
   }
 }
 
