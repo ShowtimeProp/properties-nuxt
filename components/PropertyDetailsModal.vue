@@ -338,8 +338,7 @@ const fetchProperty = async () => {
 // Get image URL
 const getImageUrl = (index) => {
   if (!property.value?.images || !property.value.images[index]) return ''
-  const config = useRuntimeConfig()
-  const backendUrl = config.public.apiBaseUrl || 'http://212.85.20.219:8000'
+  const backendUrl = 'https://fapi.showtimeprop.com'
   return `${backendUrl}/properties/images/${props.propertyId}/${index}`
 }
 
