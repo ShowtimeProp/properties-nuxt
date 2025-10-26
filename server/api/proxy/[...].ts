@@ -4,6 +4,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   
   console.log('🔍 Proxy debug:', { url, query })
+  console.log('🔍 URL completa recibida:', event.node.req.url)
   
   // Construir la URL del backend (usar la URL original que funciona)
   // Asegurar que la URL tenga el path completo
