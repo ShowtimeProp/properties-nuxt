@@ -32,18 +32,22 @@ async function getTokenFromBackend(roomName, participantName) {
   }
 }
 
-// Función para buscar propiedades en Qdrant
+// Función para buscar propiedades en Qdrant usando búsqueda semántica
 async function searchProperties(query) {
   try {
-    console.log('🔍 Buscando propiedades en Qdrant:', query);
+    console.log('🔍 Buscando propiedades en Qdrant con búsqueda semántica:', query);
     
-    // Llamar al backend para buscar propiedades reales
-    const response = await fetch('/api/properties/search', {
+    // Llamar al endpoint real de FastAPI que usa OpenAI embeddings
+    const response = await fetch('https://fapi.showtimeprop.com/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ query })
+      body: JSON.stringify({
+        query: query,
+        filters: {},
+        top_k: 5
+      })
     });
     
     if (!response.ok) {
@@ -51,9 +55,9 @@ async function searchProperties(query) {
     }
     
     const data = await response.json();
-    console.log(`✅ Encontradas ${data.properties?.length || 0} propiedades`);
+    console.log(`✅ Encontradas ${data?.length || 0} propiedades con búsqueda semántica`);
     
-    return data.properties || [];
+    return data || [];
   } catch (error) {
     console.error('❌ Error buscando propiedades:', error);
     return [];
