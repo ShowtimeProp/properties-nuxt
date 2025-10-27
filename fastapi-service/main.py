@@ -50,14 +50,41 @@ def get_settings():
     print("✅ DEBUG - All required environment variables found!")
     return settings
 
-# Inicializar settings CON valores
-settings = get_settings()
+# Declarar variables globales que se inicializarán en @app.on_event("startup")
+settings = {}
+qdrant_cli = None
+openai_cli = None
+supabase_cli = None
 
 app = FastAPI(
     title="Real Estate API",
     description="API to search and retrieve property data from Qdrant.",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize clients when the app starts."""
+    global settings, qdrant_cli, openai_cli, supabase_cli
+    print("🚀 Starting FastAPI application...")
+    settings = get_settings()
+    
+    print("🔧 Initializing Qdrant client...")
+    qdrant_cli = QdrantClient(
+        url=settings["qdrant_host"],
+        api_key=(settings["qdrant_api_key"] or None)
+    )
+    
+    print("🔧 Initializing OpenAI client...")
+    openai_cli = OpenAI(api_key=settings["openai_api_key"])
+    
+    print("🔧 Initializing Supabase client...")
+    supabase_cli = create_client(settings["supabase_url"], settings["supabase_key"])
+    
+    print(f"✅ Connecting to collection: {settings['collection_name']}")
+    qdrant_cli.get_collection(collection_name=settings["collection_name"])
+    
+    print("✅ All clients initialized successfully!")
 
 # --- Add CORS Middleware ---
 # Define the specific origins that are allowed to make requests.
@@ -152,19 +179,8 @@ async def tenant_middleware(request: Request, call_next):
     return response
 
 
-# Initialize clients
-try:
-    # Pass api_key only if present
-    qdrant_cli = QdrantClient(
-        url=settings["qdrant_host"],
-        api_key=(settings["qdrant_api_key"] or None)
-    )
-    openai_cli = OpenAI(api_key=settings["openai_api_key"])
-    supabase_cli: Client = create_client(settings["supabase_url"], settings["supabase_key"])
-    
-    qdrant_cli.get_collection(collection_name=settings["collection_name"])
-except Exception as e:
-    raise RuntimeError(f"Failed to initialize clients or connect to services: {e}")
+# Los clientes se inicializarán en @app.on_event("startup")
+# No inicializar aquí para evitar errores antes de que se carguen las variables
 
 
 # --- Pydantic Models ---
