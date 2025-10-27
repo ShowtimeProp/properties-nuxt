@@ -16,6 +16,14 @@ from supabase import create_client, Client
 def get_settings():
     """Loads settings from environment variables. Uses lru_cache for performance."""
     load_dotenv()
+    
+    # DEBUG: Print all relevant environment variables
+    print("🔍 DEBUG - Checking environment variables:")
+    print(f"  QDRANT_HOST: {os.getenv('QDRANT_HOST')}")
+    print(f"  QDRANT_URL: {os.getenv('QDRANT_URL')}")
+    print(f"  SUPABASE_URL: {os.getenv('SUPABASE_URL')}")
+    print(f"  COLLECTION_NAME: {os.getenv('COLLECTION_NAME')}")
+    
     settings = {
         "qdrant_host": os.getenv("QDRANT_HOST") or os.getenv("QDRANT_URL"),
         # Optional: allow empty if Qdrant instance doesn't require auth
@@ -26,13 +34,23 @@ def get_settings():
         "supabase_url": os.getenv("SUPABASE_URL"),
         "supabase_key": os.getenv("SUPABASE_KEY")
     }
-    # Only enforce required keys
+    # Only enforce required keys - make more flexible for debugging
     required_keys = ["qdrant_host", "collection_name", "supabase_url", "supabase_key"]
+    missing_keys = []
     for key in required_keys:
         if not settings.get(key):
-            raise RuntimeError(f"{key.upper()} is not set in environment variables.")
+            missing_keys.append(key.upper())
+    
+    # If any required keys are missing, print debug info
+    if missing_keys:
+        print(f"🔍 DEBUG - Missing environment variables: {missing_keys}")
+        print(f"🔍 DEBUG - All settings: {settings}")
+        raise RuntimeError(f"{missing_keys[0]} is not set in environment variables.")
+    
+    print("✅ DEBUG - All required environment variables found!")
     return settings
 
+# Inicializar settings CON valores
 settings = get_settings()
 
 app = FastAPI(
