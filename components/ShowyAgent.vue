@@ -2,14 +2,16 @@
   <ClientOnly>
     <div>
       <!-- Overlay centrado al inicio -->
-      <div v-if="mode==='center'" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/20">
-        <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-[92vw] max-w-[520px] text-center">
+      <div v-if="mode==='center'" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/30">
+        <div class="relative bg-white rounded-xl shadow-2xl p-5 w-[92vw] max-w-[440px] max-h-[80vh] text-center overflow-hidden">
           <div class="mx-auto mb-4 w-28 h-28 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center animate-pulse">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-14 h-14 text-white"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
           </div>
-          <p class="font-bold text-lg mb-2">Hola, soy Showy. ¿Qué estás buscando?</p>
-          <p class="text-sm text-gray-600 mb-4">Activa tu micrófono para hablar conmigo y te mostraré propiedades ideales.</p>
-          <div class="flex gap-3 justify-center">
+          <div class="px-1 overflow-auto" style="max-height: calc(80vh - 220px)">
+            <p class="font-bold text-lg mb-2">Hola, soy Showy. ¿Qué estás buscando?</p>
+            <p class="text-sm text-gray-600">Activa tu micrófono para hablar conmigo y te mostraré propiedades ideales.</p>
+          </div>
+          <div class="mt-4 flex gap-3 justify-center">
             <button @click="connect" :disabled="connecting" class="px-4 py-2 rounded-lg text-white font-semibold shadow bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60">
               {{ connecting ? 'Conectando…' : 'Activar micrófono' }}
             </button>
