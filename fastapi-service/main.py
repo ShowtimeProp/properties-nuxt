@@ -237,6 +237,124 @@ def get_all_properties(request: Request):
         raise HTTPException(status_code=500, detail="Could not retrieve properties from the database.")
 
 
+@app.get("/properties/geojson", summary="Get Properties by Viewport (BBOX)")
+def get_properties_geojson(
+    request: Request,
+    bbox: str = Query(..., description="Bounding box: minLon,minLat,maxLon,maxLat"),
+    zoom: int = Query(12, description="Current map zoom level"),
+    limit: int = Query(1000, description="Max properties to return")
+):
+    """
+    Endpoint optimizado para cargar propiedades solo en el viewport visible.
+    Retorna GeoJSON con las propiedades dentro del bounding box especificado.
+    """
+    tenant_id = getattr(request.state, "tenant_id", None)
+    
+    try:
+        # Parsear bbox
+        minx, miny, maxx, maxy = map(float, bbox.split(","))
+        
+        # Ajustar límite según zoom (menos propiedades en zooms bajos)
+        if zoom < 10:
+            limit = min(limit, 300)
+        elif zoom < 12:
+            limit = min(limit, 700)
+        
+        print(f"Fetching properties in BBOX: [{minx}, {miny}, {maxx}, {maxy}] at zoom {zoom} for tenant {tenant_id}")
+        print(f"Collection name: {settings['collection_name']}")
+        
+        # Obtener propiedades de Qdrant
+        results, _ = qdrant_cli.scroll(
+            collection_name=settings["collection_name"],
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+            scroll_filter=None
+        )
+        
+        print(f"Qdrant returned {len(results)} properties")
+        
+        # Filtrar propiedades dentro del bbox
+        features = []
+        print(f"Processing {len(results)} properties from Qdrant...")
+        print(f"BBOX: [{minx}, {miny}, {maxx}, {maxy}]")
+        
+        for record in results:
+            try:
+                payload = record.payload
+                
+                # Obtener coordenadas (soportar múltiples formatos)
+                lat = payload.get('lat') or payload.get('latitude') or payload.get('latitud')
+                lng = payload.get('lng') or payload.get('longitude') or payload.get('longitud') or payload.get('lon')
+                
+                # Si no hay coordenadas directas, intentar parsear location
+                if not lat or not lng:
+                    location = payload.get('location')
+                    if location and isinstance(location, str) and 'POINT' in location:
+                        import re
+                        match = re.search(r'POINT\s*\(\s*(-?[0-9.]+)\s+(-?[0-9.]+)\s*\)', location)
+                        if match:
+                            lng = float(match.group(1))
+                            lat = float(match.group(2))
+            except Exception as e:
+                print(f"Error processing property: {e}")
+                continue
+            
+            # Convertir a float si es necesario
+            try:
+                lat = float(lat) if lat else None
+                lng = float(lng) if lng else None
+            except (ValueError, TypeError):
+                continue
+            
+            # Debug: mostrar coordenadas de cada propiedad
+            print(f"Property {payload.get('id')}: lat={lat}, lng={lng}")
+            
+            # Verificar que esté dentro del bbox
+            if lat and lng and minx <= lng <= maxx and miny <= lat <= maxy:
+                # Construir feature GeoJSON
+                feature = {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [lng, lat]
+                    },
+                    "properties": {
+                        **payload,
+                        "images": payload.get('images', [])
+                    }
+                }
+                features.append(feature)
+        
+        # Construir GeoJSON
+        geojson = {
+            "type": "FeatureCollection",
+            "features": features
+        }
+        
+        print(f"Returning {len(features)} properties in viewport")
+        
+        # Si no hay propiedades, devolver GeoJSON vacío en lugar de error
+        if len(features) == 0:
+            print("No properties found in bbox, returning empty GeoJSON")
+            print("DEBUG: This should return empty GeoJSON, not error")
+        
+        return Response(
+            content=json.dumps(geojson),
+            media_type="application/geo+json",
+            headers={
+                "Cache-Control": "public, max-age=30",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid bbox format: {str(e)}")
+    except Exception as e:
+        print(f"Error in geojson endpoint: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve properties.")
+
+
 @app.get("/properties/{property_id}", summary="Get Property Details")
 def get_property_details(property_id: str, request: Request):
     """Get detailed information for a specific property by ID."""
@@ -318,144 +436,6 @@ def get_property_details(property_id: str, request: Request):
     except Exception as e:
         print(f"Error getting property details: {e}")
         raise HTTPException(status_code=500, detail="Could not retrieve property details.")
-
-
-@app.get("/properties/geojson", summary="Get Properties by Viewport (BBOX)")
-def get_properties_geojson(
-    request: Request,
-    bbox: str = Query(..., description="Bounding box: minLon,minLat,maxLon,maxLat"),
-    zoom: int = Query(12, description="Current map zoom level"),
-    limit: int = Query(1000, description="Max properties to return")
-):
-    """
-    Endpoint optimizado para cargar propiedades solo en el viewport visible.
-    Retorna GeoJSON con las propiedades dentro del bounding box especificado.
-    """
-    tenant_id = getattr(request.state, "tenant_id", None)
-    
-    try:
-        # Parsear bbox
-        minx, miny, maxx, maxy = map(float, bbox.split(","))
-        
-        # Ajustar límite según zoom (menos propiedades en zooms bajos)
-        if zoom < 10:
-            limit = min(limit, 300)
-        elif zoom < 12:
-            limit = min(limit, 700)
-        
-        print(f"Fetching properties in BBOX: [{minx}, {miny}, {maxx}, {maxy}] at zoom {zoom} for tenant {tenant_id}")
-        print(f"Collection name: {settings['collection_name']}")
-        
-        # Obtener propiedades de Qdrant
-        results, _ = qdrant_cli.scroll(
-            collection_name=settings["collection_name"],
-            limit=limit,
-            with_payload=True,
-            with_vectors=False,
-            scroll_filter=None
-        )
-        
-        print(f"Qdrant returned {len(results)} properties")
-        
-        # Filtrar propiedades dentro del bbox
-        features = []
-        print(f"Processing {len(results)} properties from Qdrant...")
-        print(f"BBOX: [{minx}, {miny}, {maxx}, {maxy}]")
-        
-        for record in results:
-            try:
-                payload = record.payload
-                
-                # Obtener coordenadas (soportar múltiples formatos)
-                lat = payload.get('lat') or payload.get('latitude') or payload.get('latitud')
-                lng = payload.get('lng') or payload.get('longitude') or payload.get('longitud') or payload.get('lon')
-                
-                # Si no hay coordenadas directas, intentar parsear location
-                if not lat or not lng:
-                    location = payload.get('location')
-                    if location and isinstance(location, str) and 'POINT' in location:
-                        import re
-                        match = re.search(r'POINT\s*\(\s*(-?[0-9.]+)\s+(-?[0-9.]+)\s*\)', location)
-                        if match:
-                            lng = float(match.group(1))
-                            lat = float(match.group(2))
-            except Exception as e:
-                print(f"Error processing property: {e}")
-                continue
-            
-            # Convertir a float si es necesario
-            try:
-                lat = float(lat) if lat else None
-                lng = float(lng) if lng else None
-            except (ValueError, TypeError):
-                continue
-            
-            # Debug: mostrar coordenadas de cada propiedad
-            print(f"Property {payload.get('id')}: lat={lat}, lng={lng}")
-            
-            # Verificar que esté dentro del bbox
-            if lat and lng and minx <= lng <= maxx and miny <= lat <= maxy:
-                print(f"Property {payload.get('id')} is INSIDE bbox")
-                feature = {
-                    "type": "Feature",
-                    "id": payload.get('id'),
-                    "geometry": {
-                        "type": "Point",
-                        "coordinates": [lng, lat]
-                    },
-                    "properties": {
-                        "id": payload.get('id'),
-                        "title": payload.get('title', ''),
-                        "price": payload.get('price'),
-                        "address": payload.get('address', ''),
-                        "property_type": payload.get('property_type', ''),
-                        "tipo_operacion": payload.get('tipo_operacion', ''),
-                        "bedrooms": payload.get('bedrooms'),
-                        "bathrooms": payload.get('bathrooms'),
-                        "area_m2": payload.get('area_m2'),
-                        "total_surface": payload.get('total_surface'),
-                        "garage_count": payload.get('garage_count'),
-                        "expenses": payload.get('expenses'),
-                        "zone": payload.get('zone', ''),
-                        "localidad": payload.get('localidad', ''),
-                        "realty": payload.get('realty', ''),
-                        "price_per_m2": payload.get('price_per_m2'),
-                        "images": payload.get('images_array', []) or payload.get('images', []),
-                        "images_array": payload.get('images_array', []),
-                        "badge": payload.get('badge'),
-                        "hasVirtualTour": payload.get('hasVirtualTour', False),
-                        "isNew": payload.get('isNew', False)
-                    }
-                }
-                features.append(feature)
-        
-        # Construir GeoJSON
-        geojson = {
-            "type": "FeatureCollection",
-            "features": features
-        }
-        
-        print(f"Returning {len(features)} properties in viewport")
-        
-        # Si no hay propiedades, devolver GeoJSON vacío en lugar de error
-        if len(features) == 0:
-            print("No properties found in bbox, returning empty GeoJSON")
-            print("DEBUG: This should return empty GeoJSON, not error")
-        
-        return Response(
-            content=json.dumps(geojson),
-            media_type="application/geo+json",
-            headers={
-                "Cache-Control": "public, max-age=30",
-                "Access-Control-Allow-Origin": "*"
-            }
-        )
-        
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid bbox format: {str(e)}")
-    except Exception as e:
-        print(f"Error in geojson endpoint: {e}")
-        raise HTTPException(status_code=500, detail="Could not retrieve properties.")
 
 
 @app.post("/search", summary="Semantic Property Search")
@@ -1218,6 +1198,144 @@ async def get_email_templates(realtor_id: str, request: Request):
     except Exception as e:
         print(f"Error retrieving email templates: {e}")
         raise HTTPException(status_code=500, detail="Could not retrieve email templates.")
+
+# =====================================================
+# CRM ENDPOINTS FOR SHOWY CONVERSATIONS
+# =====================================================
+
+@app.post("/crm/conversations", summary="Save Conversation to CRM")
+async def save_conversation_to_crm(request: Request, conversation_data: dict):
+    """Save conversation data to Supabase CRM"""
+    try:
+        tenant_id = getattr(request.state, "tenant_id", None)
+        
+        # Preparar datos para Supabase
+        conversation_record = {
+            "realtor_id": tenant_id,
+            "session_id": conversation_data.get("session_id"),
+            "user_name": conversation_data.get("user_name"),
+            "transcript": conversation_data.get("transcript", ""),
+            "summary": conversation_data.get("summary", ""),
+            "property_preferences": conversation_data.get("property_preferences", {}),
+            "lead_score": conversation_data.get("lead_score", 0),
+            "language": conversation_data.get("language", "es"),
+            "status": conversation_data.get("status", "completed")
+        }
+        
+        # Insertar en Supabase
+        result = supabase_cli.table("conversations").insert(conversation_record).execute()
+        
+        if result.data:
+            conversation_id = result.data[0]["id"]
+            
+            # Si hay información de contacto, crear lead
+            if conversation_data.get("contact_info"):
+                lead_record = {
+                    "conversation_id": conversation_id,
+                    "realtor_id": tenant_id,
+                    "contact_info": conversation_data.get("contact_info"),
+                    "property_preferences": conversation_data.get("property_preferences", {}),
+                    "urgency": conversation_data.get("urgency"),
+                    "purpose": conversation_data.get("purpose"),
+                    "transaction_type": conversation_data.get("transaction_type"),
+                    "condition_preference": conversation_data.get("condition_preference"),
+                    "lead_score": conversation_data.get("lead_score", 0),
+                    "status": "new",
+                    "next_action": conversation_data.get("next_action", "Contactar cliente")
+                }
+                
+                lead_result = supabase_cli.table("leads").insert(lead_record).execute()
+                
+                return {
+                    "conversation_id": conversation_id,
+                    "lead_id": lead_result.data[0]["id"] if lead_result.data else None,
+                    "message": "Conversación y lead guardados exitosamente"
+                }
+            
+            return {
+                "conversation_id": conversation_id,
+                "message": "Conversación guardada exitosamente"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Error guardando conversación")
+            
+    except Exception as e:
+        print(f"Error guardando conversación: {e}")
+        raise HTTPException(status_code=500, detail="Could not save conversation to CRM")
+
+@app.post("/crm/leads", summary="Create Lead from Conversation")
+async def create_lead_from_conversation(request: Request, lead_data: dict):
+    """Create a lead from conversation data"""
+    try:
+        tenant_id = getattr(request.state, "tenant_id", None)
+        
+        lead_record = {
+            "conversation_id": lead_data.get("conversation_id"),
+            "realtor_id": tenant_id,
+            "contact_info": lead_data.get("contact_info"),
+            "property_preferences": lead_data.get("property_preferences", {}),
+            "urgency": lead_data.get("urgency"),
+            "purpose": lead_data.get("purpose"),
+            "transaction_type": lead_data.get("transaction_type"),
+            "condition_preference": lead_data.get("condition_preference"),
+            "lead_score": lead_data.get("lead_score", 0),
+            "status": "new",
+            "next_action": lead_data.get("next_action", "Contactar cliente")
+        }
+        
+        result = supabase_cli.table("leads").insert(lead_record).execute()
+        
+        if result.data:
+            return {
+                "lead_id": result.data[0]["id"],
+                "message": "Lead creado exitosamente"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Error creando lead")
+            
+    except Exception as e:
+        print(f"Error creando lead: {e}")
+        raise HTTPException(status_code=500, detail="Could not create lead")
+
+@app.get("/crm/conversations/{tenant_id}", summary="Get Conversations for Tenant")
+async def get_conversations_for_tenant(tenant_id: str, request: Request):
+    """Get all conversations for a specific tenant"""
+    try:
+        # Verificar que el tenant_id coincida con el del request
+        request_tenant_id = getattr(request.state, "tenant_id", None)
+        if request_tenant_id != tenant_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        result = supabase_cli.table("conversations").select("*").eq("realtor_id", tenant_id).order("created_at", desc=True).execute()
+        
+        return {
+            "conversations": result.data,
+            "total": len(result.data)
+        }
+        
+    except Exception as e:
+        print(f"Error obteniendo conversaciones: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve conversations")
+
+@app.get("/crm/leads/{tenant_id}", summary="Get Leads for Tenant")
+async def get_leads_for_tenant(tenant_id: str, request: Request):
+    """Get all leads for a specific tenant"""
+    try:
+        # Verificar que el tenant_id coincida con el del request
+        request_tenant_id = getattr(request.state, "tenant_id", None)
+        if request_tenant_id != tenant_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        result = supabase_cli.table("leads").select("*").eq("realtor_id", tenant_id).order("created_at", desc=True).execute()
+        
+        return {
+            "leads": result.data,
+            "total": len(result.data)
+        }
+        
+    except Exception as e:
+        print(f"Error obteniendo leads: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve leads")
 
 # =====================================================
 # LIVEKIT ENDPOINTS

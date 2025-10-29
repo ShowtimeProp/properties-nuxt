@@ -2,17 +2,17 @@ version: "3.8"
 
 services:
   fastapi-re:
-    image: showtimeprop/fastapi-service:debug-v3
+    image: showtimeprop/fastapi-service:debug-v6
     container_name: fastapi-service
     environment:
       QDRANT_HOST: http://212.85.20.219:6333
       QDRANT_API_KEY: be1414ca9972e6bd0c429aba3e379cd9
-      OPENAI_API_KEY: sk-proj-ETHyJGZVLiWz4IupaQ05nDgYht-WVF5_7398-oliie2Jb7xQn-M6SmhoRv_eT-zYYPLCACRgVIT3B1bkFJ4UD3EeTcOhqGETJ60eesATNwQtk08Lp-s9nLE4qeskx972Sdt1xF
+      OPENAI_API_KEY: PLACEHOLDER_OPENAI_KEY
       SUPABASE_URL: https://ugqqlnlmubedxpsepvgz.supabase.co
       SUPABASE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVncXFsbmxtdWJlZHhwc2Vwdmd6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTM0MjA0NiwiZXhwIjoyMDY2OTE4MDQ2fQ.k5j5lMVgYObl6e2NznD5KRSQ0Fg4P5KcmOTpymZqbY
       COLLECTION_NAME: propertiesV3
-    ports:
-      - "8000:80"
+    # ports:
+    #   - "8000:80"
     deploy:
       mode: replicated
       replicas: 1
@@ -21,11 +21,11 @@ services:
         delay: 5s
         max_attempts: 3
       labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.fastapi-re.rule=Host(`fapi.showtimeprop.com`) || Host(`bnicolini.showtimeprop.com`)"
-        - "traefik.http.routers.fastapi-re.entrypoints=websecure"
-        - "traefik.http.routers.fastapi-re.tls.certresolver=le"
-        - "traefik.http.services.fastapi-re.loadbalancer.server.port=80"
+        - traefik.enable=true
+        - traefik.http.routers.fastapi-re.rule=Host(`fapi.showtimeprop.com`) || Host(`bnicolini.showtimeprop.com`)
+        - traefik.http.routers.fastapi-re.entrypoints=websecure
+        - traefik.http.routers.fastapi-re.tls.certresolver=le
+        - traefik.http.services.fastapi-re.loadbalancer.server.port=80
     networks:
       - traefik_public
       - general_network
@@ -35,5 +35,3 @@ networks:
     external: true
   general_network:
     external: true
-
-

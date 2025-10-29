@@ -146,6 +146,23 @@ export const useLiveKit = () => {
     room.value.on('trackSubscribed', (track, publication, participant) => {
       console.log('Track suscrito:', track.kind, 'de', participant.identity)
     })
+
+    // Evento para recibir mensajes de datos del agente
+    room.value.on('dataReceived', (payload, participant) => {
+      try {
+        const message = new TextDecoder().decode(payload)
+        console.log('📨 Mensaje recibido del agente:', message)
+        
+        // Emitir evento personalizado para que el componente pueda escucharlo
+        if (process.client) {
+          window.dispatchEvent(new CustomEvent('livekit-agent-message', {
+            detail: { message, participant: participant.identity }
+          }))
+        }
+      } catch (error) {
+        console.error('❌ Error procesando mensaje del agente:', error)
+      }
+    })
   }
 
   // Función para alternar micrófono
@@ -166,7 +183,7 @@ export const useLiveKit = () => {
   }
 
   // Función para desconectar
-  const disconnect = async () => {
+  const disconnectFromRoom = async () => {
     try {
       if (room.value) {
         await room.value.disconnect()
@@ -253,7 +270,7 @@ export const useLiveKit = () => {
 
     // Acciones
     connectToRoom,
-    disconnect,
+    disconnectFromRoom,
     toggleMicrophone,
     sendMessageToAgent,
     checkBrowserCompatibility,

@@ -1,30 +1,35 @@
 {
-	"mcpServers": {
-		"task-master-ai": {
-			"command": "npx",
-			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
-			"env": {
-				"ANTHROPIC_API_KEY": "PLACEHOLDER_ANTHROPIC_KEY",
-				"PERPLEXITY_API_KEY": "PLACEHOLDER_PERPLEXITY_KEY",
-				"OPENAI_API_KEY": "PLACEHOLDER_OPENAI_KEY",
-				"GOOGLE_API_KEY": "PLACEHOLDER_GOOGLE_KEY",
-				"XAI_API_KEY": "PLACEHOLDER_XAI_KEY",
-				"OPENROUTER_API_KEY": "PLACEHOLDER_OPENROUTER_KEY",
-				"MISTRAL_API_KEY": "PLACEHOLDER_MISTRAL_KEY",
-				"AZURE_OPENAI_API_KEY": "PLACEHOLDER_AZURE_KEY",
-				"OLLAMA_API_KEY": "PLACEHOLDER_OLLAMA_KEY"
-			}
-		},
-		"supabase": {
-			"command": "supabase-mcp-server-supabase",
-			"args": [
-				"--url", "PLACEHOLDER_SUPABASE_URL",
-				"--anon-key", "PLACEHOLDER_SUPABASE_ANON_KEY"
-			],
-			"env": {
-				"SUPABASE_URL": "PLACEHOLDER_SUPABASE_URL",
-				"SUPABASE_ANON_KEY": "PLACEHOLDER_SUPABASE_ANON_KEY"
-			}
-		}
-	}
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package=task-master-ai",
+        "task-master-ai"
+      ],
+      "env": {
+        "ANTHROPIC_API_KEY": "PLACEHOLDER_ANTHROPIC_KEY",
+        "OPENAI_API_KEY": "PLACEHOLDER_OPENAI_KEY",
+        "PERPLEXITY_API_KEY": "PLACEHOLDER_PERPLEXITY_KEY",
+        "GOOGLE_API_KEY": "PLACEHOLDER_GOOGLE_KEY",
+        "XAI_API_KEY": "PLACEHOLDER_XAI_KEY",
+        "OPENROUTER_API_KEY": "PLACEHOLDER_OPENROUTER_KEY",
+        "MISTRAL_API_KEY": "PLACEHOLDER_MISTRAL_KEY",
+        "AZURE_OPENAI_API_KEY": "PLACEHOLDER_AZURE_KEY",
+        "OLLAMA_API_KEY": "PLACEHOLDER_OLLAMA_KEY"
+      }
+    },
+    "supabase": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-supabase"],
+      "env": {
+        "SUPABASE_URL": "https://ugqqlnlmubedxpsepvgz.supabase.co",
+        "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVncXFsbmxtdWJlZHhwc2Vwdmd6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTM0MjA0NiwiZXhwIjoyMDY2OTE4MDQ2fQ.k5j5lMVgYObl6e2NznD5KRSQ0Fg4P5KcmOTpymZqbY"
+      }
+    },
+    "livekit-docs": {
+      "url": "https://docs.livekit.io/mcp",
+      "transport": "http"
+    }
+  }
 }
