@@ -8,7 +8,6 @@
         <TopNavBar />
         <PropertyMap />
         <LoginModal />
-        <ChatBot />
       </div>
     </ClientOnly>
   </div>
@@ -18,7 +17,7 @@
 import TopNavBar from '~/components/TopNavBar.vue'
 import PropertyMap from '~/components/PropertyMap.vue'
 import LoginModal from '~/components/LoginModal.vue'
-import ChatBot from '~/components/ChatBot.vue'
+// Ocultamos el ChatBot antiguo; será reemplazado por LiveKit
 import DashboardRedirect from '~/components/DashboardRedirect.vue'
 
 // Check if we're on the dashboard subdomain

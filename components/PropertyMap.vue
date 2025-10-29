@@ -621,13 +621,15 @@ onMounted(async () => {
       console.log('🗺️ Mapa cargado y listo');
       map.resize();
       
-      // Cargar propiedades del viewport inicial
-      console.log('🚀 Iniciando carga de propiedades...');
-      fetchViewportProperties();
-      
+      // NO cargar propiedades al iniciar. Esperar intención del usuario
+      console.log('⏸️ Inicio sin cargar propiedades hasta que haya intención/búsqueda.');
+
       // Eventos del mapa
       map.on('moveend', () => {
-        debouncedFetchViewport(); // Cargar propiedades cuando se mueve el mapa
+        // Solo cargar si existe intención/búsqueda activa
+        if (searchStore.searchQuery) {
+          debouncedFetchViewport();
+        }
     updateFilteredProperties();
       });
       
@@ -641,6 +643,22 @@ onMounted(async () => {
       });
     });
   }
+});
+
+// Escuchar intención/búsqueda para disparar la primera carga
+watch(() => searchStore.searchQuery, (q) => {
+  if (!map) return;
+  if (!q) {
+    // Si se limpia la búsqueda, limpiar propiedades del mapa
+    properties.value = [];
+    filteredProperties.value = [];
+    Object.values(markerElements.value).forEach(el => el.remove());
+    markerElements.value = {};
+    return;
+  }
+  // Con una query presente, hacer primera carga para el viewport actual
+  console.log('🗣️ Intención detectada. Cargando propiedades del viewport…', q);
+  fetchViewportProperties();
 });
 
 watch(properties, (newProperties) => {

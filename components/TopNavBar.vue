@@ -1,48 +1,18 @@
 <template>
-  <nav class="fixed top-0 left-0 w-full z-50 bg-black shadow-lg hidden md:block" @mouseenter="showTopMenu = true" @mouseleave="maybeHideMenu">
-    <!-- Primer renglón: Logo y menú, colapsable -->
-    <div class="flex justify-between items-center w-full px-6 pt-3">
-    </div>
-    <transition name="slide-down">
-      <div v-if="showTopMenu" class="flex flex-col items-center w-full bg-black mt-3">
-        <span class="text-2xl font-bold text-white tracking-tight select-none mb-1 logo-glow">Showtime Prop</span>
-        <div class="flex gap-8 text-sm font-medium text-white mb-2 items-center justify-end">
-          <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Comprar</a>
-          <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Alquilar</a>
-          <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Vender</a>
-          <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Créditos Hipotecarios</a>
-          <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Listar Tu Propiedad</a>
-          <a href="#" class="hover:text-cyan-300 hover:underline hover:underline-offset-8 transition font-bold">Blog Inmobiliario</a>
-          
-          <!-- Lógica Condicional para Botón de Sesión -->
-          <div v-if="user" class="flex items-center gap-4">
-            <span class="text-white">Bienvenido, {{ user.email?.split('@')[0] }}</span>
-            <button @click="handleLogout" class="ml-4 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-bold shadow-lg transition-colors text-sm">
-              Salir
-            </button>
-          </div>
-          <button v-else @click="handleLoginClick" class="ml-4 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg transition-colors text-sm flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9A3.75 3.75 0 1112 5.25 3.75 3.75 0 0115.75 9zM4.5 19.5a7.5 7.5 0 1115 0v.75a.75.75 0 01-.75.75h-13.5a.75.75 0 01-.75-.75v-.75z" />
-            </svg>
-            Iniciar Sesión
-          </button>
-
-          <button
-            class="ml-2 px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg hover:from-indigo-400 hover:to-cyan-300 transition-colors text-sm flex items-center gap-2"
-            @click="onSaveSearch"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2m10-6V7a2 2 0 00-2-2H7a2 2 0 00-2 2v3m12 0l-6 6-6-6" />
-            </svg>
-            Guardar Esta Búsqueda
-          </button>
-        </div>
+  <nav class="fixed top-0 left-0 w-full z-50 bg-black shadow-lg hidden md:block">
+    <div class="flex justify-end items-center w-full px-6 py-3">
+      <div v-if="user" class="flex items-center gap-4">
+        <span class="text-white">{{ user.email?.split('@')[0] }}</span>
+        <button @click="handleLogout" class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-bold shadow-lg transition-colors text-sm">
+          Salir
+        </button>
       </div>
-    </transition>
-    <!-- Segundo renglón: Buscador siempre visible -->
-    <div class="flex items-center justify-center max-w-xl mx-auto py-2 bg-black">
-      <span class="text-white text-sm font-bold mx-auto">Menú</span>
+      <button v-else @click="handleLoginClick" class="px-4 py-2 rounded-lg animated-gradient-bg text-white font-bold shadow-lg transition-colors text-sm flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9A3.75 3.75 0 1112 5.25 3.75 3.75 0 0115.75 9zM4.5 19.5a7.5 7.5 0 1115 0v.75a.75.75 0 01-.75.75h-13.5a.75.75 0 01-.75-.75v-.75z" />
+        </svg>
+        Iniciar Sesión
+      </button>
     </div>
   </nav>
   <LoginModal />
