@@ -409,6 +409,14 @@ const fetchViewportProperties = async () => {
       if (map.isStyleLoaded()) {
         addMarkersToMap();
       }
+
+      // Señal: primeros resultados cargados → para que Showy se acople abajo‑derecha
+      if (!window.__firstResultsSent && newProperties.length > 0) {
+        window.__firstResultsSent = true;
+        try {
+          window.dispatchEvent(new CustomEvent('properties:first-results', { detail: { count: newProperties.length } }));
+        } catch {}
+      }
     }
     
   } catch (e) {

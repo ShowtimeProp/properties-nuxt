@@ -8,6 +8,7 @@
         <TopNavBar />
         <PropertyMap />
         <LoginModal />
+        <ShowyAgent />
       </div>
     </ClientOnly>
   </div>
@@ -17,6 +18,7 @@
 import TopNavBar from '~/components/TopNavBar.vue'
 import PropertyMap from '~/components/PropertyMap.vue'
 import LoginModal from '~/components/LoginModal.vue'
+import ShowyAgent from '~/components/ShowyAgent.vue'
 // Ocultamos el ChatBot antiguo; será reemplazado por LiveKit
 import DashboardRedirect from '~/components/DashboardRedirect.vue'
 
