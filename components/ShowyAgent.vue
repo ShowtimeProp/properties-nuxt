@@ -2,12 +2,12 @@
   <ClientOnly>
     <div>
       <!-- Overlay centrado al inicio -->
-      <div v-if="mode==='center'" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/30">
-        <div class="relative bg-white rounded-xl shadow-2xl p-5 w-[92vw] max-w-[440px] max-h-[80vh] text-center overflow-hidden">
+      <div v-if="mode==='center'" class="fixed inset-0 z-[60] flex items-center justify-center w-full bg-black/40 px-4 py-2">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-2 sm:p-3 relative text-center">
           <div class="mx-auto mb-4 w-28 h-28 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center animate-pulse">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-14 h-14 text-white"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
           </div>
-          <div class="px-1 overflow-auto" style="max-height: calc(80vh - 220px)">
+          <div class="px-1">
             <p class="font-bold text-lg mb-2">Hola, soy Showy. ¿Qué estás buscando?</p>
             <p class="text-sm text-gray-600">Activa tu micrófono para hablar conmigo y te mostraré propiedades ideales.</p>
           </div>
