@@ -39,22 +39,25 @@
               <path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/>
             </svg>
           </div>
-          <p class="text-sm text-gray-600 mb-3" v-if="listening">Escuchando...</p>
-          <p v-else class="text-sm text-gray-600 mb-3">Haz click en el micrófono para activar</p>
+          <p class="text-sm text-gray-600 mb-3" v-if="listening && audioActivated">Escuchando...</p>
+          <p v-else-if="!audioActivated" class="text-sm text-gray-600 mb-3">Haz click en el micrófono para activar el audio</p>
+          <p v-else class="text-sm text-gray-600 mb-3">Conectado. El agente te saludará en breve.</p>
           <button @click="dismissToDock" class="text-sm text-gray-500 hover:text-gray-700">Minimizar</button>
         </div>
       </div>
 
       <!-- Dock abajo‑derecha - siempre visible cuando está en modo dock -->
-      <div v-show="mode==='dock'" class="fixed right-4 bottom-4 z-[55] pointer-events-auto">
-        <button @click="toggleExpand" class="relative w-16 h-16 rounded-full shadow-xl border bg-white overflow-hidden hover:shadow-2xl transition-all">
-          <span class="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 opacity-20 animate-ping"></span>
-          <span class="absolute inset-0 rounded-full flex items-center justify-center z-10">
-            <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-indigo-600"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-cyan-600 animate-bounce"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
-          </span>
-        </button>
-      </div>
+      <Transition name="dock">
+        <div v-if="mode==='dock'" class="fixed right-4 bottom-4 z-[55] pointer-events-auto">
+          <button @click="toggleExpand" class="relative w-16 h-16 rounded-full shadow-xl border-2 border-indigo-400 bg-white overflow-hidden hover:shadow-2xl transition-all hover:scale-110">
+            <span class="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 opacity-20 animate-ping"></span>
+            <span class="absolute inset-0 rounded-full flex items-center justify-center z-10 bg-white">
+              <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-indigo-600"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-cyan-600 animate-bounce"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
+            </span>
+          </button>
+        </div>
+      </Transition>
     </div>
   </ClientOnly>
 </template>
@@ -163,7 +166,32 @@ async function connect() {
     })
     
     await room.connect(url, token)
+    
+    // Habilitar micrófono y speaker explícitamente
     await room.localParticipant.setMicrophoneEnabled(true)
+    
+    // Habilitar audio output (speaker)
+    if (room.localParticipant.audioTrackPublications.size === 0) {
+      // Asegurar que podemos escuchar audio remoto
+      room.setE2EEEnabled(false) // Desactivar E2EE si está causando problemas
+    }
+    
+    // Suscribirse automáticamente a todos los tracks remotos cuando se publiquen
+    room.on(RoomEvent.TrackPublished, async (publication, participant) => {
+      if (participant instanceof RemoteParticipant && publication.kind === Track.Kind.Audio) {
+        await publication.setSubscribed(true)
+      }
+    })
+    
+    // También suscribirse a tracks ya publicados
+    room.on(RoomEvent.ParticipantConnected, async (participant) => {
+      if (participant instanceof RemoteParticipant) {
+        participant.audioTrackPublications.forEach(async (publication) => {
+          await publication.setSubscribed(true)
+        })
+      }
+    })
+    
     isConnected.value = true
     listening.value = true
     
@@ -209,6 +237,16 @@ async function activateAudio() {
       ctx.resume().catch(e => console.log('Error resumiendo AudioContext:', e))
     }
   })
+  
+  // Asegurar que LiveKit puede reproducir audio remoto
+  if (room) {
+    // Suscribirse a todos los tracks de audio remotos existentes
+    room.remoteParticipants.forEach(async (participant) => {
+      participant.audioTrackPublications.forEach(async (publication) => {
+        await publication.setSubscribed(true)
+      })
+    })
+  }
   
   console.log('Audio activado por el usuario')
 }
@@ -351,6 +389,28 @@ onBeforeUnmount(() => {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
+}
+
+/* Transición del dock */
+.dock-enter-active,
+.dock-leave-active {
+  transition: all 0.3s ease;
+}
+
+.dock-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.8);
+}
+
+.dock-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.8);
+}
+
+.dock-enter-to,
+.dock-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 </style>
 
