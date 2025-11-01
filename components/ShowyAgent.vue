@@ -46,8 +46,8 @@
         </div>
       </div>
 
-      <!-- Dock abajo‑derecha - siempre visible cuando está en modo dock -->
-      <div v-if="mode==='dock'" ref="dockRef" class="showy-dock fixed right-4 bottom-4 z-[55] pointer-events-auto">
+      <!-- Dock abajo‑derecha - siempre en el DOM, visible cuando está en modo dock -->
+      <div ref="dockRef" :class="['showy-dock fixed right-4 bottom-4 z-[55] pointer-events-auto transition-all', { 'opacity-0 pointer-events-none invisible': mode !== 'dock', 'opacity-100 pointer-events-auto visible': mode === 'dock' }]">
         <button @click="toggleExpand" class="relative w-16 h-16 rounded-full shadow-2xl border-2 border-indigo-400 bg-white overflow-hidden hover:shadow-2xl transition-all hover:scale-110">
           <span class="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 opacity-20 animate-ping"></span>
           <span class="absolute inset-0 rounded-full flex items-center justify-center z-10 bg-white">
@@ -303,17 +303,7 @@ function dismissToDock() {
   console.log('Minimizando a dock, mode actual:', mode.value)
   mode.value = 'dock'
   console.log('Mode cambiado a:', mode.value)
-  // Forzar que el dock sea visible usando el ref
-  nextTick(() => {
-    if (dockRef.value) {
-      dockRef.value.style.display = 'block'
-      dockRef.value.style.visibility = 'visible'
-      dockRef.value.style.opacity = '1'
-      console.log('Dock forzado a visible mediante ref')
-    } else {
-      console.error('Dock ref no encontrado')
-    }
-  })
+  console.log('Dock debería ser visible ahora')
 }
 
 function toggleExpand() {
