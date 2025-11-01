@@ -47,23 +47,21 @@
       </div>
 
       <!-- Dock abajo‑derecha - siempre visible cuando está en modo dock -->
-      <Transition name="dock">
-        <div v-if="mode==='dock'" class="fixed right-4 bottom-4 z-[55] pointer-events-auto">
-          <button @click="toggleExpand" class="relative w-16 h-16 rounded-full shadow-xl border-2 border-indigo-400 bg-white overflow-hidden hover:shadow-2xl transition-all hover:scale-110">
-            <span class="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 opacity-20 animate-ping"></span>
-            <span class="absolute inset-0 rounded-full flex items-center justify-center z-10 bg-white">
-              <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-indigo-600"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-cyan-600 animate-bounce"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
-            </span>
-          </button>
-        </div>
-      </Transition>
+      <div v-if="mode==='dock'" class="showy-dock fixed right-4 bottom-4 z-[55] pointer-events-auto">
+        <button @click="toggleExpand" class="relative w-16 h-16 rounded-full shadow-2xl border-2 border-indigo-400 bg-white overflow-hidden hover:shadow-2xl transition-all hover:scale-110">
+          <span class="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 opacity-20 animate-ping"></span>
+          <span class="absolute inset-0 rounded-full flex items-center justify-center z-10 bg-white">
+            <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-indigo-600"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-cyan-600 animate-bounce"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
+          </span>
+        </button>
+      </div>
     </div>
   </ClientOnly>
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount, ref } from 'vue'
+import { onMounted, onBeforeUnmount, ref, nextTick } from 'vue'
 import { Room, RoomEvent, RemoteParticipant, Track } from 'livekit-client'
 
 const mode = ref('center') // center | dock
@@ -102,59 +100,57 @@ async function connect() {
     })
     
     // Escuchar eventos de tracks para detectar cuando el agente habla
-    room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+    room.on(RoomEvent.TrackSubscribed, async (track, publication, participant) => {
       if (track.kind === Track.Kind.Audio && publication.kind === Track.Kind.Audio) {
         if (participant instanceof RemoteParticipant) {
           console.log('Track de audio del agente suscrito')
-          // Cuando hay un track de audio del agente, asumimos que está hablando
-          isAgentSpeaking.value = true
           
-              // LiveKit automáticamente reproduce el audio cuando nos suscribimos
-              // Solo necesitamos detectar cuando el agente está hablando
-              const audioTrack = track.mediaStreamTrack
-              if (audioTrack && audioTrack.readyState === 'live') {
-                // Detectar actividad de audio
-                if (audioActivated.value) {
-                  try {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-                    if (audioContext.state === 'suspended') {
-                      audioContext.resume()
-                    }
-                    const analyser = audioContext.createAnalyser()
-                    const source = audioContext.createMediaStreamSource(new MediaStream([audioTrack]))
-                    source.connect(analyser)
-                    analyser.fftSize = 256
-                    const dataArray = new Uint8Array(analyser.frequencyBinCount)
-                    audioContexts.push(audioContext)
-                    
-                    // Detectar actividad de audio periódicamente
-                    const checkAudio = () => {
-                      if (room && room.state === 'connected' && audioTrack.readyState === 'live') {
-                        analyser.getByteFrequencyData(dataArray)
-                        const average = dataArray.reduce((a, b) => a + b) / dataArray.length
-                        isAgentSpeaking.value = average > 3 // Umbral de actividad de audio
-                        requestAnimationFrame(checkAudio)
-                      } else {
-                        isAgentSpeaking.value = false
-                      }
-                    }
-                    checkAudio()
-                  } catch (e) {
-                    console.log('AudioContext no disponible:', e)
-                    // Si no podemos usar AudioContext, asumimos que el agente está hablando cuando hay track
-                    isAgentSpeaking.value = true
-                    setTimeout(() => {
-                      isAgentSpeaking.value = false
-                    }, 3000)
-                  }
-                } else {
-                  // Si no está activado, asumimos que el agente está hablando inicialmente
-                  isAgentSpeaking.value = true
-                  setTimeout(() => {
-                    isAgentSpeaking.value = false
-                  }, 3000)
+          // LiveKit automáticamente reproduce el audio cuando nos suscribimos
+          // Solo necesitamos asegurarnos de que el AudioContext esté activo
+          // El track ya está siendo reproducido por LiveKit internamente
+          
+          // Detectar actividad de audio
+          const audioTrack = track.mediaStreamTrack
+          if (audioTrack && audioTrack.readyState === 'live') {
+            if (audioActivated.value) {
+              try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+                if (audioContext.state === 'suspended') {
+                  await audioContext.resume()
                 }
+                const analyser = audioContext.createAnalyser()
+                const source = audioContext.createMediaStreamSource(new MediaStream([audioTrack]))
+                source.connect(analyser)
+                analyser.fftSize = 256
+                const dataArray = new Uint8Array(analyser.frequencyBinCount)
+                audioContexts.push(audioContext)
+                
+                // Detectar actividad de audio periódicamente
+                const checkAudio = () => {
+                  if (room && room.state === 'connected' && audioTrack.readyState === 'live') {
+                    analyser.getByteFrequencyData(dataArray)
+                    const average = dataArray.reduce((a, b) => a + b) / dataArray.length
+                    isAgentSpeaking.value = average > 3
+                    requestAnimationFrame(checkAudio)
+                  } else {
+                    isAgentSpeaking.value = false
+                  }
+                }
+                checkAudio()
+              } catch (e) {
+                console.log('AudioContext no disponible:', e)
+                isAgentSpeaking.value = true
+                setTimeout(() => {
+                  isAgentSpeaking.value = false
+                }, 3000)
               }
+            } else {
+              isAgentSpeaking.value = true
+              setTimeout(() => {
+                isAgentSpeaking.value = false
+              }, 3000)
+            }
+          }
         }
       }
     })
@@ -226,37 +222,71 @@ async function activateAudio() {
     gainNode.connect(tempContext.destination)
     oscillator.start()
     oscillator.stop(tempContext.currentTime + 0.01)
-    tempContext.close()
+    await tempContext.close()
   } catch (e) {
     console.log('Error activando audio:', e)
   }
   
   // Reanudar todos los AudioContexts pausados
-  audioContexts.forEach(ctx => {
+  audioContexts.forEach(async ctx => {
     if (ctx.state === 'suspended') {
-      ctx.resume().catch(e => console.log('Error resumiendo AudioContext:', e))
+      try {
+        await ctx.resume()
+        console.log('AudioContext reanudado')
+      } catch (e) {
+        console.log('Error resumiendo AudioContext:', e)
+      }
     }
   })
   
   // Asegurar que LiveKit puede reproducir audio remoto
-  if (room) {
+  if (room && room.state === 'connected') {
     // Suscribirse a todos los tracks de audio remotos existentes
-    room.remoteParticipants.forEach(async (participant) => {
-      participant.audioTrackPublications.forEach(async (publication) => {
+    for (const participant of room.remoteParticipants.values()) {
+      for (const publication of participant.audioTrackPublications.values()) {
         await publication.setSubscribed(true)
-      })
-    })
+        // Si el track ya está disponible, forzar reproducción
+        if (publication.track) {
+          try {
+            // LiveKit maneja la reproducción automáticamente, pero forzamos el attach
+            const audioElement = document.createElement('audio')
+            audioElement.autoplay = true
+            audioElement.playsInline = true
+            publication.track.attach(audioElement)
+            await audioElement.play()
+            console.log('Audio del agente activado y reproduciéndose')
+          } catch (e) {
+            console.log('Error forzando reproducción:', e)
+          }
+        }
+      }
+    }
   }
   
   console.log('Audio activado por el usuario')
 }
 
 function dismissToDock() {
+  console.log('Minimizando a dock, mode actual:', mode.value)
   mode.value = 'dock'
+  console.log('Mode cambiado a:', mode.value)
+  // Forzar que el dock sea visible
+  nextTick(() => {
+    const dockElement = document.querySelector('.showy-dock')
+    if (dockElement) {
+      dockElement.style.display = 'block'
+      dockElement.style.visibility = 'visible'
+      console.log('Dock forzado a visible')
+    } else {
+      console.error('Dock no encontrado en DOM')
+    }
+  })
 }
 
 function toggleExpand() {
+  console.log('Toggle expand, mode actual:', mode.value)
   mode.value = mode.value === 'dock' ? 'center' : 'dock'
+  console.log('Mode cambiado a:', mode.value)
 }
 
 function onFirstResults() {
@@ -411,6 +441,13 @@ onBeforeUnmount(() => {
 .dock-leave-from {
   opacity: 1;
   transform: translateY(0) scale(1);
+}
+
+/* Asegurar que el dock sea siempre visible cuando está presente */
+.showy-dock {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 </style>
 
