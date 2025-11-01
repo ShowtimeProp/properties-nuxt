@@ -63,6 +63,7 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref, nextTick } from 'vue'
 import { Room, RoomEvent, RemoteParticipant, Track } from 'livekit-client'
+import { useSearchStore } from '~/stores/search'
 
 const mode = ref('center') // center | dock
 const listening = ref(false)
@@ -71,6 +72,7 @@ const isConnected = ref(false)
 const isAgentSpeaking = ref(false)
 const audioActivated = ref(false)
 const dockRef = ref(null)
+const searchStore = useSearchStore()
 let room = null
 let audioContexts = []
 let audioElements = []
@@ -200,7 +202,32 @@ async function connect() {
         })
       }
     })
-    
+
+    // Escuchar mensajes de datos del agente
+    room.on(RoomEvent.DataReceived, (payload, participant, topic, kind) => {
+      try {
+        if (participant instanceof RemoteParticipant && participant.identity.startsWith('agent-')) {
+          const message = new TextDecoder().decode(payload)
+          console.log('📨 Mensaje recibido del agente:', message)
+          
+          try {
+            const data = JSON.parse(message)
+            if (data.type === 'property_search') {
+              console.log('🏠 Búsqueda de propiedades recibida:', data)
+              // Activar búsqueda en el mapa usando el store
+              searchStore.setSearchQuery(data.query)
+              console.log('✅ Búsqueda activada en el mapa:', data.query)
+            }
+          } catch (e) {
+            // No es JSON, es un mensaje de texto normal
+            console.log('Mensaje de texto del agente:', message)
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error procesando mensaje del agente:', error)
+      }
+    })
+
     isConnected.value = true
     listening.value = true
     
