@@ -34,21 +34,22 @@
       <!-- Modal compacto solo cuando está conectado y no habla -->
       <div v-if="mode==='center' && isConnected && !isAgentSpeaking" class="fixed inset-0 z-[60] flex items-center justify-center w-full bg-black/40 px-4 py-2" @click.self="dismissToDock">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-2 sm:p-3 relative text-center">
-          <div class="mx-auto mb-2 w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center" :class="{ 'animate-pulse': listening }">
+          <div class="mx-auto mb-2 w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center cursor-pointer" :class="{ 'animate-pulse': listening }" @click="activateAudio">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-10 h-10 text-white">
               <path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/>
             </svg>
           </div>
           <p class="text-sm text-gray-600 mb-3" v-if="listening">Escuchando...</p>
+          <p v-else class="text-sm text-gray-600 mb-3">Haz click en el micrófono para activar</p>
           <button @click="dismissToDock" class="text-sm text-gray-500 hover:text-gray-700">Minimizar</button>
         </div>
       </div>
 
-      <!-- Dock abajo‑derecha -->
-      <div v-if="mode==='dock'" class="fixed right-4 bottom-4 z-[55]">
-        <button @click="toggleExpand" class="relative w-16 h-16 rounded-full shadow-xl border bg-white overflow-hidden hover:shadow-2xl">
+      <!-- Dock abajo‑derecha - siempre visible cuando está en modo dock -->
+      <div v-show="mode==='dock'" class="fixed right-4 bottom-4 z-[55] pointer-events-auto">
+        <button @click="toggleExpand" class="relative w-16 h-16 rounded-full shadow-xl border bg-white overflow-hidden hover:shadow-2xl transition-all">
           <span class="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 opacity-20 animate-ping"></span>
-          <span class="absolute inset-0 rounded-full flex items-center justify-center">
+          <span class="absolute inset-0 rounded-full flex items-center justify-center z-10">
             <svg v-if="!listening" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-indigo-600"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
             <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-cyan-600 animate-bounce"><path fill="currentColor" d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4m5 10a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0zM12 20a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7"/></svg>
           </span>
@@ -67,7 +68,9 @@ const listening = ref(false)
 const connecting = ref(false)
 const isConnected = ref(false)
 const isAgentSpeaking = ref(false)
+const audioActivated = ref(false)
 let room = null
+let audioContexts = []
 
 async function connect() {
   try {
@@ -103,35 +106,52 @@ async function connect() {
           // Cuando hay un track de audio del agente, asumimos que está hablando
           isAgentSpeaking.value = true
           
-          // Intentar detectar actividad de audio más precisamente
-          const audioTrack = track.mediaStreamTrack
-          if (audioTrack && audioTrack.readyState === 'live') {
-            try {
-              const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-              const analyser = audioContext.createAnalyser()
-              const source = audioContext.createMediaStreamSource(new MediaStream([audioTrack]))
-              source.connect(analyser)
-              analyser.fftSize = 256
-              const dataArray = new Uint8Array(analyser.frequencyBinCount)
-              
-              // Detectar actividad de audio periódicamente
-              const checkAudio = () => {
-                if (room && room.state === 'connected' && audioTrack.readyState === 'live') {
-                  analyser.getByteFrequencyData(dataArray)
-                  const average = dataArray.reduce((a, b) => a + b) / dataArray.length
-                  isAgentSpeaking.value = average > 3 // Umbral de actividad de audio
-                  requestAnimationFrame(checkAudio)
+              // LiveKit automáticamente reproduce el audio cuando nos suscribimos
+              // Solo necesitamos detectar cuando el agente está hablando
+              const audioTrack = track.mediaStreamTrack
+              if (audioTrack && audioTrack.readyState === 'live') {
+                // Detectar actividad de audio
+                if (audioActivated.value) {
+                  try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+                    if (audioContext.state === 'suspended') {
+                      audioContext.resume()
+                    }
+                    const analyser = audioContext.createAnalyser()
+                    const source = audioContext.createMediaStreamSource(new MediaStream([audioTrack]))
+                    source.connect(analyser)
+                    analyser.fftSize = 256
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount)
+                    audioContexts.push(audioContext)
+                    
+                    // Detectar actividad de audio periódicamente
+                    const checkAudio = () => {
+                      if (room && room.state === 'connected' && audioTrack.readyState === 'live') {
+                        analyser.getByteFrequencyData(dataArray)
+                        const average = dataArray.reduce((a, b) => a + b) / dataArray.length
+                        isAgentSpeaking.value = average > 3 // Umbral de actividad de audio
+                        requestAnimationFrame(checkAudio)
+                      } else {
+                        isAgentSpeaking.value = false
+                      }
+                    }
+                    checkAudio()
+                  } catch (e) {
+                    console.log('AudioContext no disponible:', e)
+                    // Si no podemos usar AudioContext, asumimos que el agente está hablando cuando hay track
+                    isAgentSpeaking.value = true
+                    setTimeout(() => {
+                      isAgentSpeaking.value = false
+                    }, 3000)
+                  }
                 } else {
-                  isAgentSpeaking.value = false
+                  // Si no está activado, asumimos que el agente está hablando inicialmente
+                  isAgentSpeaking.value = true
+                  setTimeout(() => {
+                    isAgentSpeaking.value = false
+                  }, 3000)
                 }
               }
-              checkAudio()
-            } catch (e) {
-              console.log('AudioContext no disponible, usando detección simple')
-              // Si no podemos usar AudioContext, asumimos que el agente está hablando cuando hay track
-              isAgentSpeaking.value = true
-            }
-          }
         }
       }
     })
@@ -158,6 +178,39 @@ async function connect() {
   } finally {
     connecting.value = false
   }
+}
+
+async function activateAudio() {
+  // Activar AudioContext después de un gesto del usuario
+  audioActivated.value = true
+  
+  // Crear un AudioContext temporal para activar el permiso del navegador
+  try {
+    const tempContext = new (window.AudioContext || window.webkitAudioContext)()
+    if (tempContext.state === 'suspended') {
+      await tempContext.resume()
+    }
+    // Reproducir un sonido silencioso para activar el audio
+    const oscillator = tempContext.createOscillator()
+    const gainNode = tempContext.createGain()
+    gainNode.gain.value = 0
+    oscillator.connect(gainNode)
+    gainNode.connect(tempContext.destination)
+    oscillator.start()
+    oscillator.stop(tempContext.currentTime + 0.01)
+    tempContext.close()
+  } catch (e) {
+    console.log('Error activando audio:', e)
+  }
+  
+  // Reanudar todos los AudioContexts pausados
+  audioContexts.forEach(ctx => {
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(e => console.log('Error resumiendo AudioContext:', e))
+    }
+  })
+  
+  console.log('Audio activado por el usuario')
 }
 
 function dismissToDock() {
