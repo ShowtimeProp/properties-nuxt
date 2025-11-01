@@ -47,7 +47,7 @@
       </div>
 
       <!-- Dock abajo‑derecha - siempre visible cuando está en modo dock -->
-      <div v-if="mode==='dock'" class="showy-dock fixed right-4 bottom-4 z-[55] pointer-events-auto">
+      <div v-if="mode==='dock'" ref="dockRef" class="showy-dock fixed right-4 bottom-4 z-[55] pointer-events-auto">
         <button @click="toggleExpand" class="relative w-16 h-16 rounded-full shadow-2xl border-2 border-indigo-400 bg-white overflow-hidden hover:shadow-2xl transition-all hover:scale-110">
           <span class="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 opacity-20 animate-ping"></span>
           <span class="absolute inset-0 rounded-full flex items-center justify-center z-10 bg-white">
@@ -70,8 +70,10 @@ const connecting = ref(false)
 const isConnected = ref(false)
 const isAgentSpeaking = ref(false)
 const audioActivated = ref(false)
+const dockRef = ref(null)
 let room = null
 let audioContexts = []
+let audioElements = []
 
 async function connect() {
   try {
@@ -103,11 +105,22 @@ async function connect() {
     room.on(RoomEvent.TrackSubscribed, async (track, publication, participant) => {
       if (track.kind === Track.Kind.Audio && publication.kind === Track.Kind.Audio) {
         if (participant instanceof RemoteParticipant) {
-          console.log('Track de audio del agente suscrito')
+          console.log('🎵 Track de audio del agente suscrito')
           
-          // LiveKit automáticamente reproduce el audio cuando nos suscribimos
-          // Solo necesitamos asegurarnos de que el AudioContext esté activo
-          // El track ya está siendo reproducido por LiveKit internamente
+          // Si el audio ya está activado, reproducir inmediatamente
+          if (audioActivated.value) {
+            try {
+              const audioElement = document.createElement('audio')
+              audioElement.autoplay = true
+              audioElement.playsInline = true
+              track.attach(audioElement)
+              audioElements.push(audioElement)
+              await audioElement.play()
+              console.log('✅ Audio reproducido automáticamente')
+            } catch (e) {
+              console.error('❌ Error reproduciendo audio:', e)
+            }
+          }
           
           // Detectar actividad de audio
           const audioTrack = track.mediaStreamTrack
@@ -208,11 +221,14 @@ async function activateAudio() {
   // Activar AudioContext después de un gesto del usuario
   audioActivated.value = true
   
+  console.log('🎤 Activando audio...')
+  
   // Crear un AudioContext temporal para activar el permiso del navegador
   try {
     const tempContext = new (window.AudioContext || window.webkitAudioContext)()
     if (tempContext.state === 'suspended') {
       await tempContext.resume()
+      console.log('✅ AudioContext temporal activado')
     }
     // Reproducir un sonido silencioso para activar el audio
     const oscillator = tempContext.createOscillator()
@@ -224,61 +240,78 @@ async function activateAudio() {
     oscillator.stop(tempContext.currentTime + 0.01)
     await tempContext.close()
   } catch (e) {
-    console.log('Error activando audio:', e)
+    console.error('❌ Error activando AudioContext temporal:', e)
   }
   
   // Reanudar todos los AudioContexts pausados
-  audioContexts.forEach(async ctx => {
+  for (const ctx of audioContexts) {
     if (ctx.state === 'suspended') {
       try {
         await ctx.resume()
-        console.log('AudioContext reanudado')
+        console.log('✅ AudioContext reanudado')
       } catch (e) {
-        console.log('Error resumiendo AudioContext:', e)
+        console.error('❌ Error resumiendo AudioContext:', e)
       }
     }
-  })
+  }
   
   // Asegurar que LiveKit puede reproducir audio remoto
   if (room && room.state === 'connected') {
+    console.log('📡 Suscribiéndose a tracks de audio remotos...')
     // Suscribirse a todos los tracks de audio remotos existentes
     for (const participant of room.remoteParticipants.values()) {
+      console.log(`👤 Participante remoto encontrado: ${participant.identity}`)
       for (const publication of participant.audioTrackPublications.values()) {
+        console.log(`🎵 Track de audio encontrado: ${publication.sid}`)
         await publication.setSubscribed(true)
         // Si el track ya está disponible, forzar reproducción
         if (publication.track) {
           try {
-            // LiveKit maneja la reproducción automáticamente, pero forzamos el attach
+            // Crear elemento audio y reproducir
             const audioElement = document.createElement('audio')
             audioElement.autoplay = true
             audioElement.playsInline = true
             publication.track.attach(audioElement)
+            audioElements.push(audioElement) // Guardar referencia
             await audioElement.play()
-            console.log('Audio del agente activado y reproduciéndose')
+            console.log('✅ Audio del agente activado y reproduciéndose')
           } catch (e) {
-            console.log('Error forzando reproducción:', e)
+            console.error('❌ Error reproduciendo audio del agente:', e)
+            // Intentar nuevamente después de un momento
+            setTimeout(async () => {
+              try {
+                await audioElement.play()
+                console.log('✅ Audio reproducido en segundo intento')
+              } catch (e2) {
+                console.error('❌ Error en segundo intento:', e2)
+              }
+            }, 500)
           }
+        } else {
+          console.log('⏳ Track aún no disponible, esperando...')
         }
       }
     }
+  } else {
+    console.warn('⚠️ Room no conectado o no disponible')
   }
   
-  console.log('Audio activado por el usuario')
+  console.log('✅ Audio activado por el usuario')
 }
 
 function dismissToDock() {
   console.log('Minimizando a dock, mode actual:', mode.value)
   mode.value = 'dock'
   console.log('Mode cambiado a:', mode.value)
-  // Forzar que el dock sea visible
+  // Forzar que el dock sea visible usando el ref
   nextTick(() => {
-    const dockElement = document.querySelector('.showy-dock')
-    if (dockElement) {
-      dockElement.style.display = 'block'
-      dockElement.style.visibility = 'visible'
-      console.log('Dock forzado a visible')
+    if (dockRef.value) {
+      dockRef.value.style.display = 'block'
+      dockRef.value.style.visibility = 'visible'
+      dockRef.value.style.opacity = '1'
+      console.log('Dock forzado a visible mediante ref')
     } else {
-      console.error('Dock no encontrado en DOM')
+      console.error('Dock ref no encontrado')
     }
   })
 }
@@ -301,6 +334,25 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('properties:first-results', onFirstResults)
+  // Limpiar elementos de audio
+  audioElements.forEach(el => {
+    try {
+      el.pause()
+      el.srcObject = null
+    } catch (e) {
+      console.error('Error limpiando audio element:', e)
+    }
+  })
+  audioElements = []
+  // Limpiar AudioContexts
+  audioContexts.forEach(ctx => {
+    try {
+      ctx.close()
+    } catch (e) {
+      console.error('Error cerrando AudioContext:', e)
+    }
+  })
+  audioContexts = []
   if (room) {
     try {
       room.disconnect()
