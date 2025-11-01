@@ -25,6 +25,11 @@ export default defineNuxtConfig({
   },
   
   runtimeConfig: {
+    // Variables privadas (solo servidor)
+    livekitApiKey: process.env.LIVEKIT_API_KEY,
+    livekitApiSecret: process.env.LIVEKIT_API_SECRET,
+    livekitUrl: process.env.LIVEKIT_URL || 'wss://timbre-ai-uy9i2xcb.livekit.cloud',
+    // Variables públicas (cliente)
     public: {
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || ''
     }

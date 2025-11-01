@@ -3,10 +3,19 @@ import jwt from 'jsonwebtoken'
 export default defineEventHandler(async (event) => {
   try {
     const { roomName, participantName } = await readBody(event)
+    const config = useRuntimeConfig()
     
-    // Configuración de LiveKit
-    const LIVEKIT_API_KEY = 'z7KC/QRN0QxHLAmGKaJl26Cv'
-    const LIVEKIT_API_SECRET = 'r4uo2upnbN64dr76bXI8P4ITcdxP8qdK'
+    // Configuración de LiveKit desde variables de entorno
+    const LIVEKIT_API_KEY = config.livekitApiKey || process.env.LIVEKIT_API_KEY
+    const LIVEKIT_API_SECRET = config.livekitApiSecret || process.env.LIVEKIT_API_SECRET
+    const LIVEKIT_URL = config.livekitUrl || process.env.LIVEKIT_URL || 'wss://timbre-ai-uy9i2xcb.livekit.cloud'
+    
+    if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+      throw createError({
+        statusCode: 500,
+        statusMessage: 'LiveKit API credentials no configuradas'
+      })
+    }
     
     // Validar parámetros
     if (!roomName || !participantName) {
@@ -41,7 +50,7 @@ export default defineEventHandler(async (event) => {
       token,
       roomName,
       participantName,
-      url: 'https://lkit.showtimeprop.com'
+      url: LIVEKIT_URL
     }
     
   } catch (error) {
