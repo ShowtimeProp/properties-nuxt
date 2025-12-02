@@ -992,6 +992,10 @@ def search(request: Request, search_request: SearchRequestModel):
     if embeddings_available:
         try:
             print("🔍 Generando embedding con OpenAI...")
+            # Logging adicional para debuggear el problema del espacio
+            current_key = settings.get("openai_api_key", "")
+            if current_key:
+                print(f"🔍 DEBUG - API Key antes de llamada: length={len(current_key)}, ends_with_space={current_key.endswith(' ')}, repr={repr(current_key[-10:])}")
             embedding_response = openai_cli.embeddings.create(
                 input=search_request.query,
                 model="text-embedding-3-small"
