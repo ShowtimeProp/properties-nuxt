@@ -2246,7 +2246,7 @@ async def check_image_formats():
             "problematic_urls": problematic_urls[:10],  # Primeras 10 URLs problemáticas
             "timestamp": datetime.now().isoformat()
         }
-
+#==
     except Exception as e:
         return {
             "error": str(e),
