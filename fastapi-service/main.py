@@ -562,7 +562,26 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
         print(f"❌ Fallback scroll failed: {e}")
         import traceback
         traceback.print_exc()
-        return []
+        # Si falla con filtros, intentar sin filtros geográficos
+        if neighborhood_data:
+            print("🔄 Intentando fallback sin filtros geográficos...")
+            try:
+                # Remover filtros geográficos y mantener solo los otros
+                non_geo_conditions = [c for c in scroll_filter_conditions if c.key not in ["latitude", "longitude"]]
+                fallback_filter = models.Filter(must=non_geo_conditions) if non_geo_conditions else None
+                scroll_results, _ = qdrant_cli.scroll(
+                    collection_name=settings["collection_name"],
+                    limit=limit,
+                    with_payload=True,
+                    with_vectors=False,
+                    scroll_filter=fallback_filter,
+                )
+                print(f"✅ Fallback sin geográficos retornó {len(scroll_results)} resultados")
+            except Exception as e2:
+                print(f"❌ Fallback sin geográficos también falló: {e2}")
+                return []
+        else:
+            return []
 
     scored_payloads = []
     for record in scroll_results:
@@ -580,6 +599,48 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
             payload = record.payload
             if _passes_filters(payload, features, search_request.filters or {}, neighborhood_data):
                 scored_payloads.append((0, payload))
+    
+    # Si aún no hay resultados y hay un barrio, intentar sin filtro geográfico estricto
+    if not scored_payloads and neighborhood_data:
+        print("⚠️ No se encontraron resultados con filtros geográficos estrictos. Intentando búsqueda más amplia...")
+        try:
+            # Buscar solo por tipo y características, sin filtro geográfico estricto
+            relaxed_conditions = []
+            if features.get("bedrooms") is not None:
+                relaxed_conditions.append(models.FieldCondition(
+                    key="bedrooms",
+                    range=models.Range(gte=features["bedrooms"])
+                ))
+            if features.get("property_types"):
+                property_type_values = list(features["property_types"])
+                relaxed_conditions.append(models.FieldCondition(
+                    key="property_type",
+                    match=models.MatchAny(any=property_type_values)
+                ))
+            
+            relaxed_filter = models.Filter(must=relaxed_conditions) if relaxed_conditions else None
+            relaxed_results, _ = qdrant_cli.scroll(
+                collection_name=settings["collection_name"],
+                limit=limit,
+                with_payload=True,
+                with_vectors=False,
+                scroll_filter=relaxed_filter,
+            )
+            print(f"✅ Búsqueda relajada retornó {len(relaxed_results)} resultados")
+            
+            # Filtrar por texto del barrio en lugar de coordenadas
+            for record in relaxed_results:
+                payload = record.payload
+                # Verificar que pase filtros básicos y tenga el barrio en el texto
+                if _passes_filters(payload, features, search_request.filters or {}, None):  # Sin bbox estricto
+                    location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
+                        payload.get("neighborhood") or ""
+                    )
+                    if any(neigh in location_text for neigh in features.get("neighborhoods", [])):
+                        score = _property_score(payload, features)
+                        scored_payloads.append((score, payload))
+        except Exception as e:
+            print(f"⚠️ Búsqueda relajada falló: {e}")
 
     scored_payloads.sort(key=lambda item: item[0], reverse=True)
     result = [payload for _, payload in scored_payloads[: search_request.top_k]]
