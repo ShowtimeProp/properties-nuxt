@@ -624,7 +624,7 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
             relaxed_filter = models.Filter(must=relaxed_conditions) if relaxed_conditions else None
             relaxed_results, _ = qdrant_cli.scroll(
                 collection_name=settings["collection_name"],
-                limit=limit,
+                limit=limit * 2,  # Buscar más resultados para tener más opciones
                 with_payload=True,
                 with_vectors=False,
                 scroll_filter=relaxed_filter,
@@ -632,18 +632,26 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
             print(f"✅ Búsqueda relajada retornó {len(relaxed_results)} resultados")
             
             # Filtrar por texto del barrio en lugar de coordenadas
+            neighborhood_names = features.get("neighborhoods", [])
+            print(f"🔍 Buscando barrios en texto: {neighborhood_names}")
             for record in relaxed_results:
                 payload = record.payload
                 # Verificar que pase filtros básicos y tenga el barrio en el texto
                 if _passes_filters(payload, features, search_request.filters or {}, None):  # Sin bbox estricto
                     location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
                         payload.get("neighborhood") or ""
-                    )
-                    if any(neigh in location_text for neigh in features.get("neighborhoods", [])):
+                    ) + " " + _normalise_text(payload.get("address") or "")
+                    # Buscar el nombre del barrio en el texto de ubicación
+                    if any(neigh.lower() in location_text.lower() for neigh in neighborhood_names):
                         score = _property_score(payload, features)
                         scored_payloads.append((score, payload))
+                        print(f"✅ Propiedad encontrada por texto: {payload.get('title', 'Sin título')[:50]} - Location: {payload.get('location', 'N/A')}")
+            
+            print(f"✅ Búsqueda relajada encontró {len(scored_payloads)} propiedades por texto")
         except Exception as e:
             print(f"⚠️ Búsqueda relajada falló: {e}")
+            import traceback
+            traceback.print_exc()
 
     scored_payloads.sort(key=lambda item: item[0], reverse=True)
     result = [payload for _, payload in scored_payloads[: search_request.top_k]]
