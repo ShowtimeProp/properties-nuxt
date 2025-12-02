@@ -1,0 +1,64 @@
+name: Build FastAPI Docker Image (Simple)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'fastapi-service/**'
+      - '.github/workflows/build-fastapi-simple.yml'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: showtimeprop/fastapi-service
+  DOCKERFILE_PATH: fastapi-service/Dockerfile
+  CONTEXT_PATH: fastapi-service
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate version tag
+        id: version
+        run: |
+          DATE=$(date +%Y%m%d)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION="debug-v${DATE}-${SHORT_SHA}"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}"
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.CONTEXT_PATH }}
+          file: ${{ env.DOCKERFILE_PATH }}
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:latest
+          cache-to: type=inline
+          load: true
+
+      - name: Show image info
+        run: |
+          echo "✅ Image built successfully!"
+          echo "Tag: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}"
+          echo ""
+          echo "📋 Next steps:"
+          echo "1. Download the image artifact or"
+          echo "2. Push manually with: docker push ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}"
+
+      - name: Summary
+        run: |
+          echo "## 🐳 Docker Image Built Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** This workflow only builds the image. To push it, use the workflow with Docker Hub authentication or push manually." >> $GITHUB_STEP_SUMMARY
+
