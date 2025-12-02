@@ -28,9 +28,9 @@ def get_settings():
     settings = {
         "qdrant_host": os.getenv("QDRANT_HOST") or os.getenv("QDRANT_URL"),
         # Optional: allow empty if Qdrant instance doesn't require auth
-        "qdrant_api_key": os.getenv("QDRANT_API_KEY", ""),
+        "qdrant_api_key": os.getenv("QDRANT_API_KEY", "").strip(),
         # Optional for non-AI paths
-        "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
+        "openai_api_key": os.getenv("OPENAI_API_KEY", "").strip(),
         "collection_name": os.getenv("COLLECTION_NAME", "propertiesV3"),
         "supabase_url": os.getenv("SUPABASE_URL"),
         "supabase_key": os.getenv("SUPABASE_KEY"),
@@ -504,24 +504,28 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
     # Construir filtros de Qdrant para el scroll
     scroll_filter_conditions = []
     
-    # Agregar filtros geográficos si hay un barrio
+    # Agregar filtros geográficos si hay un barrio (con margen para ser más flexible)
     if neighborhood_data and neighborhood_data.get("bbox"):
         bbox = neighborhood_data["bbox"]
         if bbox.get("min_lat") and bbox.get("max_lat") and bbox.get("min_lon") and bbox.get("max_lon"):
+            # Expandir el bbox ligeramente (0.01 grados ≈ 1km) para ser más flexible
+            lat_margin = (float(bbox["max_lat"]) - float(bbox["min_lat"])) * 0.1  # 10% de margen
+            lon_margin = (float(bbox["max_lon"]) - float(bbox["min_lon"])) * 0.1
             scroll_filter_conditions.append(models.FieldCondition(
                 key="latitude",
                 range=models.Range(
-                    gte=float(bbox["min_lat"]),
-                    lte=float(bbox["max_lat"])
+                    gte=float(bbox["min_lat"]) - lat_margin,
+                    lte=float(bbox["max_lat"]) + lat_margin
                 )
             ))
             scroll_filter_conditions.append(models.FieldCondition(
                 key="longitude",
                 range=models.Range(
-                    gte=float(bbox["min_lon"]),
-                    lte=float(bbox["max_lon"])
+                    gte=float(bbox["min_lon"]) - lon_margin,
+                    lte=float(bbox["max_lon"]) + lon_margin
                 )
             ))
+            print(f"✅ Fallback: Filtros geográficos aplicados con margen (bbox expandido ~10%)")
     
     # Agregar otros filtros estructurados
     if features.get("bedrooms") is not None:
