@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from qdrant_client import QdrantClient, models
 import os
 import json
+import re
 from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -32,7 +33,12 @@ def get_settings():
         "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
         "collection_name": os.getenv("COLLECTION_NAME", "propertiesV3"),
         "supabase_url": os.getenv("SUPABASE_URL"),
-        "supabase_key": os.getenv("SUPABASE_KEY")
+        "supabase_key": os.getenv("SUPABASE_KEY"),
+        "supabase_db_host": os.getenv("SUPABASE_DB_HOST"),
+        "supabase_db_port": os.getenv("SUPABASE_DB_PORT", "5432"),
+        "supabase_db_name": os.getenv("SUPABASE_DB_NAME"),
+        "supabase_db_user": os.getenv("SUPABASE_DB_USER"),
+        "supabase_db_password": os.getenv("SUPABASE_DB_PASSWORD")
     }
     # Only enforce required keys - make more flexible for debugging
     required_keys = ["qdrant_host", "collection_name", "supabase_url", "supabase_key"]
@@ -188,6 +194,385 @@ class SearchRequestModel(BaseModel):
     query: str
     filters: dict = None
     top_k: int = 5
+
+PROPERTY_TYPE_KEYWORDS = {
+    "departamento": ["departamento", "departamentos", "depto", "dto"],
+    "casa": ["casa", "casas", "chalet", "chalets"],
+    "ph": ["ph", "propiedad horizontal"],
+    "duplex": ["duplex", "dúplex"],
+    "triplex": ["triplex", "tríplex"],
+    "local": ["local", "locales"],
+    "oficina": ["oficina", "oficinas"],
+    "terreno": ["terreno", "lote", "lotes"]
+}
+
+# NEIGHBORHOODS ahora se carga dinámicamente desde Supabase
+NEIGHBORHOODS_CACHE = None
+
+def _get_neighborhoods_from_db():
+    """Obtiene la lista de barrios desde la tabla neighborhoods de Supabase."""
+    global NEIGHBORHOODS_CACHE
+    
+    if NEIGHBORHOODS_CACHE is not None:
+        return NEIGHBORHOODS_CACHE
+    
+    try:
+        if not supabase_cli:
+            print("⚠️ Supabase client no inicializado, usando lista hardcodeada")
+            NEIGHBORHOODS_CACHE = []
+            return NEIGHBORHOODS_CACHE
+        
+        response = supabase_cli.table("neighborhoods").select("name, slug").execute()
+        neighborhoods = []
+        if response.data:
+            for nb in response.data:
+                neighborhoods.append(nb.get("name", "").lower())
+                neighborhoods.append(nb.get("slug", "").lower())
+        
+        NEIGHBORHOODS_CACHE = neighborhoods
+        print(f"✅ Cargados {len(neighborhoods)} barrios desde Supabase")
+        return neighborhoods
+    except Exception as e:
+        print(f"⚠️ Error cargando barrios desde Supabase: {e}")
+        NEIGHBORHOODS_CACHE = []
+        return []
+
+def _find_neighborhood_by_query(query: str):
+    """Busca un barrio en la base de datos basado en la query del usuario."""
+    try:
+        if not supabase_cli:
+            return None
+        
+        query_lower = query.lower()
+        
+        # Buscar por nombre o slug
+        response = supabase_cli.table("neighborhoods").select(
+            "id, name, slug, bbox_min_lat, bbox_max_lat, bbox_min_lon, bbox_max_lon"
+        ).or_(f"name.ilike.%{query_lower}%,slug.ilike.%{query_lower}%").limit(1).execute()
+        
+        if response.data and len(response.data) > 0:
+            nb = response.data[0]
+            return {
+                "id": nb.get("id"),
+                "name": nb.get("name"),
+                "slug": nb.get("slug"),
+                "bbox": {
+                    "min_lat": nb.get("bbox_min_lat"),
+                    "max_lat": nb.get("bbox_max_lat"),
+                    "min_lon": nb.get("bbox_min_lon"),
+                    "max_lon": nb.get("bbox_max_lon")
+                }
+            }
+        return None
+    except Exception as e:
+        print(f"⚠️ Error buscando barrio en Supabase: {e}")
+        return None
+
+def _normalise_text(value: str) -> str:
+    if not value:
+        return ""
+    return value.lower()
+
+def _extract_numeric(value):
+    if value is None:
+        return None
+    try:
+        return int(float(str(value).strip()))
+    except (ValueError, TypeError):
+        return None
+
+def _parse_query_features(query: str):
+    text = _normalise_text(query)
+    tokens = [tok for tok in re.split(r"[^\wáéíóúñü]+", text) if tok]
+    phrases = set()
+
+    words = text.split()
+    for size in (2, 3):
+        for i in range(len(words) - size + 1):
+            phrases.add(" ".join(words[i : i + size]))
+
+    bedrooms = None
+    bathrooms = None
+    property_types = set()
+    must_have_terms = set()
+
+    for canonical, variations in PROPERTY_TYPE_KEYWORDS.items():
+        if any(var in text for var in variations):
+            property_types.add(canonical)
+
+    bedroom_match = re.search(r"(\d+)\s*(ambiente|ambientes|dormitorio|dormitorios|cuarto|cuartos|habitaci[oó]n|habitaciones)", text)
+    if bedroom_match:
+        bedrooms = _extract_numeric(bedroom_match.group(1))
+
+    bathroom_match = re.search(r"(\d+)\s*(baño|baños)", text)
+    if bathroom_match:
+        bathrooms = _extract_numeric(bathroom_match.group(1))
+
+    keywords_of_interest = [
+        "frente al mar",
+        "vista al mar",
+        "vista al golf",
+        "pileta",
+        "piscina",
+        "quincho",
+        "cochera",
+        "balcón",
+        "balcon",
+        "amueblado",
+        "luminoso",
+        "terraza",
+        "patio",
+        "jardín",
+        "jardin",
+    ]
+    for key in keywords_of_interest:
+        if key.lower() in text:
+            must_have_terms.add(key.lower())
+
+    neighborhoods = set()
+    # Cargar barrios desde la base de datos
+    db_neighborhoods = _get_neighborhoods_from_db()
+    for neighborhood in db_neighborhoods:
+        if neighborhood and neighborhood in text:
+            neighborhoods.add(neighborhood)
+
+    return {
+        "tokens": tokens,
+        "phrases": phrases,
+        "bedrooms": bedrooms,
+        "bathrooms": bathrooms,
+        "property_types": property_types,
+        "must_have_terms": must_have_terms,
+        "neighborhoods": neighborhoods,
+    }
+
+def _property_score(payload: dict, features: dict) -> int:
+    score = 0
+    tokens = features["tokens"]
+    property_types = features["property_types"]
+    neighborhoods = features["neighborhoods"]
+    must_have_terms = features["must_have_terms"]
+
+    searchable_fields = [
+        _normalise_text(payload.get("title")),
+        _normalise_text(payload.get("description")),
+        _normalise_text(payload.get("summary")),
+        _normalise_text(payload.get("address")),
+        _normalise_text(payload.get("location")),
+        _normalise_text(payload.get("neighborhood")),
+        _normalise_text(payload.get("property_type")),
+        " ".join(str(tag).lower() for tag in (payload.get("tags") or [])),
+    ]
+
+    combined_text = " ".join(field for field in searchable_fields if field)
+
+    for token in tokens:
+        if token and token in combined_text:
+            score += 2
+
+    for phrase in features["phrases"]:
+        if phrase and phrase in combined_text:
+            score += 4
+    for neighborhood in neighborhoods:
+        if neighborhood and neighborhood in combined_text:
+            score += 5
+
+    if property_types:
+        prop_type_value = _normalise_text(payload.get("property_type"))
+        for ptype in property_types:
+            if ptype in prop_type_value:
+                score += 6
+
+    for term in must_have_terms:
+        if term and term in combined_text:
+            score += 5
+
+    if features["bedrooms"] is not None:
+        bedrooms_field = _extract_numeric(
+            payload.get("bedrooms")
+            or payload.get("ambientes")
+            or payload.get("rooms")
+        )
+        if bedrooms_field is not None:
+            if bedrooms_field == features["bedrooms"]:
+                score += 6
+            elif bedrooms_field > features["bedrooms"]:
+                score += 3
+            else:
+                score -= 4
+
+    if features["bathrooms"] is not None:
+        bathrooms_field = _extract_numeric(payload.get("bathrooms"))
+        if bathrooms_field is not None:
+            if bathrooms_field == features["bathrooms"]:
+                score += 3
+            elif bathrooms_field > features["bathrooms"]:
+                score += 1
+            else:
+                score -= 2
+
+    return score
+
+def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_bbox: dict = None) -> bool:
+    desired_bedrooms = features["bedrooms"]
+    if desired_bedrooms is not None:
+        bedrooms_field = _extract_numeric(
+            payload.get("bedrooms")
+            or payload.get("ambientes")
+            or payload.get("rooms")
+        )
+        if bedrooms_field is None or bedrooms_field < desired_bedrooms:
+            return False
+
+    desired_bathrooms = features["bathrooms"]
+    if desired_bathrooms is not None:
+        bathrooms_field = _extract_numeric(payload.get("bathrooms"))
+        if bathrooms_field is None or bathrooms_field < desired_bathrooms:
+            return False
+
+    if features["property_types"]:
+        prop_type_value = _normalise_text(payload.get("property_type"))
+        if not any(ptype in prop_type_value for ptype in features["property_types"]):
+            return False
+
+    # Verificar filtro geográfico si hay un barrio con bbox
+    if neighborhood_bbox and neighborhood_bbox.get("bbox"):
+        bbox = neighborhood_bbox["bbox"]
+        lat = payload.get("latitude") or payload.get("lat")
+        lng = payload.get("longitude") or payload.get("lng") or payload.get("lon")
+        
+        if lat is None or lng is None:
+            # Si no hay coordenadas, verificar por texto como fallback
+            location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
+                payload.get("neighborhood") or ""
+            )
+            if not any(neigh in location_text for neigh in features.get("neighborhoods", [])):
+                return False
+        else:
+            # Verificar que esté dentro del bounding box
+            try:
+                lat = float(lat)
+                lng = float(lng)
+                if not (bbox["min_lat"] <= lat <= bbox["max_lat"] and 
+                        bbox["min_lon"] <= lng <= bbox["max_lon"]):
+                    return False
+            except (ValueError, TypeError):
+                # Si no se puede convertir, usar fallback por texto
+                location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
+                    payload.get("neighborhood") or ""
+                )
+                if not any(neigh in location_text for neigh in features.get("neighborhoods", [])):
+                    return False
+    elif features.get("neighborhoods"):
+        # Si hay barrios mencionados pero no hay bbox, verificar por texto
+        location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
+            payload.get("neighborhood") or ""
+        )
+        if not any(neigh in location_text for neigh in features["neighborhoods"]):
+            return False
+
+    if filters:
+        for key, expected in filters.items():
+            value = payload.get(key)
+            if value is None:
+                return False
+            if isinstance(expected, (list, tuple, set)):
+                expected_values = [str(opt).lower() for opt in expected]
+                if str(value).lower() not in expected_values:
+                    return False
+            else:
+                if str(value).lower() != str(expected).lower():
+                    return False
+
+    return True
+
+def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_data: dict = None) -> list:
+    if not qdrant_cli:
+        return []
+
+    features = _parse_query_features(search_request.query)
+    limit = max(search_request.top_k * 8, 200)
+    
+    # Construir filtros de Qdrant para el scroll
+    scroll_filter_conditions = []
+    
+    # Agregar filtros geográficos si hay un barrio
+    if neighborhood_data and neighborhood_data.get("bbox"):
+        bbox = neighborhood_data["bbox"]
+        if bbox.get("min_lat") and bbox.get("max_lat") and bbox.get("min_lon") and bbox.get("max_lon"):
+            scroll_filter_conditions.append(models.FieldCondition(
+                key="latitude",
+                range=models.Range(
+                    gte=float(bbox["min_lat"]),
+                    lte=float(bbox["max_lat"])
+                )
+            ))
+            scroll_filter_conditions.append(models.FieldCondition(
+                key="longitude",
+                range=models.Range(
+                    gte=float(bbox["min_lon"]),
+                    lte=float(bbox["max_lon"])
+                )
+            ))
+    
+    # Agregar otros filtros estructurados
+    if features.get("bedrooms") is not None:
+        scroll_filter_conditions.append(models.FieldCondition(
+            key="bedrooms",
+            range=models.Range(gte=features["bedrooms"])
+        ))
+    
+    if features.get("bathrooms") is not None:
+        scroll_filter_conditions.append(models.FieldCondition(
+            key="bathrooms",
+            range=models.Range(gte=features["bathrooms"])
+        ))
+    
+    if features.get("property_types"):
+        property_type_values = list(features["property_types"])
+        scroll_filter_conditions.append(models.FieldCondition(
+            key="property_type",
+            match=models.MatchAny(any=property_type_values)
+        ))
+    
+    scroll_filter = models.Filter(must=scroll_filter_conditions) if scroll_filter_conditions else None
+
+    try:
+        scroll_results, _ = qdrant_cli.scroll(
+            collection_name=settings["collection_name"],
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+            scroll_filter=scroll_filter,
+        )
+        print(f"✅ Fallback scroll retornó {len(scroll_results)} resultados")
+    except Exception as e:
+        print(f"❌ Fallback scroll failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+    scored_payloads = []
+    for record in scroll_results:
+        payload = record.payload
+        if not _passes_filters(payload, features, search_request.filters or {}, neighborhood_data):
+            continue
+
+        score = _property_score(payload, features)
+        if score > 0:
+            scored_payloads.append((score, payload))
+
+    if not scored_payloads:
+        # Si no hay resultados con score > 0, incluir todos los que pasen los filtros
+        for record in scroll_results:
+            payload = record.payload
+            if _passes_filters(payload, features, search_request.filters or {}, neighborhood_data):
+                scored_payloads.append((0, payload))
+
+    scored_payloads.sort(key=lambda item: item[0], reverse=True)
+    result = [payload for _, payload in scored_payloads[: search_request.top_k]]
+    print(f"✅ Fallback retornó {len(result)} propiedades después de filtrar")
+    return result
 
 # --- API Endpoints ---
 
@@ -442,41 +827,148 @@ def get_property_details(property_id: str, request: Request):
 def search(request: Request, search_request: SearchRequestModel):
     tenant_id = getattr(request.state, "tenant_id", None)
 
-    # NUEVA LÓGICA: Permitir búsqueda sin tenant (mostrar todas las propiedades)
-    print(f"Performing search for tenant: {tenant_id} (searching all properties)")
-    
-    try:
-        embedding_response = openai_cli.embeddings.create(
-            input=search_request.query,
-            model="text-embedding-3-small"
-        )
-        query_vector = embedding_response.data[0].embedding
+    print(f"🔍 Performing search for tenant: {tenant_id}")
+    print(f"🔍 Query: {search_request.query}")
+    print(f"🔍 Filters: {search_request.filters}")
+    print(f"🔍 Top K: {search_request.top_k}")
 
-        conditions = []
-        if search_request.filters:
-            for field, value in search_request.filters.items():
-                conditions.append(models.FieldCondition(
+    properties = []
+    features = _parse_query_features(search_request.query)
+    
+    # Buscar barrio mencionado en la query
+    neighborhood_data = None
+    if features.get("neighborhoods"):
+        # Intentar encontrar el barrio en la base de datos
+        for nb_name in features["neighborhoods"]:
+            neighborhood_data = _find_neighborhood_by_query(nb_name)
+            if neighborhood_data:
+                print(f"✅ Barrio encontrado: {neighborhood_data['name']} (bbox: {neighborhood_data['bbox']})")
+                break
+
+    # Construir filtros de Qdrant
+    qdrant_conditions = []
+    
+    # Agregar filtros del request
+    if search_request.filters:
+        for field, value in search_request.filters.items():
+            if isinstance(value, (list, tuple)):
+                # Para valores múltiples, usar MatchAny
+                qdrant_conditions.append(models.FieldCondition(
+                    key=field,
+                    match=models.MatchAny(any=value)
+                ))
+            else:
+                qdrant_conditions.append(models.FieldCondition(
                     key=field,
                     match=models.MatchValue(value=value)
                 ))
-        
-        # NO filtrar por tenant_id - buscar en todas las propiedades
-        # conditions.append(models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id)))
-        
-        query_filter = models.Filter(must=conditions) if conditions else None
+    
+    # Agregar filtros geográficos si se encontró un barrio
+    if neighborhood_data and neighborhood_data.get("bbox"):
+        bbox = neighborhood_data["bbox"]
+        if bbox.get("min_lat") and bbox.get("max_lat") and bbox.get("min_lon") and bbox.get("max_lon"):
+            # Filtrar por latitud (bbox)
+            qdrant_conditions.append(models.FieldCondition(
+                key="latitude",
+                range=models.Range(
+                    gte=float(bbox["min_lat"]),
+                    lte=float(bbox["max_lat"])
+                )
+            ))
+            # Filtrar por longitud (bbox)
+            qdrant_conditions.append(models.FieldCondition(
+                key="longitude",
+                range=models.Range(
+                    gte=float(bbox["min_lon"]),
+                    lte=float(bbox["max_lon"])
+                )
+            ))
+            print(f"✅ Filtros geográficos aplicados: lat[{bbox['min_lat']}, {bbox['max_lat']}], lon[{bbox['min_lon']}, {bbox['max_lon']}]")
+    
+    # Aplicar filtros de características extraídas de la query
+    if features.get("bedrooms") is not None:
+        qdrant_conditions.append(models.FieldCondition(
+            key="bedrooms",
+            range=models.Range(gte=features["bedrooms"])
+        ))
+    
+    if features.get("bathrooms") is not None:
+        qdrant_conditions.append(models.FieldCondition(
+            key="bathrooms",
+            range=models.Range(gte=features["bathrooms"])
+        ))
+    
+    if features.get("property_types"):
+        # Buscar propiedades que coincidan con alguno de los tipos mencionados
+        property_type_values = list(features["property_types"])
+        qdrant_conditions.append(models.FieldCondition(
+            key="property_type",
+            match=models.MatchAny(any=property_type_values)
+        ))
 
-        hits = qdrant_cli.search(
-            collection_name=settings["collection_name"],
-            query_vector=query_vector,
-            limit=search_request.top_k,
-            query_filter=query_filter,
-            search_params=models.SearchParams(hnsw_ef=128, exact=False),
-        )
+    query_filter = models.Filter(must=qdrant_conditions) if qdrant_conditions else None
+    
+    if query_filter:
+        print(f"✅ Filtros de Qdrant aplicados: {len(qdrant_conditions)} condiciones")
 
-        return [hit.payload for hit in hits]
-    except Exception as e:
-        print(f"Error during search: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # Intentar búsqueda semántica con embeddings
+    embeddings_available = bool(settings.get("openai_api_key"))
+    if embeddings_available:
+        try:
+            print("🔍 Generando embedding con OpenAI...")
+            embedding_response = openai_cli.embeddings.create(
+                input=search_request.query,
+                model="text-embedding-3-small"
+            )
+            query_vector = embedding_response.data[0].embedding
+            print(f"✅ Embedding generado (dimensión: {len(query_vector)})")
+
+            # Búsqueda en Qdrant con filtros
+            search_limit = max(search_request.top_k * 3, 50)  # Buscar más resultados para filtrar después
+            print(f"🔍 Buscando en Qdrant con límite: {search_limit}")
+            
+            hits = qdrant_cli.search(
+                collection_name=settings["collection_name"],
+                query_vector=query_vector,
+                limit=search_limit,
+                query_filter=query_filter,
+                search_params=models.SearchParams(hnsw_ef=128, exact=False),
+            )
+
+            print(f"✅ Qdrant retornó {len(hits)} resultados")
+            
+            # Aplicar filtros adicionales de texto
+            for hit in hits:
+                payload = hit.payload
+                # Verificar que pase los filtros de texto (keywords, frases, etc.)
+                if _passes_filters(payload, features, search_request.filters or {}, neighborhood_data):
+                    properties.append(payload)
+                    if len(properties) >= search_request.top_k:
+                        break
+
+            print(f"✅ {len(properties)} propiedades pasaron los filtros de texto")
+            
+            if not properties:
+                print("⚠️ Embedding search retornó resultados pero ninguno pasó los filtros estructurados.")
+        except Exception as e:
+            print(f"❌ Error durante búsqueda con embeddings: {e}")
+            import traceback
+            traceback.print_exc()
+            properties = []
+    else:
+        print("⚠️ OPENAI_API_KEY no configurada. Usando búsqueda por keywords.")
+
+    # Si no hay resultados, usar fallback
+    if not properties:
+        print("🔄 Usando búsqueda fallback por keywords...")
+        properties = _fallback_semantic_search(search_request, neighborhood_data)
+
+    if not properties:
+        print("⚠️ No se encontraron propiedades")
+        return []
+
+    print(f"✅ Retornando {len(properties[:search_request.top_k])} propiedades")
+    return properties[: search_request.top_k]
 
 
 # --- ENDPOINTS DE FAVORITOS ---
