@@ -35,9 +35,10 @@ jobs:
         id: version
         run: |
           DATE=$(date +%Y%m%d)
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "VERSION=debug-v${DATE}-${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "Generated version: debug-v${DATE}-${SHORT_SHA}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION="debug-v${DATE}-${SHORT_SHA}"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}"
 
       - name: Extract metadata (tags, labels)
         id: meta
@@ -46,7 +47,7 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ steps.version.outputs.VERSION }}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
