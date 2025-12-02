@@ -82,7 +82,10 @@ async def startup_event():
     )
     
     print("🔧 Initializing OpenAI client...")
-    openai_cli = OpenAI(api_key=settings["openai_api_key"])
+    # Asegurar que el API key no tenga espacios (doble protección)
+    openai_api_key = settings["openai_api_key"].strip() if settings["openai_api_key"] else ""
+    print(f"🔍 DEBUG - OpenAI API Key length: {len(openai_api_key)}, ends with space: {openai_api_key.endswith(' ') if openai_api_key else False}")
+    openai_cli = OpenAI(api_key=openai_api_key)
     
     print("🔧 Initializing Supabase client...")
     supabase_cli = create_client(settings["supabase_url"], settings["supabase_key"])
