@@ -245,10 +245,16 @@ def _find_neighborhood_by_query(query: str):
         
         query_lower = query.lower()
         
-        # Buscar por nombre o slug
+        # Buscar por nombre primero
         response = supabase_cli.table("neighborhoods").select(
             "id, name, slug, bbox_min_lat, bbox_max_lat, bbox_min_lon, bbox_max_lon"
-        ).or_(f"name.ilike.%{query_lower}%,slug.ilike.%{query_lower}%").limit(1).execute()
+        ).ilike("name", f"%{query_lower}%").limit(1).execute()
+        
+        # Si no encuentra por nombre, buscar por slug
+        if not response.data or len(response.data) == 0:
+            response = supabase_cli.table("neighborhoods").select(
+                "id, name, slug, bbox_min_lat, bbox_max_lat, bbox_min_lon, bbox_max_lon"
+            ).ilike("slug", f"%{query_lower}%").limit(1).execute()
         
         if response.data and len(response.data) > 0:
             nb = response.data[0]
@@ -266,6 +272,8 @@ def _find_neighborhood_by_query(query: str):
         return None
     except Exception as e:
         print(f"⚠️ Error buscando barrio en Supabase: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def _normalise_text(value: str) -> str:
