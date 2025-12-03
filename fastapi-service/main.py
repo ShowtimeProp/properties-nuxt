@@ -331,8 +331,8 @@ def _parse_query_features(query: str):
         # Sistema internacional: "N dormitorios" = N dormitorios
         bedrooms = _extract_numeric(dormitorio_match.group(1))
         search_mode = "bedrooms"
-        # No podemos inferir ambientes exactamente, pero podemos aproximar: N dormitorios = N+1 ambientes mínimo
-        ambientes = bedrooms + 1 if bedrooms else None
+        # Convertir a ambientes: N dormitorios = N+1 ambientes (0 dormitorios = 1 ambiente/monoambiente)
+        ambientes = bedrooms + 1 if bedrooms is not None else None
 
     bathroom_match = re.search(r"(\d+)\s*(baño|baños)", text)
     if bathroom_match:
