@@ -463,17 +463,20 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
             return False
         
         # Si busca monoambiente (1 ambiente)
+        # UNIFICACIÓN: Aceptar cualquier propiedad que tenga ambientes=1 O bedrooms=1 O bedrooms=0
+        # Esto incluye: monoambiente, studio, 1 ambiente, 1 dormitorio (todo se considera equivalente)
         if desired_ambientes == 1:
-            # Debe tener exactamente 1 ambiente O 0 dormitorios (monoambiente) - OR lógico
-            # IMPORTANTE: Si tiene bedrooms=1, NO es monoambiente (sería 2 ambientes)
             match = False
+            # Si tiene ambientes=1, aceptar (sin importar bedrooms)
             if ambientes_field is not None and ambientes_field == 1:
-                # Si tiene ambientes=1, verificar que NO tenga bedrooms=1 (que sería inconsistente)
-                if bedrooms_field is None or bedrooms_field == 0:
-                    match = True
-            elif bedrooms_field is not None and bedrooms_field == 0:
-                # Si tiene bedrooms=0, es monoambiente
                 match = True
+            # Si tiene bedrooms=1, aceptar (considerado equivalente a 1 ambiente)
+            elif bedrooms_field is not None and bedrooms_field == 1:
+                match = True
+            # Si tiene bedrooms=0, aceptar (monoambiente)
+            elif bedrooms_field is not None and bedrooms_field == 0:
+                match = True
+            
             if not match:
                 # Log detallado para debuggear
                 print(f"   🔍 DEBUG _passes_filters monoambiente: ambientes_raw={ambientes_raw}, bedrooms_raw={bedrooms_raw}, ambientes_field={ambientes_field}, bedrooms_field={bedrooms_field}, match={match}")
@@ -626,9 +629,10 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
             range=models.Range(gte=desired_ambientes, lte=desired_ambientes)
         ))
         if desired_ambientes == 1:
+            # UNIFICACIÓN: Monoambiente acepta bedrooms == 0 O bedrooms == 1
             ambientes_conditions.append(models.FieldCondition(
                 key="bedrooms",
-                range=models.Range(gte=0, lte=0)
+                range=models.Range(gte=0, lte=1)  # Aceptar 0 o 1 dormitorio
             ))
         else:
             ambientes_conditions.append(models.FieldCondition(
@@ -745,9 +749,10 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
                     range=models.Range(gte=desired_ambientes, lte=desired_ambientes)
                 ))
                 if desired_ambientes == 1:
+                    # UNIFICACIÓN: Monoambiente acepta bedrooms == 0 O bedrooms == 1
                     ambientes_conditions.append(models.FieldCondition(
                         key="bedrooms",
-                        range=models.Range(gte=0, lte=0)
+                        range=models.Range(gte=0, lte=1)  # Aceptar 0 o 1 dormitorio
                     ))
                 else:
                     ambientes_conditions.append(models.FieldCondition(
@@ -1176,10 +1181,11 @@ def search(request: Request, search_request: SearchRequestModel):
         
         # Condición 2: bedrooms == N-1 (excepto monoambiente)
         if desired_ambientes == 1:
-            # Monoambiente: bedrooms == 0
+            # UNIFICACIÓN: Monoambiente acepta bedrooms == 0 O bedrooms == 1
+            # (ambos se consideran equivalentes a 1 ambiente)
             ambientes_conditions.append(models.FieldCondition(
                 key="bedrooms",
-                range=models.Range(gte=0, lte=0)
+                range=models.Range(gte=0, lte=1)  # Aceptar 0 o 1 dormitorio
             ))
         else:
             # 2+ ambientes: bedrooms == N-1
