@@ -454,8 +454,10 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
     if search_mode == "ambientes" and desired_ambientes is not None:
         # Sistema argentino: buscar propiedades donde ambientes == N
         # O donde bedrooms == N-1 (excepto monoambiente)
-        ambientes_field = _extract_numeric(payload.get("ambientes"))
-        bedrooms_field = _extract_numeric(payload.get("bedrooms") or payload.get("rooms"))
+        ambientes_raw = payload.get("ambientes")
+        bedrooms_raw = payload.get("bedrooms") or payload.get("rooms")
+        ambientes_field = _extract_numeric(ambientes_raw)
+        bedrooms_field = _extract_numeric(bedrooms_raw)
         
         if ambientes_field is None and bedrooms_field is None:
             return False
@@ -463,12 +465,18 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
         # Si busca monoambiente (1 ambiente)
         if desired_ambientes == 1:
             # Debe tener exactamente 1 ambiente O 0 dormitorios (monoambiente) - OR lógico
+            # IMPORTANTE: Si tiene bedrooms=1, NO es monoambiente (sería 2 ambientes)
             match = False
             if ambientes_field is not None and ambientes_field == 1:
-                match = True
-            if bedrooms_field is not None and bedrooms_field == 0:
+                # Si tiene ambientes=1, verificar que NO tenga bedrooms=1 (que sería inconsistente)
+                if bedrooms_field is None or bedrooms_field == 0:
+                    match = True
+            elif bedrooms_field is not None and bedrooms_field == 0:
+                # Si tiene bedrooms=0, es monoambiente
                 match = True
             if not match:
+                # Log detallado para debuggear
+                print(f"   🔍 DEBUG _passes_filters monoambiente: ambientes_raw={ambientes_raw}, bedrooms_raw={bedrooms_raw}, ambientes_field={ambientes_field}, bedrooms_field={bedrooms_field}, match={match}")
                 return False
         else:
             # Para 2+ ambientes: ambientes == N O bedrooms == N-1
@@ -1286,6 +1294,32 @@ def search(request: Request, search_request: SearchRequestModel):
 
     if not properties:
         print("⚠️ No se encontraron propiedades")
+        # Buscar alternativas: si busca 1 ambiente, buscar 2 y 3 ambientes en el mismo barrio
+        alternative_properties = []
+        if search_mode == "ambientes" and desired_ambientes == 1 and neighborhood_data:
+            print("🔍 Buscando alternativas: propiedades con 2 o 3 ambientes en el mismo barrio...")
+            for alt_ambientes in [2, 3]:
+                alt_features = features.copy()
+                alt_features["ambientes"] = alt_ambientes
+                alt_features["bedrooms"] = alt_ambientes - 1
+                alt_search_request = SearchRequestModel(
+                    query=f"{search_request.query.replace('1 ambiente', f'{alt_ambientes} ambientes')}",
+                    top_k=3,
+                    filters=search_request.filters or {}
+                )
+                alt_results = _fallback_semantic_search(alt_search_request, neighborhood_data)
+                if alt_results:
+                    alternative_properties.extend(alt_results[:2])  # Máximo 2 por alternativa
+            if alternative_properties:
+                print(f"✅ Encontradas {len(alternative_properties)} propiedades alternativas (2-3 ambientes)")
+                # Retornar objeto con metadata para que el agente pueda sugerir alternativas
+                # El agente puede verificar si es un dict con 'alternatives' para manejar el caso
+                return {
+                    "properties": [],
+                    "alternatives": alternative_properties,
+                    "message": f"No encontré propiedades con exactamente 1 ambiente en {neighborhood_data.get('name', 'La Perla')}, pero encontré {len(alternative_properties)} propiedades con 2 o 3 ambientes en la misma zona."
+                }
+        # Si no hay alternativas o no aplica, retornar lista vacía normal
         return []
 
     print(f"✅ Retornando {len(properties[:search_request.top_k])} propiedades")
