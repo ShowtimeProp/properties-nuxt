@@ -459,7 +459,12 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
         ambientes_field = _extract_numeric(ambientes_raw)
         bedrooms_field = _extract_numeric(bedrooms_raw)
         
+        # Debug logging para entender qué valores llegan
+        if desired_ambientes == 1:
+            print(f"   🔍 DEBUG _passes_filters INICIO: ambientes_raw={ambientes_raw} (type={type(ambientes_raw)}), bedrooms_raw={bedrooms_raw} (type={type(bedrooms_raw)}), ambientes_field={ambientes_field}, bedrooms_field={bedrooms_field}")
+        
         if ambientes_field is None and bedrooms_field is None:
+            print(f"   🔍 DEBUG _passes_filters: Ambos campos son None - ambientes_raw={ambientes_raw}, bedrooms_raw={bedrooms_raw}")
             return False
         
         # Si busca monoambiente (1 ambiente)
@@ -468,6 +473,7 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
         if desired_ambientes == 1:
             # PRIMERO: Rechazar si tiene ambientes=2 o más (definitivamente NO es 1 ambiente)
             if ambientes_field is not None and ambientes_field >= 2:
+                print(f"   🔍 DEBUG _passes_filters monoambiente: Rechazada por ambientes >= 2 - ambientes_field={ambientes_field}")
                 return False
             
             # SEGUNDO: Aceptar si cumple alguna de estas condiciones
@@ -475,16 +481,19 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
             # Si tiene ambientes=1, aceptar (sin importar bedrooms)
             if ambientes_field is not None and ambientes_field == 1:
                 match = True
+                print(f"   ✅ DEBUG _passes_filters monoambiente: ACEPTADA por ambientes=1 - ambientes_field={ambientes_field}, bedrooms_field={bedrooms_field}")
             # Si tiene bedrooms=1 Y ambientes no es 2+, aceptar
             elif bedrooms_field is not None and bedrooms_field == 1:
                 match = True
+                print(f"   ✅ DEBUG _passes_filters monoambiente: ACEPTADA por bedrooms=1 - ambientes_field={ambientes_field}, bedrooms_field={bedrooms_field}")
             # Si tiene bedrooms=0, aceptar (monoambiente)
             elif bedrooms_field is not None and bedrooms_field == 0:
                 match = True
+                print(f"   ✅ DEBUG _passes_filters monoambiente: ACEPTADA por bedrooms=0 - ambientes_field={ambientes_field}, bedrooms_field={bedrooms_field}")
             
             if not match:
                 # Log detallado para debuggear
-                print(f"   🔍 DEBUG _passes_filters monoambiente: ambientes_raw={ambientes_raw}, bedrooms_raw={bedrooms_raw}, ambientes_field={ambientes_field}, bedrooms_field={bedrooms_field}, match={match}")
+                print(f"   🔍 DEBUG _passes_filters monoambiente: RECHAZADA - ambientes_raw={ambientes_raw}, bedrooms_raw={bedrooms_raw}, ambientes_field={ambientes_field}, bedrooms_field={bedrooms_field}, match={match}")
                 return False
         else:
             # Para 2+ ambientes: ambientes == N O bedrooms == N-1
@@ -525,15 +534,17 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
             if bedrooms_field < desired_bedrooms:
                 return False
 
-    desired_bathrooms = features["bathrooms"]
+    desired_bathrooms = features.get("bathrooms")
     if desired_bathrooms is not None:
         bathrooms_field = _extract_numeric(payload.get("bathrooms"))
         if bathrooms_field is None or bathrooms_field < desired_bathrooms:
+            print(f"   🔍 DEBUG _passes_filters: Rechazada por bathrooms - desired={desired_bathrooms}, actual={bathrooms_field}")
             return False
 
-    if features["property_types"]:
-        prop_type_value = _normalise_text(payload.get("property_type"))
+    if features.get("property_types"):
+        prop_type_value = _normalise_text(payload.get("property_type") or "")
         if not any(ptype in prop_type_value for ptype in features["property_types"]):
+            print(f"   🔍 DEBUG _passes_filters: Rechazada por property_types - desired={features['property_types']}, actual={prop_type_value}")
             return False
 
     # Verificar filtro geográfico si hay un barrio con bbox
@@ -547,7 +558,9 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
             location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
                 payload.get("neighborhood") or ""
             )
-            if not any(neigh in location_text for neigh in features.get("neighborhoods", [])):
+            neighborhoods_in_query = features.get("neighborhoods", [])
+            if not any(neigh in location_text for neigh in neighborhoods_in_query):
+                print(f"   🔍 DEBUG _passes_filters: Rechazada por filtro geográfico (sin coordenadas, fallback texto) - location_text={location_text[:50]}, neighborhoods={neighborhoods_in_query}")
                 return False
         else:
             # Verificar que esté dentro del bounding box
@@ -556,6 +569,7 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
                 lng = float(lng)
                 if not (bbox["min_lat"] <= lat <= bbox["max_lat"] and 
                         bbox["min_lon"] <= lng <= bbox["max_lon"]):
+                    print(f"   🔍 DEBUG _passes_filters: Rechazada por filtro geográfico (fuera de bbox) - lat={lat}, lng={lng}, bbox={bbox}")
                     return False
             except (ValueError, TypeError):
                 # Si no se puede convertir, usar fallback por texto
@@ -569,7 +583,9 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
         location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
             payload.get("neighborhood") or ""
         )
-        if not any(neigh in location_text for neigh in features["neighborhoods"]):
+        neighborhoods_in_query = features["neighborhoods"]
+        if not any(neigh in location_text for neigh in neighborhoods_in_query):
+            print(f"   🔍 DEBUG _passes_filters: Rechazada por filtro de neighborhoods (texto) - location_text={location_text[:50]}, neighborhoods={neighborhoods_in_query}")
             return False
 
     if filters:
