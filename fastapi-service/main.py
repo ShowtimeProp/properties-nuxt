@@ -432,8 +432,15 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
             or payload.get("ambientes")
             or payload.get("rooms")
         )
-        if bedrooms_field is None or bedrooms_field < desired_bedrooms:
+        if bedrooms_field is None:
             return False
+        # Si busca 1 ambiente, buscar exactamente 1. Si busca 2+, usar >=
+        if desired_bedrooms == 1:
+            if bedrooms_field != 1:
+                return False
+        else:
+            if bedrooms_field < desired_bedrooms:
+                return False
 
     desired_bathrooms = features["bathrooms"]
     if desired_bathrooms is not None:
@@ -532,10 +539,18 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
     
     # Agregar otros filtros estructurados
     if features.get("bedrooms") is not None:
-        scroll_filter_conditions.append(models.FieldCondition(
-            key="bedrooms",
-            range=models.Range(gte=features["bedrooms"])
-        ))
+        bedrooms_value = features["bedrooms"]
+        # Si busca 1 ambiente, buscar exactamente 1. Si busca 2+, usar >=
+        if bedrooms_value == 1:
+            scroll_filter_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=1, lte=1)
+            ))
+        else:
+            scroll_filter_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=bedrooms_value)
+            ))
     
     if features.get("bathrooms") is not None:
         scroll_filter_conditions.append(models.FieldCondition(
@@ -610,10 +625,18 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
             # Buscar solo por tipo y características, sin filtro geográfico estricto
             relaxed_conditions = []
             if features.get("bedrooms") is not None:
-                relaxed_conditions.append(models.FieldCondition(
-                    key="bedrooms",
-                    range=models.Range(gte=features["bedrooms"])
-                ))
+                bedrooms_value = features["bedrooms"]
+                # Si busca 1 ambiente, buscar exactamente 1. Si busca 2+, usar >=
+                if bedrooms_value == 1:
+                    relaxed_conditions.append(models.FieldCondition(
+                        key="bedrooms",
+                        range=models.Range(gte=1, lte=1)
+                    ))
+                else:
+                    relaxed_conditions.append(models.FieldCondition(
+                        key="bedrooms",
+                        range=models.Range(gte=bedrooms_value)
+                    ))
             if features.get("property_types"):
                 property_type_values = list(features["property_types"])
                 relaxed_conditions.append(models.FieldCondition(
@@ -631,21 +654,37 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
             )
             print(f"✅ Búsqueda relajada retornó {len(relaxed_results)} resultados")
             
-            # Filtrar por texto del barrio en lugar de coordenadas
+            # Filtrar por campo neighborhood o texto del barrio
             neighborhood_names = features.get("neighborhoods", [])
-            print(f"🔍 Buscando barrios en texto: {neighborhood_names}")
+            neighborhood_name_from_db = neighborhood_data.get("name", "").lower() if neighborhood_data else ""
+            print(f"🔍 Buscando barrios: {neighborhood_names} (barrio DB: {neighborhood_name_from_db})")
             for record in relaxed_results:
                 payload = record.payload
-                # Verificar que pase filtros básicos y tenga el barrio en el texto
+                # Verificar que pase filtros básicos
                 if _passes_filters(payload, features, search_request.filters or {}, None):  # Sin bbox estricto
-                    location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
-                        payload.get("neighborhood") or ""
-                    ) + " " + _normalise_text(payload.get("address") or "")
-                    # Buscar el nombre del barrio en el texto de ubicación
-                    if any(neigh.lower() in location_text.lower() for neigh in neighborhood_names):
+                    # Primero verificar el campo neighborhood directamente (más preciso)
+                    property_neighborhood = _normalise_text(payload.get("neighborhood") or "")
+                    neighborhood_match = False
+                    
+                    if property_neighborhood:
+                        # Verificar si el neighborhood de la propiedad coincide con el barrio buscado
+                        if neighborhood_name_from_db and neighborhood_name_from_db in property_neighborhood:
+                            neighborhood_match = True
+                        elif any(neigh.lower() in property_neighborhood for neigh in neighborhood_names):
+                            neighborhood_match = True
+                    
+                    # Si no coincide por neighborhood, buscar en texto de ubicación
+                    if not neighborhood_match:
+                        location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
+                            payload.get("address") or ""
+                        )
+                        if any(neigh.lower() in location_text.lower() for neigh in neighborhood_names):
+                            neighborhood_match = True
+                    
+                    if neighborhood_match:
                         score = _property_score(payload, features)
                         scored_payloads.append((score, payload))
-                        print(f"✅ Propiedad encontrada por texto: {payload.get('title', 'Sin título')[:50]} - Location: {payload.get('location', 'N/A')}")
+                        print(f"✅ Propiedad encontrada: {payload.get('title', 'Sin título')[:50]} - Neighborhood: {payload.get('neighborhood', 'N/A')}")
             
             print(f"✅ Búsqueda relajada encontró {len(scored_payloads)} propiedades por texto")
         except Exception as e:
@@ -971,10 +1010,18 @@ def search(request: Request, search_request: SearchRequestModel):
     
     # Aplicar filtros de características extraídas de la query
     if features.get("bedrooms") is not None:
-        qdrant_conditions.append(models.FieldCondition(
-            key="bedrooms",
-            range=models.Range(gte=features["bedrooms"])
-        ))
+        bedrooms_value = features["bedrooms"]
+        # Si busca 1 ambiente, buscar exactamente 1. Si busca 2+, usar >=
+        if bedrooms_value == 1:
+            qdrant_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=1, lte=1)
+            ))
+        else:
+            qdrant_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=bedrooms_value)
+            ))
     
     if features.get("bathrooms") is not None:
         qdrant_conditions.append(models.FieldCondition(
