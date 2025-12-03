@@ -463,14 +463,19 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
             return False
         
         # Si busca monoambiente (1 ambiente)
-        # UNIFICACIÓN: Aceptar cualquier propiedad que tenga ambientes=1 O bedrooms=1 O bedrooms=0
-        # Esto incluye: monoambiente, studio, 1 ambiente, 1 dormitorio (todo se considera equivalente)
+        # UNIFICACIÓN: Aceptar propiedades con ambientes=1 O bedrooms=1 O bedrooms=0
+        # IMPORTANTE: Rechazar propiedades con ambientes=2+ aunque tengan bedrooms=1
         if desired_ambientes == 1:
+            # PRIMERO: Rechazar si tiene ambientes=2 o más (definitivamente NO es 1 ambiente)
+            if ambientes_field is not None and ambientes_field >= 2:
+                return False
+            
+            # SEGUNDO: Aceptar si cumple alguna de estas condiciones
             match = False
             # Si tiene ambientes=1, aceptar (sin importar bedrooms)
             if ambientes_field is not None and ambientes_field == 1:
                 match = True
-            # Si tiene bedrooms=1, aceptar (considerado equivalente a 1 ambiente)
+            # Si tiene bedrooms=1 Y ambientes no es 2+, aceptar
             elif bedrooms_field is not None and bedrooms_field == 1:
                 match = True
             # Si tiene bedrooms=0, aceptar (monoambiente)
