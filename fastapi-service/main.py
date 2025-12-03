@@ -795,30 +795,38 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
             for record in relaxed_results:
                 payload = record.payload
                 # Verificar que pase filtros básicos
-                if _passes_filters(payload, features, search_request.filters or {}, None):  # Sin bbox estricto
-                    # Primero verificar el campo neighborhood directamente (más preciso)
-                    property_neighborhood = _normalise_text(payload.get("neighborhood") or "")
-                    neighborhood_match = False
-                    
-                    if property_neighborhood:
-                        # Verificar si el neighborhood de la propiedad coincide con el barrio buscado
-                        if neighborhood_name_from_db and neighborhood_name_from_db in property_neighborhood:
-                            neighborhood_match = True
-                        elif any(neigh.lower() in property_neighborhood for neigh in neighborhood_names):
-                            neighborhood_match = True
-                    
-                    # Si no coincide por neighborhood, buscar en texto de ubicación
-                    if not neighborhood_match:
-                        location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
-                            payload.get("address") or ""
-                        )
-                        if any(neigh.lower() in location_text.lower() for neigh in neighborhood_names):
-                            neighborhood_match = True
-                    
-                    if neighborhood_match:
-                        score = _property_score(payload, features)
-                        scored_payloads.append((score, payload))
-                        print(f"✅ Propiedad encontrada: {payload.get('title', 'Sin título')[:50]} - Neighborhood: {payload.get('neighborhood', 'N/A')}")
+                passes_basic_filters = _passes_filters(payload, features, search_request.filters or {}, None)  # Sin bbox estricto
+                
+                if not passes_basic_filters:
+                    # Log para debuggear por qué no pasa los filtros
+                    ambientes_field = payload.get("ambientes")
+                    bedrooms_field = payload.get("bedrooms")
+                    print(f"⚠️ Propiedad rechazada por filtros: {payload.get('title', 'Sin título')[:50]} - ambientes={ambientes_field}, bedrooms={bedrooms_field}")
+                    continue
+                
+                # Primero verificar el campo neighborhood directamente (más preciso)
+                property_neighborhood = _normalise_text(payload.get("neighborhood") or "")
+                neighborhood_match = False
+                
+                if property_neighborhood:
+                    # Verificar si el neighborhood de la propiedad coincide con el barrio buscado
+                    if neighborhood_name_from_db and neighborhood_name_from_db in property_neighborhood:
+                        neighborhood_match = True
+                    elif any(neigh.lower() in property_neighborhood for neigh in neighborhood_names):
+                        neighborhood_match = True
+                
+                # Si no coincide por neighborhood, buscar en texto de ubicación
+                if not neighborhood_match:
+                    location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
+                        payload.get("address") or ""
+                    )
+                    if any(neigh.lower() in location_text.lower() for neigh in neighborhood_names):
+                        neighborhood_match = True
+                
+                if neighborhood_match:
+                    score = _property_score(payload, features)
+                    scored_payloads.append((score, payload))
+                    print(f"✅ Propiedad encontrada por texto: {payload.get('title', 'Sin título')[:50]} - Neighborhood: {payload.get('neighborhood', 'N/A')}, ambientes={payload.get('ambientes')}, bedrooms={payload.get('bedrooms')}")
             
             print(f"✅ Búsqueda relajada encontró {len(scored_payloads)} propiedades por texto")
         except Exception as e:
