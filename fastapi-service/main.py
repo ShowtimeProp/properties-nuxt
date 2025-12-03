@@ -303,17 +303,36 @@ def _parse_query_features(query: str):
             phrases.add(" ".join(words[i : i + size]))
 
     bedrooms = None
+    ambientes = None  # Sistema argentino
     bathrooms = None
     property_types = set()
     must_have_terms = set()
+    search_mode = None  # "ambientes" o "bedrooms" para saber qué sistema usa el usuario
 
     for canonical, variations in PROPERTY_TYPE_KEYWORDS.items():
         if any(var in text for var in variations):
             property_types.add(canonical)
 
-    bedroom_match = re.search(r"(\d+)\s*(ambiente|ambientes|dormitorio|dormitorios|cuarto|cuartos|habitaci[oó]n|habitaciones)", text)
-    if bedroom_match:
-        bedrooms = _extract_numeric(bedroom_match.group(1))
+    # Detectar si el usuario está usando sistema argentino ("ambientes") o internacional ("dormitorios/cuartos")
+    # Priorizar "ambientes" si aparece primero en la query
+    ambiente_match = re.search(r"(\d+)\s*(?:mono)?ambiente(?:s)?", text, re.IGNORECASE)
+    dormitorio_match = re.search(r"(\d+)\s*(?:dormitorio|cuarto|habitaci[oó]n)(?:s|es)?", text, re.IGNORECASE)
+    
+    if ambiente_match:
+        # Sistema argentino: "N ambientes" = living/comedor + (N-1) dormitorios
+        ambientes = _extract_numeric(ambiente_match.group(1))
+        search_mode = "ambientes"
+        # Convertir a bedrooms para búsqueda: N ambientes = N-1 dormitorios (excepto monoambiente = 0 dormitorios)
+        if ambientes == 1:
+            bedrooms = 0  # Monoambiente no tiene dormitorios separados
+        else:
+            bedrooms = ambientes - 1  # 2 ambientes = 1 dormitorio, 3 ambientes = 2 dormitorios, etc.
+    elif dormitorio_match:
+        # Sistema internacional: "N dormitorios" = N dormitorios
+        bedrooms = _extract_numeric(dormitorio_match.group(1))
+        search_mode = "bedrooms"
+        # No podemos inferir ambientes exactamente, pero podemos aproximar: N dormitorios = N+1 ambientes mínimo
+        ambientes = bedrooms + 1 if bedrooms else None
 
     bathroom_match = re.search(r"(\d+)\s*(baño|baños)", text)
     if bathroom_match:
@@ -351,6 +370,8 @@ def _parse_query_features(query: str):
         "tokens": tokens,
         "phrases": phrases,
         "bedrooms": bedrooms,
+        "ambientes": ambientes,  # Sistema argentino
+        "search_mode": search_mode,  # "ambientes" o "bedrooms"
         "bathrooms": bathrooms,
         "property_types": property_types,
         "must_have_terms": must_have_terms,
@@ -425,16 +446,61 @@ def _property_score(payload: dict, features: dict) -> int:
     return score
 
 def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_bbox: dict = None) -> bool:
-    desired_bedrooms = features["bedrooms"]
-    if desired_bedrooms is not None:
+    # Manejar sistema argentino ("ambientes") vs internacional ("bedrooms")
+    search_mode = features.get("search_mode")
+    desired_ambientes = features.get("ambientes")
+    desired_bedrooms = features.get("bedrooms")
+    
+    if search_mode == "ambientes" and desired_ambientes is not None:
+        # Sistema argentino: buscar propiedades donde ambientes == N
+        # O donde bedrooms == N-1 (excepto monoambiente)
+        ambientes_field = _extract_numeric(payload.get("ambientes"))
+        bedrooms_field = _extract_numeric(payload.get("bedrooms") or payload.get("rooms"))
+        
+        if ambientes_field is None and bedrooms_field is None:
+            return False
+        
+        # Si busca monoambiente (1 ambiente)
+        if desired_ambientes == 1:
+            # Debe tener exactamente 1 ambiente O 0 dormitorios (monoambiente)
+            if ambientes_field is not None:
+                if ambientes_field != 1:
+                    return False
+            elif bedrooms_field is not None:
+                if bedrooms_field != 0:
+                    return False
+        else:
+            # Para 2+ ambientes: ambientes == N O bedrooms == N-1
+            match = False
+            if ambientes_field is not None and ambientes_field == desired_ambientes:
+                match = True
+            elif bedrooms_field is not None and bedrooms_field == (desired_ambientes - 1):
+                match = True
+            if not match:
+                return False
+    elif search_mode == "bedrooms" and desired_bedrooms is not None:
+        # Sistema internacional: buscar propiedades donde bedrooms == N
         bedrooms_field = _extract_numeric(
             payload.get("bedrooms")
-            or payload.get("ambientes")
             or payload.get("rooms")
         )
         if bedrooms_field is None:
             return False
-        # Si busca 1 ambiente, buscar exactamente 1. Si busca 2+, usar >=
+        # Si busca 1 dormitorio, buscar exactamente 1. Si busca 2+, usar >=
+        if desired_bedrooms == 1:
+            if bedrooms_field != 1:
+                return False
+        else:
+            if bedrooms_field < desired_bedrooms:
+                return False
+    elif desired_bedrooms is not None:
+        # Fallback: si no hay search_mode pero hay bedrooms, usar lógica antigua
+        bedrooms_field = _extract_numeric(
+            payload.get("bedrooms")
+            or payload.get("rooms")
+        )
+        if bedrooms_field is None:
+            return False
         if desired_bedrooms == 1:
             if bedrooms_field != 1:
                 return False
@@ -538,10 +604,32 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
             print(f"✅ Fallback: Filtros geográficos aplicados con margen (bbox expandido ~10%)")
     
     # Agregar otros filtros estructurados
-    if features.get("bedrooms") is not None:
-        bedrooms_value = features["bedrooms"]
-        # Si busca 1 ambiente, buscar exactamente 1. Si busca 2+, usar >=
-        if bedrooms_value == 1:
+    search_mode = features.get("search_mode")
+    desired_ambientes = features.get("ambientes")
+    desired_bedrooms = features.get("bedrooms")
+    
+    if search_mode == "ambientes" and desired_ambientes is not None:
+        # Sistema argentino: buscar en ambientes O bedrooms con conversión
+        # Usar OR para buscar en cualquiera de los dos campos
+        ambientes_conditions = []
+        ambientes_conditions.append(models.FieldCondition(
+            key="ambientes",
+            range=models.Range(gte=desired_ambientes, lte=desired_ambientes)
+        ))
+        if desired_ambientes == 1:
+            ambientes_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=0, lte=0)
+            ))
+        else:
+            ambientes_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=desired_ambientes - 1, lte=desired_ambientes - 1)
+            ))
+        scroll_filter_conditions.append(models.Filter(should=ambientes_conditions))
+    elif search_mode == "bedrooms" and desired_bedrooms is not None:
+        # Sistema internacional: buscar solo en bedrooms
+        if desired_bedrooms == 1:
             scroll_filter_conditions.append(models.FieldCondition(
                 key="bedrooms",
                 range=models.Range(gte=1, lte=1)
@@ -549,7 +637,19 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
         else:
             scroll_filter_conditions.append(models.FieldCondition(
                 key="bedrooms",
-                range=models.Range(gte=bedrooms_value)
+                range=models.Range(gte=desired_bedrooms)
+            ))
+    elif desired_bedrooms is not None:
+        # Fallback: lógica antigua
+        if desired_bedrooms == 1:
+            scroll_filter_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=1, lte=1)
+            ))
+        else:
+            scroll_filter_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=desired_bedrooms)
             ))
     
     if features.get("bathrooms") is not None:
@@ -624,10 +724,31 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
         try:
             # Buscar solo por tipo y características, sin filtro geográfico estricto
             relaxed_conditions = []
-            if features.get("bedrooms") is not None:
-                bedrooms_value = features["bedrooms"]
-                # Si busca 1 ambiente, buscar exactamente 1. Si busca 2+, usar >=
-                if bedrooms_value == 1:
+            search_mode = features.get("search_mode")
+            desired_ambientes = features.get("ambientes")
+            desired_bedrooms = features.get("bedrooms")
+            
+            if search_mode == "ambientes" and desired_ambientes is not None:
+                # Sistema argentino: buscar en ambientes O bedrooms con conversión
+                ambientes_conditions = []
+                ambientes_conditions.append(models.FieldCondition(
+                    key="ambientes",
+                    range=models.Range(gte=desired_ambientes, lte=desired_ambientes)
+                ))
+                if desired_ambientes == 1:
+                    ambientes_conditions.append(models.FieldCondition(
+                        key="bedrooms",
+                        range=models.Range(gte=0, lte=0)
+                    ))
+                else:
+                    ambientes_conditions.append(models.FieldCondition(
+                        key="bedrooms",
+                        range=models.Range(gte=desired_ambientes - 1, lte=desired_ambientes - 1)
+                    ))
+                relaxed_conditions.append(models.Filter(should=ambientes_conditions))
+            elif search_mode == "bedrooms" and desired_bedrooms is not None:
+                # Sistema internacional: buscar solo en bedrooms
+                if desired_bedrooms == 1:
                     relaxed_conditions.append(models.FieldCondition(
                         key="bedrooms",
                         range=models.Range(gte=1, lte=1)
@@ -635,7 +756,19 @@ def _fallback_semantic_search(search_request: SearchRequestModel, neighborhood_d
                 else:
                     relaxed_conditions.append(models.FieldCondition(
                         key="bedrooms",
-                        range=models.Range(gte=bedrooms_value)
+                        range=models.Range(gte=desired_bedrooms)
+                    ))
+            elif desired_bedrooms is not None:
+                # Fallback: lógica antigua
+                if desired_bedrooms == 1:
+                    relaxed_conditions.append(models.FieldCondition(
+                        key="bedrooms",
+                        range=models.Range(gte=1, lte=1)
+                    ))
+                else:
+                    relaxed_conditions.append(models.FieldCondition(
+                        key="bedrooms",
+                        range=models.Range(gte=desired_bedrooms)
                     ))
             if features.get("property_types"):
                 property_type_values = list(features["property_types"])
@@ -1009,10 +1142,42 @@ def search(request: Request, search_request: SearchRequestModel):
             print(f"✅ Filtros geográficos aplicados: lat[{bbox['min_lat']}, {bbox['max_lat']}], lon[{bbox['min_lon']}, {bbox['max_lon']}]")
     
     # Aplicar filtros de características extraídas de la query
-    if features.get("bedrooms") is not None:
-        bedrooms_value = features["bedrooms"]
-        # Si busca 1 ambiente, buscar exactamente 1. Si busca 2+, usar >=
-        if bedrooms_value == 1:
+    search_mode = features.get("search_mode")
+    desired_ambientes = features.get("ambientes")
+    desired_bedrooms = features.get("bedrooms")
+    
+    if search_mode == "ambientes" and desired_ambientes is not None:
+        # Sistema argentino: buscar en campo "ambientes" O en "bedrooms" con conversión
+        # Usar OR para buscar en cualquiera de los dos campos
+        ambientes_conditions = []
+        
+        # Condición 1: ambientes == N
+        ambientes_conditions.append(models.FieldCondition(
+            key="ambientes",
+            range=models.Range(gte=desired_ambientes, lte=desired_ambientes)
+        ))
+        
+        # Condición 2: bedrooms == N-1 (excepto monoambiente)
+        if desired_ambientes == 1:
+            # Monoambiente: bedrooms == 0
+            ambientes_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=0, lte=0)
+            ))
+        else:
+            # 2+ ambientes: bedrooms == N-1
+            ambientes_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=desired_ambientes - 1, lte=desired_ambientes - 1)
+            ))
+        
+        # Usar MatchAny para buscar propiedades que cumplan cualquiera de las condiciones
+        qdrant_conditions.append(models.Filter(
+            should=ambientes_conditions  # OR: cumple condición 1 O condición 2
+        ))
+    elif search_mode == "bedrooms" and desired_bedrooms is not None:
+        # Sistema internacional: buscar solo en bedrooms
+        if desired_bedrooms == 1:
             qdrant_conditions.append(models.FieldCondition(
                 key="bedrooms",
                 range=models.Range(gte=1, lte=1)
@@ -1020,7 +1185,19 @@ def search(request: Request, search_request: SearchRequestModel):
         else:
             qdrant_conditions.append(models.FieldCondition(
                 key="bedrooms",
-                range=models.Range(gte=bedrooms_value)
+                range=models.Range(gte=desired_bedrooms)
+            ))
+    elif desired_bedrooms is not None:
+        # Fallback: lógica antigua si no hay search_mode
+        if desired_bedrooms == 1:
+            qdrant_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=1, lte=1)
+            ))
+        else:
+            qdrant_conditions.append(models.FieldCondition(
+                key="bedrooms",
+                range=models.Range(gte=desired_bedrooms)
             ))
     
     if features.get("bathrooms") is not None:
