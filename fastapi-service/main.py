@@ -462,13 +462,14 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
         
         # Si busca monoambiente (1 ambiente)
         if desired_ambientes == 1:
-            # Debe tener exactamente 1 ambiente O 0 dormitorios (monoambiente)
-            if ambientes_field is not None:
-                if ambientes_field != 1:
-                    return False
-            elif bedrooms_field is not None:
-                if bedrooms_field != 0:
-                    return False
+            # Debe tener exactamente 1 ambiente O 0 dormitorios (monoambiente) - OR lógico
+            match = False
+            if ambientes_field is not None and ambientes_field == 1:
+                match = True
+            if bedrooms_field is not None and bedrooms_field == 0:
+                match = True
+            if not match:
+                return False
         else:
             # Para 2+ ambientes: ambientes == N O bedrooms == N-1
             match = False
