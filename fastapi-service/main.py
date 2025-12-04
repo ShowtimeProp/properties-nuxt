@@ -292,6 +292,22 @@ def _extract_numeric(value):
     except (ValueError, TypeError):
         return None
 
+def _extract_coords_from_postgis(location_str: str):
+    """Extrae coordenadas lat/lng del formato PostGIS POINT o SRID=4326;POINT(...)"""
+    if not location_str:
+        return None, None
+    try:
+        # Buscar el patrón POINT(lng lat) o SRID=4326;POINT(lng lat)
+        import re
+        match = re.search(r'POINT\(([-\d.]+)\s+([-\d.]+)\)', str(location_str))
+        if match:
+            lng = float(match.group(1))
+            lat = float(match.group(2))
+            return lat, lng
+    except (ValueError, TypeError, AttributeError):
+        pass
+    return None, None
+
 def _parse_query_features(query: str):
     text = _normalise_text(query)
     tokens = [tok for tok in re.split(r"[^\wáéíóúñü]+", text) if tok]
@@ -554,6 +570,16 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
         bbox = neighborhood_bbox["bbox"]
         lat = payload.get("latitude") or payload.get("lat")
         lng = payload.get("longitude") or payload.get("lng") or payload.get("lon")
+        
+        # Si no hay coordenadas explícitas, intentar extraerlas del formato PostGIS
+        if lat is None or lng is None:
+            location_str = payload.get("location") or ""
+            if location_str:
+                postgis_lat, postgis_lng = _extract_coords_from_postgis(location_str)
+                if postgis_lat is not None and postgis_lng is not None:
+                    lat = postgis_lat
+                    lng = postgis_lng
+                    print(f"   🔍 DEBUG _passes_filters: Coordenadas extraídas de PostGIS - lat={lat}, lng={lng}")
         
         if lat is None or lng is None:
             # Si no hay coordenadas, verificar por texto como fallback
