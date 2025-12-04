@@ -479,6 +479,7 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
             # SEGUNDO: Aceptar si cumple alguna de estas condiciones
             match = False
             # Si tiene ambientes=1, aceptar (sin importar bedrooms)
+            print(f"   🔍 DEBUG _passes_filters ANTES IF: ambientes_field={ambientes_field}, type={type(ambientes_field)}, bedrooms_field={bedrooms_field}, type={type(bedrooms_field)}")
             if ambientes_field is not None and ambientes_field == 1:
                 match = True
                 print(f"   ✅ DEBUG _passes_filters monoambiente: ACEPTADA por ambientes=1 - ambientes_field={ambientes_field}, bedrooms_field={bedrooms_field}")
@@ -490,6 +491,7 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
             elif bedrooms_field is not None and bedrooms_field == 0:
                 match = True
                 print(f"   ✅ DEBUG _passes_filters monoambiente: ACEPTADA por bedrooms=0 - ambientes_field={ambientes_field}, bedrooms_field={bedrooms_field}")
+            print(f"   🔍 DEBUG _passes_filters DESPUES IF: match={match}")
             
             if not match:
                 # Log detallado para debuggear
@@ -555,12 +557,19 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
         
         if lat is None or lng is None:
             # Si no hay coordenadas, verificar por texto como fallback
-            location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
-                payload.get("neighborhood") or ""
+            # Si location tiene formato PostGIS, ignorarlo y buscar en otros campos
+            location_raw = payload.get("location") or ""
+            location_text = ""
+            # Si location NO tiene formato PostGIS, incluirlo en la búsqueda
+            if not location_raw.startswith("SRID=") and not location_raw.startswith("POINT("):
+                location_text = _normalise_text(location_raw) + " "
+            
+            location_text += _normalise_text(payload.get("neighborhood") or "") + " " + _normalise_text(
+                payload.get("address") or ""
             )
             neighborhoods_in_query = features.get("neighborhoods", [])
             if not any(neigh in location_text for neigh in neighborhoods_in_query):
-                print(f"   🔍 DEBUG _passes_filters: Rechazada por filtro geográfico (sin coordenadas, fallback texto) - location_text={location_text[:50]}, neighborhoods={neighborhoods_in_query}")
+                print(f"   🔍 DEBUG _passes_filters: Rechazada por filtro geográfico (sin coordenadas, fallback texto) - location_raw={location_raw[:50]}, location_text={location_text[:100]}, neighborhoods={neighborhoods_in_query}")
                 return False
         else:
             # Verificar que esté dentro del bounding box
@@ -580,12 +589,20 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
                     return False
     elif features.get("neighborhoods"):
         # Si hay barrios mencionados pero no hay bbox, verificar por texto
-        location_text = _normalise_text(payload.get("location") or "") + " " + _normalise_text(
-            payload.get("neighborhood") or ""
+        # Buscar en múltiples campos: location, neighborhood, address
+        # Si location tiene formato PostGIS (SRID=4326;POINT...), ignorarlo y buscar en otros campos
+        location_raw = payload.get("location") or ""
+        location_text = ""
+        # Si location NO tiene formato PostGIS, incluirlo en la búsqueda
+        if not location_raw.startswith("SRID=") and not location_raw.startswith("POINT("):
+            location_text = _normalise_text(location_raw) + " "
+        
+        location_text += _normalise_text(payload.get("neighborhood") or "") + " " + _normalise_text(
+            payload.get("address") or ""
         )
         neighborhoods_in_query = features["neighborhoods"]
         if not any(neigh in location_text for neigh in neighborhoods_in_query):
-            print(f"   🔍 DEBUG _passes_filters: Rechazada por filtro de neighborhoods (texto) - location_text={location_text[:50]}, neighborhoods={neighborhoods_in_query}")
+            print(f"   🔍 DEBUG _passes_filters: Rechazada por filtro de neighborhoods (texto) - location_raw={location_raw[:50]}, location_text={location_text[:100]}, neighborhoods={neighborhoods_in_query}")
             return False
 
     if filters:
