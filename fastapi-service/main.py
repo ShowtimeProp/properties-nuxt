@@ -299,13 +299,17 @@ def _extract_coords_from_postgis(location_str: str):
     try:
         # Buscar el patrón POINT(lng lat) o SRID=4326;POINT(lng lat)
         import re
-        match = re.search(r'POINT\(([-\d.]+)\s+([-\d.]+)\)', str(location_str))
+        location_str_clean = str(location_str)
+        match = re.search(r'POINT\(([-\d.]+)\s+([-\d.]+)\)', location_str_clean)
         if match:
             lng = float(match.group(1))
             lat = float(match.group(2))
+            print(f"   🔍 DEBUG _extract_coords_from_postgis: Match encontrado - lng={lng}, lat={lat}")
             return lat, lng
-    except (ValueError, TypeError, AttributeError):
-        pass
+        else:
+            print(f"   ⚠️ DEBUG _extract_coords_from_postgis: No match encontrado - location_str={location_str_clean[:100]}")
+    except (ValueError, TypeError, AttributeError) as e:
+        print(f"   ⚠️ DEBUG _extract_coords_from_postgis: Error al extraer - {e}")
     return None, None
 
 def _parse_query_features(query: str):
@@ -575,11 +579,14 @@ def _passes_filters(payload: dict, features: dict, filters: dict, neighborhood_b
         if lat is None or lng is None:
             location_str = payload.get("location") or ""
             if location_str:
+                print(f"   🔍 DEBUG _passes_filters: Intentando extraer coordenadas de PostGIS - location_str={location_str[:100]}")
                 postgis_lat, postgis_lng = _extract_coords_from_postgis(location_str)
                 if postgis_lat is not None and postgis_lng is not None:
                     lat = postgis_lat
                     lng = postgis_lng
-                    print(f"   🔍 DEBUG _passes_filters: Coordenadas extraídas de PostGIS - lat={lat}, lng={lng}")
+                    print(f"   ✅ DEBUG _passes_filters: Coordenadas extraídas de PostGIS - lat={lat}, lng={lng}")
+                else:
+                    print(f"   ⚠️ DEBUG _passes_filters: No se pudieron extraer coordenadas de PostGIS - location_str={location_str[:100]}")
         
         if lat is None or lng is None:
             # Si no hay coordenadas, verificar por texto como fallback
